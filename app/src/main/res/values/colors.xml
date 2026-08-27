@@ -1,0 +1,84 @@
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="purple_700">#4A148C</color>
+    <color name="purple_200">#CE93D8</color>
+    <color name="purple_500">#9C27B0</color>
+    <color name="ios_semantic_positive">#00C853</color>
+    <color name="ios_semantic_negative">#FF5252</color>
+    <color name="ios_separator">#E0E0E0</color>
+    <color name="ios_background">#F5F5F5</color>
+    <color name="ios_accent">#00C853</color>
+    <color name="ios_card">#FFFFFF</color>
+    <color name="ios_background_grouped">#F2F2F7</color>
+    <color name="ios_background_elevated">#FFFFFF</color>
+    <color name="ios_text_primary">#000000</color>
+    <color name="ios_text_secondary">#6C6C70</color>
+    <color name="ios_glass_surface">#B3FFFFFF</color>
+    <color name="ios_glass_stroke">#33FFFFFF</color>
+    <!-- stitch_fluent / Tailwind (code.html) -->
+    <color name="explore_slate_50">#f8fafc</color>
+    <color name="explore_slate_100">#f1f5f9</color>
+    <color name="explore_slate_200">#e2e8f0</color>
+    <color name="explore_slate_500">#64748b</color>
+    <color name="explore_slate_600">#475569</color>
+    <color name="explore_slate_700">#334155</color>
+    <color name="explore_slate_800">#1e293b</color>
+    <color name="explore_slate_900">#0f172a</color>
+    <color name="explore_emerald_100">#d1fae5</color>
+    <color name="explore_emerald_600">#059669</color>
+    <color name="explore_blue_100">#dbeafe</color>
+    <color name="explore_blue_600">#2563eb</color>
+    <color name="explore_purple_100">#f3e8ff</color>
+    <color name="explore_purple_600">#9333ea</color>
+    <color name="explore_amber_100">#fef3c7</color>
+    <color name="explore_amber_600">#d97706</color>
+    <color name="explore_rose_100">#ffe4e6</color>
+    <color name="explore_rose_600">#e11d48</color>
+    <!-- 玩机页截图：浅紫灰底、区块/快捷字色 -->
+    <color name="explore_page_background">#F3F4F9</color>
+    <color name="explore_muted_blue_grey">#7A869A</color>
+    <color name="nav_tab_active_pill">#DCF5E7</color>
+    <color name="nav_floating_surface">#66FFFFFF</color>
+    <color name="nav_floating_stroke">#26FFFFFF</color>
+    <color name="nav_item_text">#1F2937</color>
+    <color name="nav_item_accent">#00C853</color>
+    <!-- stitch_fluent_root_system / code.html tokens（实心表面 + 描边，避免半透明叠阴影发脏） -->
+    <color name="fluent_background">#f3f4f8</color>
+    <color name="fluent_glass_card">#FFFFFFFF</color>
+    <color name="fluent_card_stroke">#E6E7EF</color>
+    <color name="fluent_cell_stroke">#EBECF2</color>
+    <color name="fluent_primary">#00C853</color>
+    <color name="fluent_secondary">#00618f</color>
+    <color name="fluent_on_surface">#2d2f32</color>
+    <color name="fluent_on_surface_variant">#5a5b5f</color>
+    <color name="fluent_surface_container_low">#f0f0f5</color>
+    <color name="fluent_surface_container">#e7e8ed</color>
+    <color name="fluent_primary_container">#B9F6CA</color>
+    <color name="fluent_android_green">#3DDC84</color>
+    <color name="fluent_root_badge_bg">#80DCFCE7</color>
+    <color name="fluent_root_badge_text">#15803d</color>
+    <color name="fluent_orange">#f97316</color>
+    <color name="fluent_green_600">#16a34a</color>
+    <!-- 各核 CPU 仪表（参考 CPU 状态卡片：低/中/高 + 轨道灰） -->
+    <color name="stitch_gauge_track">#E0E2E9</color>
+    <color name="cpu_core_bar_track">#E7E8EE</color>
+    <color name="stitch_gauge_fill_low">#A0D8FF</color>
+    <color name="stitch_gauge_fill_med">#7B61FF</color>
+    <color name="stitch_gauge_fill_high">#F25C6E</color>
+    <color name="stitch_pct_low">#A0D8FF</color>
+    <color name="stitch_pct_med">#7B61FF</color>
+    <color name="stitch_pct_high">#F25C6E</color>
+    
+    <color name="explore_cyan_100">#CFFAFE</color>
+    <color name="explore_cyan_600">#0891B2</color>
+
+    <!-- Aurora 品牌色板（Aurora Design System v1.0） -->
+    <color name="aurora_primary">#00E676</color>
+    <color name="aurora_secondary">#22D3EE</color>
+    <color name="aurora_accent">#7C4DFF</color>
+    <color name="aurora_danger">#FF5252</color>
+    <color name="aurora_warning">#FFB300</color>
+    <color name="aurora_background">#09090B</color>
+    <color name="aurora_surface">#14000000</color>
+</resources>

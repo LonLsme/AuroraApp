@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Base.Theme.Aurora" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/ios_accent</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorSurface">@color/ios_card</item>
+        <item name="android:colorBackground">@color/ios_background_grouped</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/ios_background_grouped</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+    <style name="Theme.Aurora" parent="Base.Theme.Aurora" />
+</resources>
