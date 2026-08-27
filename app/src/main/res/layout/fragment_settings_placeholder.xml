@@ -16,52 +16,6 @@
         android:paddingBottom="24dp">
 
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardCheckUpdate"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            app:cardBackgroundColor="@color/ios_card"
-            app:cardCornerRadius="@dimen/ios_card_corner"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/ios_glass_stroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="@dimen/ios_card_padding">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_marginEnd="12dp"
-                    android:contentDescription="检查更新"
-                    android:src="@drawable/ic_check_update" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="检查更新"
-                    android:textAppearance="@style/Widget.IOS.SubsectionTitle"
-                    android:textColor="@color/ios_text_primary" />
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/switchCheckUpdate"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minHeight="28dp"
-                    android:padding="0dp"
-                    android:thumb="@drawable/switch_ios26_thumb"
-                    android:track="@drawable/switch_ios26_track"
-                    android:splitTrack="false"
-                    android:checked="true" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardGithubRepo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
