@@ -10,6 +10,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- 监视悬浮窗：显示在其他应用上层 + 前台服务 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
         android:name="com.aurora.app.AuroraApplication"
@@ -105,6 +109,16 @@
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- 监视悬浮窗前台服务：窗口在后台/游戏中保持存活 -->
+        <service
+            android:name=".ui.overlay.MonitorOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="real-time system performance monitoring overlay" />
+        </service>
     </application>
 
 </manifest>

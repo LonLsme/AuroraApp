@@ -66,6 +66,9 @@ import com.aurora.app.ui.plugin.GlobalDeviceSpoofActivity;
 import com.aurora.app.ui.plugin.DeviceIdModifyActivity;
 import com.aurora.app.ui.plugin.AuroraPluginActivity;
 import com.aurora.app.ui.selinux.SelinuxManagerActivity;
+import com.aurora.app.ui.overlay.MonitorOverlayService;
+import com.aurora.app.ui.overlay.MonitorType;
+import com.aurora.app.ui.overlay.OverlayPermission;
 import com.aurora.app.ui.widget.AuroraSwitchStyler;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -94,12 +97,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "aurora_detection_logs";
 
     private static final String PREFS_USAGE_MONITOR = "aurora_usage_monitor";
-    private static final String KEY_MONITOR_LOAD = "monitor_load";
-    private static final String KEY_MONITOR_PROCESS = "monitor_process";
-    private static final String KEY_MONITOR_THREAD = "monitor_thread";
-    private static final String KEY_MONITOR_MINI = "monitor_mini";
-    private static final String KEY_MONITOR_FPS = "monitor_fps";
-    private static final String KEY_MONITOR_TEMPERATURE = "monitor_temperature";
     private static final String KEY_LOG_PATH = "log_path";
     private static final long EXPLORE_ROOT_STATUS_CACHE_MS = 5_000L;
 
@@ -124,6 +121,8 @@ public class MainActivity extends AppCompatActivity {
     private AppBarLayout appBarLayout;
     private View overflowMenuScrim;
     private PopupMenu quickRebootPopupMenu;
+    /** 待开启的监视器类型：开关打开但悬浮窗权限未授予时记录，授权返回后自动开启。 */
+    private MonitorType pendingMonitorType;
     private final ArgbEvaluator argbEvaluator = new ArgbEvaluator();
     private AnimatorSet tabSwitchAnimator;
 
@@ -195,6 +194,8 @@ public class MainActivity extends AppCompatActivity {
             getSupportActionBar().setTitle("Aurora");
         }
         ensureToolbarVisible();
+        // 恢复上次退出时仍开启的监视悬浮窗
+        restoreMonitorOverlays();
         if (overflowMenuScrim != null) {
             overflowMenuScrim.setOnClickListener(v -> {
                 if (quickRebootPopupMenu != null) {
@@ -317,6 +318,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // 从「悬浮窗权限」设置页返回：权限已授予则自动开启之前请求的监视器
+        if (pendingMonitorType != null && OverlayPermission.canDrawOverlays(this)) {
+            MonitorType type = pendingMonitorType;
+            pendingMonitorType = null;
+            getSharedPreferences(PREFS_USAGE_MONITOR, MODE_PRIVATE)
+                    .edit().putBoolean(type.prefKey, true).apply();
+            MonitorOverlayService.startOverlay(this, type);
+        }
         mainHandler.removeCallbacks(exploreResumeRefresh);
         // 返回时先让界面完成首帧绘制，再延后刷新 Explore 状态，降低体感卡顿。
         if (currentTab == 2) {
@@ -850,23 +859,62 @@ public class MainActivity extends AppCompatActivity {
         AuroraSwitchStyler.apply(this, swFps);
         AuroraSwitchStyler.apply(this, swTemperature);
         SharedPreferences prefs = getSharedPreferences(PREFS_USAGE_MONITOR, MODE_PRIVATE);
-        swLoad.setChecked(prefs.getBoolean(KEY_MONITOR_LOAD, false));
-        swProcess.setChecked(prefs.getBoolean(KEY_MONITOR_PROCESS, false));
-        swThread.setChecked(prefs.getBoolean(KEY_MONITOR_THREAD, false));
-        swMini.setChecked(prefs.getBoolean(KEY_MONITOR_MINI, false));
-        swFps.setChecked(prefs.getBoolean(KEY_MONITOR_FPS, false));
-        swTemperature.setChecked(prefs.getBoolean(KEY_MONITOR_TEMPERATURE, false));
+        // 先回显已保存的开关状态（此时尚未设置监听器，不会误触发悬浮窗操作）
+        swLoad.setChecked(prefs.getBoolean(MonitorType.LOAD.prefKey, false));
+        swProcess.setChecked(prefs.getBoolean(MonitorType.PROCESS.prefKey, false));
+        swThread.setChecked(prefs.getBoolean(MonitorType.THREAD.prefKey, false));
+        swMini.setChecked(prefs.getBoolean(MonitorType.MINI.prefKey, false));
+        swFps.setChecked(prefs.getBoolean(MonitorType.FPS.prefKey, false));
+        swTemperature.setChecked(prefs.getBoolean(MonitorType.TEMPERATURE.prefKey, false));
+        // 开关即生效：切换时立即创建/销毁对应悬浮窗，并保存状态
+        swLoad.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.LOAD, isChecked));
+        swProcess.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.PROCESS, isChecked));
+        swThread.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.THREAD, isChecked));
+        swMini.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.MINI, isChecked));
+        swFps.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.FPS, isChecked));
+        swTemperature.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.TEMPERATURE, isChecked));
         new androidx.appcompat.app.AlertDialog.Builder(this, com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog)
                 .setView(view)
-                .setPositiveButton("确定", (dialog, which) -> prefs.edit()
-                        .putBoolean(KEY_MONITOR_LOAD, swLoad.isChecked())
-                        .putBoolean(KEY_MONITOR_PROCESS, swProcess.isChecked())
-                        .putBoolean(KEY_MONITOR_THREAD, swThread.isChecked())
-                        .putBoolean(KEY_MONITOR_MINI, swMini.isChecked())
-                        .putBoolean(KEY_MONITOR_FPS, swFps.isChecked())
-                        .putBoolean(KEY_MONITOR_TEMPERATURE, swTemperature.isChecked())
-                        .apply())
+                .setPositiveButton("确定", null)
                 .show();
+    }
+
+    /**
+     * 开关状态应用：开启 → 启动对应悬浮窗；关闭 → 销毁对应悬浮窗。
+     * 开启前检查悬浮窗权限，未授权则跳转系统设置并记录待开启类型，
+     * 用户授权返回后在 onResume 中自动补开。
+     */
+    private void applyMonitorSwitch(MonitorType type, boolean checked) {
+        SharedPreferences prefs = getSharedPreferences(PREFS_USAGE_MONITOR, MODE_PRIVATE);
+        if (checked) {
+            if (!OverlayPermission.canDrawOverlays(this)) {
+                pendingMonitorType = type;
+                OverlayPermission.toastNeedPermission(this);
+                OverlayPermission.request(this);
+                return; // 状态暂不保存，等授权成功后统一保存并开启
+            }
+            prefs.edit().putBoolean(type.prefKey, true).apply();
+            MonitorOverlayService.startOverlay(this, type);
+        } else {
+            prefs.edit().putBoolean(type.prefKey, false).apply();
+            MonitorOverlayService.stopOverlay(this, type);
+        }
+    }
+
+    /**
+     * 应用启动时恢复已开启的监视器：
+     * 遍历 6 种类型，凡开关状态为开且已具备悬浮窗权限的，重新拉起对应悬浮窗。
+     */
+    private void restoreMonitorOverlays() {
+        if (!OverlayPermission.canDrawOverlays(this)) {
+            return;
+        }
+        SharedPreferences prefs = getSharedPreferences(PREFS_USAGE_MONITOR, MODE_PRIVATE);
+        for (MonitorType type : MonitorType.values()) {
+            if (prefs.getBoolean(type.prefKey, false)) {
+                MonitorOverlayService.startOverlay(this, type);
+            }
+        }
     }
 
     private void showQuickRebootPopupMenu(View anchor) {
