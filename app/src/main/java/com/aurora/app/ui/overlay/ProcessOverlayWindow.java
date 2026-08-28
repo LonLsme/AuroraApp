@@ -19,10 +19,13 @@ public final class ProcessOverlayWindow extends OverlayWindow {
     /** 展示的进程条数。 */
     private static final int TOP_COUNT = 3;
 
-    /** 数据源：内部维护两次采样的差值基线。 */
+    /** 数据源：内部维护两次采样的差值基线（仅后台采集线程访问）。 */
     private final ProcessMonitor processMonitor = new ProcessMonitor();
 
     private final TextView[] rows = new TextView[TOP_COUNT]; // 每行一个进程文本
+
+    /** 最近一次采集到的 top 进程列表（后台线程写，主线程读）。 */
+    private List<String> topProcesses = java.util.Collections.emptyList();
 
     public ProcessOverlayWindow(Context context) {
         super(context, MonitorType.PROCESS);
@@ -49,10 +52,15 @@ public final class ProcessOverlayWindow extends OverlayWindow {
     }
 
     @Override
+    protected void collectData() {
+        // 后台线程：遍历 /proc 全量扫描开销较大，不阻塞主线程
+        topProcesses = processMonitor.readTopProcesses(TOP_COUNT);
+    }
+
+    @Override
     protected void refreshContent() {
-        List<String> top = processMonitor.readTopProcesses(TOP_COUNT);
         for (int i = 0; i < TOP_COUNT; i++) {
-            rows[i].setText(i < top.size() ? top.get(i) : "--");
+            rows[i].setText(i < topProcesses.size() ? topProcesses.get(i) : "--");
         }
     }
 

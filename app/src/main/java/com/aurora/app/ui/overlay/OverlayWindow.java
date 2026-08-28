@@ -12,25 +12,35 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 /**
  * 悬浮窗抽象基类：
  * 封装所有监视窗口共有的能力——
  * <ul>
  *   <li>窗口创建/销毁（WindowManager addView / removeView）；</li>
- *   <li>定时刷新循环（主线程 Handler，周期由子类决定）；</li>
+ *   <li>定时刷新循环：<b>后台线程采集数据（{@link #collectData()}）→ 主线程更新 UI（{@link #refreshContent()}）</b>，
+ *       避免 /proc、/sys 等文件 IO 阻塞主线程；</li>
  *   <li>触摸拖动（按住窗口任意位置即可移动，松手停在原地）；</li>
+ *   <li>单击 {@link #onSingleTap()} / 双击 {@link #onDoubleTap()} 手势回调；</li>
+ *   <li>内容平滑切换 {@link #swapContent(View, boolean)}（折叠/展开动画，带防竞态保护）；</li>
  *   <li>多窗口堆叠的默认初始位置（按 MonitorType 顺序错开）。</li>
  * </ul>
  *
- * <p>子类只需实现三件事：
+ * <p>子类实现约定：
  * {@link #buildContentView()} 构建窗口内容视图、
- * {@link #refreshContent()} 刷新数据、
+ * {@link #collectData()} 在后台线程做耗时 IO（可选覆写）、
+ * {@link #refreshContent()} 在主线程只更新 UI、
  * 可选覆写 {@link #getRefreshIntervalMs()} 调整刷新周期。
  *
  * <p>生命周期由 {@link OverlayWindowManager} 驱动：
  * 开关打开 → {@link #show()}；开关关闭 → {@link #hide()}。
  */
 public abstract class OverlayWindow {
+
+    /** 所有窗口共享的单线程采集池：串行执行，避免并发 IO 抢占。 */
+    private static final ExecutorService DATA_EXECUTOR = Executors.newSingleThreadExecutor();
 
     protected final Context context;
     protected final WindowManager windowManager;
@@ -108,7 +118,7 @@ public abstract class OverlayWindow {
     }
 
     /**
-     * 销毁悬浮窗：停止刷新 → 从 WindowManager 移除视图。
+     * 销毁悬浮窗：停止刷新 → 取消进行中的动画 → 从 WindowManager 移除视图。
      * 重复调用会被忽略（幂等）。
      */
     public final void hide() {
@@ -117,6 +127,11 @@ public abstract class OverlayWindow {
         }
         running = false;
         refreshHandler.removeCallbacks(refreshTask);
+        if (rootView != null) {
+            // 取消动画，避免 withEndAction 在窗口销毁后仍操作已移除的视图
+            rootView.animate().cancel();
+            rootView.clearAnimation();
+        }
         onHidden();
         if (rootView != null) {
             try {
@@ -144,7 +159,15 @@ public abstract class OverlayWindow {
     /** 子类必须实现：构建窗口内容视图。 */
     protected abstract View buildContentView();
 
-    /** 子类必须实现：刷新窗口数据（主线程调用，注意不要做耗时 IO）。 */
+    /**
+     * 子类可覆写：在<b>后台线程</b>采集数据（读 /proc、/sys 等文件 IO 放这里），
+     * 结果存入字段，供 {@link #refreshContent()} 主线程读取更新 UI。
+     * 默认空实现。注意：此方法与 refreshContent 不在同一线程，字段需按简单值处理。
+     */
+    protected void collectData() {
+    }
+
+    /** 子类必须实现：主线程刷新 UI（只做 setText / setProgress 等轻量操作）。 */
     protected abstract void refreshContent();
 
     /** 子类可覆写：刷新周期（毫秒），默认 1s。 */
@@ -152,15 +175,31 @@ public abstract class OverlayWindow {
         return 1000L;
     }
 
-    // ─── 定时刷新循环 ───
+    // ─── 定时刷新循环：后台采集 → 主线程更新 UI ───
     private final Runnable refreshTask = new Runnable() {
         @Override
         public void run() {
             if (!running) {
                 return;
             }
-            refreshContent();
-            refreshHandler.postDelayed(this, getRefreshIntervalMs());
+            // 后台线程执行文件 IO，不阻塞主线程
+            DATA_EXECUTOR.execute(() -> {
+                if (!running) {
+                    return;
+                }
+                try {
+                    collectData();
+                } catch (Exception ignored) {
+                    // 单条采集失败不影响后续刷新
+                }
+                refreshHandler.post(() -> {
+                    if (!running) {
+                        return;
+                    }
+                    refreshContent();
+                    refreshHandler.postDelayed(refreshTask, getRefreshIntervalMs());
+                });
+            });
         }
     };
 
@@ -193,7 +232,11 @@ public abstract class OverlayWindow {
                     if (dragging && rootView != null) {
                         params.x = (int) (windowStartX + dx);
                         params.y = (int) (windowStartY + dy);
-                        windowManager.updateViewLayout(rootView, params);
+                        try {
+                            windowManager.updateViewLayout(rootView, params);
+                        } catch (Exception ignored) {
+                            // 拖动过程中窗口可能被销毁，忽略
+                        }
                     }
                     return true;
                 }
@@ -219,7 +262,12 @@ public abstract class OverlayWindow {
      * 平滑替换窗口内容（用于折叠/展开切换）：
      * 旧内容淡出缩小 → 替换为新视图 → 重新测量窗口尺寸 → 新内容淡入放大。
      *
-     * <p>窗口容器必须是 ViewGroup（子类 buildContentView 返回的根视图）。
+     * <p>防竞态保护：
+     * <ul>
+     *   <li>切换前取消上一次动画，防止快速连点导致回调堆积互相踩；</li>
+     *   <li>动画回调中检查窗口是否仍存活（running + rootView 存在），
+     *       且对 updateViewLayout 做异常保护 —— 避免窗口销毁后操作已移除视图导致崩溃。</li>
+     * </ul>
      * 注意：调用方需自行维护状态（如展开/折叠标记与持久化）。
      */
     protected final void swapContent(View newContent, boolean animate) {
@@ -228,11 +276,19 @@ public abstract class OverlayWindow {
         }
         final ViewGroup container = (ViewGroup) rootView;
         Runnable doSwap = () -> {
-            container.removeAllViews();
-            container.addView(newContent);
-            // WRAP_CONTENT 窗口：内容变化后需手动刷新窗口尺寸
-            windowManager.updateViewLayout(rootView, params);
-            if (animate) {
+            // 动画结束时窗口可能已被双击关闭，直接放弃本次切换
+            if (!running || rootView == null) {
+                return;
+            }
+            try {
+                container.removeAllViews();
+                container.addView(newContent);
+                // WRAP_CONTENT 窗口：内容变化后需手动刷新窗口尺寸
+                windowManager.updateViewLayout(rootView, params);
+            } catch (Exception ignored) {
+                // 窗口已被系统移除等情况，忽略
+            }
+            if (animate && running) {
                 rootView.setAlpha(0f);
                 rootView.setScaleX(0.95f);
                 rootView.setScaleY(0.95f);
@@ -242,7 +298,9 @@ public abstract class OverlayWindow {
                         .start();
             }
         };
-        if (animate) {
+        if (animate && running) {
+            // 取消上一次动画，避免 withEndAction 堆积
+            rootView.animate().cancel();
             rootView.animate()
                     .alpha(0f).scaleX(0.95f).scaleY(0.95f)
                     .setDuration(60)

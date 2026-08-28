@@ -23,6 +23,10 @@ public final class MiniOverlayWindow extends OverlayWindow {
 
     private TextView contentView; // 单行组合文本
 
+    /** 最近一次采集的 CPU 使用率与电池温度（后台线程写，主线程读）。 */
+    private int cpuPercent = 0;
+    private float batteryTempC = -1f;
+
     public MiniOverlayWindow(Context context) {
         super(context, MonitorType.MINI);
     }
@@ -56,12 +60,17 @@ public final class MiniOverlayWindow extends OverlayWindow {
     }
 
     @Override
+    protected void collectData() {
+        // 后台线程：CPU 与温度的文件 IO
+        cpuPercent = loadMonitor.readCpuUsagePercent();
+        batteryTempC = TemperatureMonitor.readBatteryTempC(context);
+    }
+
+    @Override
     protected void refreshContent() {
-        int cpu = loadMonitor.readCpuUsagePercent();
-        int fps = Math.round(fpsMonitor.getFps());
-        String temp = TemperatureMonitor.formatTemp(
-                TemperatureMonitor.readBatteryTempC(context));
-        contentView.setText(String.format(Locale.US, "CPU %d%% · FPS %d · %s", cpu, fps, temp));
+        int fps = Math.round(fpsMonitor.getFps()); // Choreographer 数据在主线程
+        String temp = TemperatureMonitor.formatTemp(batteryTempC);
+        contentView.setText(String.format(Locale.US, "CPU %d%% · FPS %d · %s", cpuPercent, fps, temp));
     }
 
     @Override

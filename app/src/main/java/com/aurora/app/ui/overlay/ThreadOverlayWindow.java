@@ -19,6 +19,9 @@ public final class ThreadOverlayWindow extends OverlayWindow {
     private TextView valueView; // 线程总数大数字
     private TextView hintView;  // 说明小字
 
+    /** 最近一次采集的线程总数（后台线程写，主线程读）。 */
+    private int threadCount = -1;
+
     public ThreadOverlayWindow(Context context) {
         super(context, MonitorType.THREAD);
     }
@@ -44,9 +47,15 @@ public final class ThreadOverlayWindow extends OverlayWindow {
     }
 
     @Override
+    protected void collectData() {
+        // 后台线程：遍历 /proc 全部 task 目录开销较大，不阻塞主线程
+        threadCount = ThreadMonitor.readSystemThreadCount();
+    }
+
+    @Override
     protected void refreshContent() {
-        int count = ThreadMonitor.readSystemThreadCount();
-        valueView.setText(String.format(Locale.US, "%,d", count));
+        valueView.setText(threadCount >= 0
+                ? String.format(Locale.US, "%,d", threadCount) : "--");
     }
 
     @Override

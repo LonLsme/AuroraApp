@@ -68,6 +68,7 @@ import com.aurora.app.ui.plugin.AuroraPluginActivity;
 import com.aurora.app.ui.selinux.SelinuxManagerActivity;
 import com.aurora.app.ui.overlay.MonitorOverlayService;
 import com.aurora.app.ui.overlay.MonitorType;
+import com.aurora.app.ui.overlay.OverlayConfig;
 import com.aurora.app.ui.overlay.OverlayPermission;
 import com.aurora.app.ui.widget.AuroraSwitchStyler;
 
@@ -96,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String PREFS_NAME = "aurora_detection_logs";
 
-    private static final String PREFS_USAGE_MONITOR = "aurora_usage_monitor";
+    private static final String PREFS_USAGE_MONITOR = OverlayConfig.PREFS_NAME;
     private static final String KEY_LOG_PATH = "log_path";
     private static final long EXPLORE_ROOT_STATUS_CACHE_MS = 5_000L;
 

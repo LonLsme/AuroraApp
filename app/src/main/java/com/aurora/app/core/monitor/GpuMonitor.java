@@ -60,6 +60,8 @@ public final class GpuMonitor {
         for (String path : paths) {
             long raw = readLongFirstLine(path);
             if (raw > 0) {
+                // TODO(真机校准)：gpuclk 与 devfreq 单位不同（kHz vs Hz），
+                // 按数值量级猜测单位，若某机型读数异常需补充判断规则
                 if (raw >= 1_000_000L) {
                     return (int) (raw / 1_000_000L); // Hz → MHz
                 }

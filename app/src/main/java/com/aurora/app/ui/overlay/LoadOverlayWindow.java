@@ -30,16 +30,34 @@ import java.util.Locale;
  *   <li>背景：浅色半透明，可穿透看到下层内容。</li>
  * </ul>
  * 两种形态共用同一个窗口实例（内部切换内容），不会产生第二个悬浮窗。
+ *
+ * <p>数据采集在后台线程（{@link #collectData()}），UI 刷新在主线程（{@link #refreshContent()}）。
  */
 public final class LoadOverlayWindow extends OverlayWindow {
 
-    // ─── 数据源（每个窗口独立实例，跨刷新保留采样基线） ───
+    // ─── 数据源（每个窗口独立实例，跨刷新保留采样基线；只在后台采集线程使用） ───
     private final LoadMonitor loadMonitor = new LoadMonitor();
     private final CpuCoreMonitor coreMonitor = new CpuCoreMonitor();
     private final FpsMonitor fpsMonitor = new FpsMonitor();
 
     /** 当前是否展开大窗（false = 折叠小窗）。 */
     private boolean expanded;
+
+    // ─── 采集结果（后台线程写，主线程读） ───
+    // 折叠态数据
+    private int cpuPercent = 0;
+    private int gpuPercent = -1;
+    private int batteryPercent = -1;
+    private int cpuMhz = 0;
+    private int gpuMhz = 0;
+    private float batteryTempC = -1f;
+    // 展开态数据
+    private CpuCoreMonitor.CoreState[] coreStates = new CpuCoreMonitor.CoreState[0];
+    private long memTotalKb = 0;
+    private long memAvailKb = 0;
+    private double powerMw = -1d;
+    private float cpuTempC = -1f;
+    private float[] loadAvg = new float[]{0f, 0f, 0f};
 
     // ─── 折叠态视图引用 ───
     private GaugeRingView cpuRing;     // CPU 使用率圆环
@@ -80,8 +98,10 @@ public final class LoadOverlayWindow extends OverlayWindow {
 
     @Override
     protected void onShown() {
-        // 展开态需要 FPS，折叠态不显示但保持统计以便随时切换
-        fpsMonitor.start();
+        // 只有展开态需要 FPS；折叠态不统计，省去无谓的每帧回调
+        if (expanded) {
+            fpsMonitor.start();
+        }
     }
 
     @Override
@@ -96,6 +116,12 @@ public final class LoadOverlayWindow extends OverlayWindow {
         // 单击：折叠 ↔ 展开，带平滑过渡动画，并记忆状态
         expanded = !expanded;
         OverlayConfig.setExpanded(context, MonitorType.LOAD, expanded);
+        // FPS 统计只在展开态开启
+        if (expanded) {
+            fpsMonitor.start();
+        } else {
+            fpsMonitor.stop();
+        }
         swapContent(expanded ? buildExpandedContent() : buildCollapsedContent(), true);
     }
 
@@ -106,7 +132,41 @@ public final class LoadOverlayWindow extends OverlayWindow {
         MonitorOverlayService.stopOverlay(context, MonitorType.LOAD);
     }
 
-    // ─── 数据刷新 ───
+    // ─── 数据采集（后台线程） ───
+
+    @Override
+    protected void collectData() {
+        if (expanded) {
+            collectExpanded();
+        } else {
+            collectCollapsed();
+        }
+    }
+
+    /** 折叠态采集：CPU/GPU 使用率、电池电量、CPU/GPU 频率、电池温度。 */
+    private void collectCollapsed() {
+        cpuPercent = loadMonitor.readCpuUsagePercent();
+        gpuPercent = GpuMonitor.readGpuUsagePercent();
+        batteryPercent = BatteryMonitor.readBatteryPercent();
+        cpuMhz = CpuCoreMonitor.readMaxCoreFreqMhz();
+        gpuMhz = GpuMonitor.readGpuFreqMhz();
+        batteryTempC = TemperatureMonitor.readBatteryTempC(context);
+    }
+
+    /** 展开态采集：全部详细数据（含各核心、内存、功耗、温度、负载）。 */
+    private void collectExpanded() {
+        cpuPercent = loadMonitor.readCpuUsagePercent();
+        gpuPercent = GpuMonitor.readGpuUsagePercent();
+        coreStates = coreMonitor.readCoreStates();
+        memTotalKb = MemoryMonitor.readTotalKb();
+        memAvailKb = MemoryMonitor.readAvailableKb();
+        powerMw = PowerMonitor.readPowerMw();
+        batteryTempC = TemperatureMonitor.readBatteryTempC(context);
+        cpuTempC = TemperatureMonitor.readCpuTempC();
+        loadAvg = LoadMonitor.readLoadAvg();
+    }
+
+    // ─── UI 刷新（主线程） ───
 
     @Override
     protected void refreshContent() {
@@ -122,64 +182,49 @@ public final class LoadOverlayWindow extends OverlayWindow {
         return 1000L;
     }
 
-    /** 折叠态刷新：3 个圆环（CPU/GPU 使用率、电池电量）+ 环下 MHz/温度。 */
+    /** 折叠态刷新：3 个圆环 + 环下 MHz/温度。 */
     private void refreshCollapsed() {
-        int cpu = loadMonitor.readCpuUsagePercent();
-        int gpu = GpuMonitor.readGpuUsagePercent();
-        int battery = BatteryMonitor.readBatteryPercent();
-        int cpuMhz = CpuCoreMonitor.readMaxCoreFreqMhz();
-        int gpuMhz = GpuMonitor.readGpuFreqMhz();
-
-        cpuRing.setProgress(cpu);
-        gpuRing.setProgress(gpu);
-        batteryRing.setProgress(battery);
-        batteryRing.setCenterText(battery < 0 ? "--" : battery + "%");
-
+        cpuRing.setProgress(cpuPercent);
+        gpuRing.setProgress(gpuPercent);
+        batteryRing.setProgress(batteryPercent);
+        batteryRing.setCenterText(batteryPercent < 0 ? "--" : batteryPercent + "%");
         cpuFreqView.setText(cpuMhz > 0 ? cpuMhz + "MHz" : "--");
         gpuFreqView.setText(gpuMhz > 0 ? gpuMhz + "MHz" : "--");
-        batteryTempView.setText(TemperatureMonitor.formatTemp(
-                TemperatureMonitor.readBatteryTempC(context)));
+        batteryTempView.setText(TemperatureMonitor.formatTemp(batteryTempC));
     }
 
     /** 展开态刷新：全部详细数据。 */
     private void refreshExpanded() {
-        int cpu = loadMonitor.readCpuUsagePercent();
-        int gpu = GpuMonitor.readGpuUsagePercent();
         overviewView.setText(String.format(Locale.US, "CPU %d%% · GPU %s",
-                cpu, gpu < 0 ? "--" : gpu + "%"));
+                cpuPercent, gpuPercent < 0 ? "--" : gpuPercent + "%"));
 
         // 各核心：每行两个核心
-        CpuCoreMonitor.CoreState[] cores = coreMonitor.readCoreStates();
-        int rowCount = (cores.length + 1) / 2;
+        int rowCount = (coreStates.length + 1) / 2;
         for (int i = 0; i < coreRows.size(); i++) {
             TextView row = coreRows.get(i);
             int a = i * 2;
             int b = i * 2 + 1;
-            row.setText(formatCore(cores, a) + "    " + formatCore(cores, b));
+            row.setText(formatCore(coreStates, a) + "    " + formatCore(coreStates, b));
         }
 
         // 内存 / FPS / 功耗
-        long total = MemoryMonitor.readTotalKb();
-        long avail = MemoryMonitor.readAvailableKb();
-        if (total > 0 && avail >= 0) {
+        if (memTotalKb > 0 && memAvailKb >= 0) {
             memView.setText(String.format(Locale.US, "内存 %s / %s · %d%%",
-                    MemoryMonitor.formatGb(total - avail), MemoryMonitor.formatGb(total),
-                    MemoryMonitor.usedPercent()));
+                    MemoryMonitor.formatGb(memTotalKb - memAvailKb),
+                    MemoryMonitor.formatGb(memTotalKb),
+                    (int) Math.min(100, Math.max(0, (memTotalKb - memAvailKb) * 100 / memTotalKb))));
         } else {
             memView.setText("内存 --");
         }
-        float fps = fpsMonitor.getFps();
+        float fps = fpsMonitor.getFps(); // Choreographer 数据在主线程产生，这里直接读
         fpsView.setText(fps > 0 ? String.format(Locale.US, "FPS %.0f", fps) : "FPS --");
-        double mw = PowerMonitor.readPowerMw();
-        powerView.setText(mw > 0 ? String.format(Locale.US, "功耗 %.0f mW", mw) : "功耗 --");
+        powerView.setText(powerMw > 0 ? String.format(Locale.US, "功耗 %.0f mW", powerMw) : "功耗 --");
 
         // 温度与负载
-        tempView.setText("电池 " + TemperatureMonitor.formatTemp(
-                TemperatureMonitor.readBatteryTempC(context))
-                + " · CPU " + TemperatureMonitor.formatTemp(TemperatureMonitor.readCpuTempC()));
-        float[] avg = LoadMonitor.readLoadAvg();
+        tempView.setText("电池 " + TemperatureMonitor.formatTemp(batteryTempC)
+                + " · CPU " + TemperatureMonitor.formatTemp(cpuTempC));
         loadView.setText(String.format(Locale.US, "负载 1m %.2f · 5m %.2f · 15m %.2f",
-                avg[0], avg[1], avg[2]));
+                loadAvg[0], loadAvg[1], loadAvg[2]));
     }
 
     /** 单个核心文本：C{index} {freq}MHz {percent}%。 */

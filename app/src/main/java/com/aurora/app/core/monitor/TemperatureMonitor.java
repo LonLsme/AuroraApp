@@ -33,6 +33,8 @@ public final class TemperatureMonitor {
         for (String path : paths) {
             long raw = readLongFirstLine(path);
             if (raw > 0) {
+                // TODO(真机校准)：不同厂商 sysfs temp 单位不一（0.1°C / 1°C / 毫摄氏），
+                // 目前按数值量级粗略归一，若某机型读数异常需在此补充该机型的单位规则
                 return raw > 1000 ? raw / 1000f : raw / 10f;
             }
         }

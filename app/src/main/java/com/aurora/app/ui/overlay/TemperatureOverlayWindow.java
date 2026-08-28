@@ -17,6 +17,10 @@ public final class TemperatureOverlayWindow extends OverlayWindow {
     private TextView batteryRow; // 电池温度行
     private TextView cpuRow;     // CPU 温度行
 
+    /** 最近一次采集的温度（后台线程写，主线程读）。 */
+    private float batteryTempC = -1f;
+    private float cpuTempC = -1f;
+
     public TemperatureOverlayWindow(Context context) {
         super(context, MonitorType.TEMPERATURE);
     }
@@ -42,11 +46,16 @@ public final class TemperatureOverlayWindow extends OverlayWindow {
     }
 
     @Override
+    protected void collectData() {
+        // 后台线程：sysfs 温度读取
+        batteryTempC = TemperatureMonitor.readBatteryTempC(context);
+        cpuTempC = TemperatureMonitor.readCpuTempC();
+    }
+
+    @Override
     protected void refreshContent() {
-        batteryRow.setText("电池 " + TemperatureMonitor.formatTemp(
-                TemperatureMonitor.readBatteryTempC(context)));
-        cpuRow.setText("CPU " + TemperatureMonitor.formatTemp(
-                TemperatureMonitor.readCpuTempC()));
+        batteryRow.setText("电池 " + TemperatureMonitor.formatTemp(batteryTempC));
+        cpuRow.setText("CPU " + TemperatureMonitor.formatTemp(cpuTempC));
     }
 
     @Override

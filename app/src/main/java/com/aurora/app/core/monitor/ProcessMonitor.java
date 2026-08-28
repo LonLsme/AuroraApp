@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -110,41 +109,42 @@ public final class ProcessMonitor {
         if (current.isEmpty()) {
             return result;
         }
-        // 计算每个进程的 CPU 时间增量，deltas 元素为 {增量, pid}
+        // 采样时直接携带进程名，避免之后按 pid 反查的二次遍历（O(n²) → O(n)）
+        List<DeltaEntry> deltas = new ArrayList<>();
         long totalDelta = 0;
-        List<long[]> deltas = new ArrayList<>();
         for (ProcEntry e : current) {
             Long prev = prevTimes.get(e.pid);
             if (prev != null && e.cpuTicks >= prev) {
                 long d = e.cpuTicks - prev;
                 totalDelta += d;
-                deltas.add(new long[]{d, e.pid});
+                deltas.add(new DeltaEntry(d, e.name));
             }
         }
-        // 更新基线
+        // 更新基线（进程可能退出，需整体重建；仅保留有效采样）
         prevTimes.clear();
         for (ProcEntry e : current) {
             prevTimes.put(e.pid, e.cpuTicks);
         }
-        // 按增量降序取前 N，直接按 pid 反查进程名
-        deltas.sort(Comparator.comparingLong(a -> -a[0]));
+        // 按增量降序取前 N
+        deltas.sort((a, b) -> Long.compare(b.delta, a.delta));
         int n = Math.min(count, deltas.size());
         for (int i = 0; i < n; i++) {
-            long d = deltas.get(i)[0];
-            int percent = totalDelta > 0 ? (int) (d * 100 / totalDelta) : 0;
-            String procName = null;
-            for (ProcEntry e : current) {
-                if (e.pid == (int) deltas.get(i)[1]) {
-                    procName = e.name;
-                    break;
-                }
-            }
-            if (procName == null) {
-                continue;
-            }
-            result.add(procName + " " + Math.min(percent, 99) + "%");
+            DeltaEntry de = deltas.get(i);
+            int percent = totalDelta > 0 ? (int) (de.delta * 100 / totalDelta) : 0;
+            result.add(de.name + " " + Math.min(percent, 99) + "%");
         }
         return result;
+    }
+
+    /** 采样增量条目：CPU 时间差 + 进程名。 */
+    private static final class DeltaEntry {
+        final long delta;
+        final String name;
+
+        DeltaEntry(long delta, String name) {
+            this.delta = delta;
+            this.name = name;
+        }
     }
 
     /** 清理基线，释放 pid 引用（窗口销毁时调用）。 */
