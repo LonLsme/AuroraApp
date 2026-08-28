@@ -16,3 +16,4 @@ local.properties
 /.android
 /.gradle-local
 /.kotlin
+/.idea
