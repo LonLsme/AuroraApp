@@ -66,8 +66,10 @@ import com.aurora.app.ui.plugin.GlobalDeviceSpoofActivity;
 import com.aurora.app.ui.plugin.DeviceIdModifyActivity;
 import com.aurora.app.ui.plugin.AuroraPluginActivity;
 import com.aurora.app.ui.selinux.SelinuxManagerActivity;
+import com.aurora.app.ui.widget.AuroraSwitchStyler;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
 import androidx.compose.ui.platform.ComposeView;
 import com.google.android.material.appbar.AppBarLayout;
@@ -90,6 +92,14 @@ public class MainActivity extends AppCompatActivity {
     public static final String EXTRA_OPEN_TAB = "extra_open_tab";
 
     private static final String PREFS_NAME = "aurora_detection_logs";
+
+    private static final String PREFS_USAGE_MONITOR = "aurora_usage_monitor";
+    private static final String KEY_MONITOR_LOAD = "monitor_load";
+    private static final String KEY_MONITOR_PROCESS = "monitor_process";
+    private static final String KEY_MONITOR_THREAD = "monitor_thread";
+    private static final String KEY_MONITOR_MINI = "monitor_mini";
+    private static final String KEY_MONITOR_FPS = "monitor_fps";
+    private static final String KEY_MONITOR_TEMPERATURE = "monitor_temperature";
     private static final String KEY_LOG_PATH = "log_path";
     private static final long EXPLORE_ROOT_STATUS_CACHE_MS = 5_000L;
 
@@ -780,6 +790,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(android.view.MenuItem item) {
         int itemId = item.getItemId();
+        if (itemId == R.id.action_usage_monitor) {
+            showUsageMonitorDialog();
+            return true;
+        }
         if (itemId == R.id.action_overflow_quick_reboot) {
             View anchor = findViewById(R.id.action_overflow_quick_reboot);
             if (anchor == null) {
@@ -816,6 +830,43 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    /**
+     * 使用监视器设置弹窗：6 个监视器开关，点击【确定】后保存到本地。
+     */
+    private void showUsageMonitorDialog() {
+        View view = getLayoutInflater().inflate(R.layout.dialog_usage_monitor, null);
+        SwitchCompat swLoad = view.findViewById(R.id.swMonitorLoad);
+        SwitchCompat swProcess = view.findViewById(R.id.swMonitorProcess);
+        SwitchCompat swThread = view.findViewById(R.id.swMonitorThread);
+        SwitchCompat swMini = view.findViewById(R.id.swMonitorMini);
+        SwitchCompat swFps = view.findViewById(R.id.swMonitorFps);
+        SwitchCompat swTemperature = view.findViewById(R.id.swMonitorTemperature);
+        AuroraSwitchStyler.apply(this, swLoad);
+        AuroraSwitchStyler.apply(this, swProcess);
+        AuroraSwitchStyler.apply(this, swThread);
+        AuroraSwitchStyler.apply(this, swMini);
+        AuroraSwitchStyler.apply(this, swFps);
+        AuroraSwitchStyler.apply(this, swTemperature);
+        SharedPreferences prefs = getSharedPreferences(PREFS_USAGE_MONITOR, MODE_PRIVATE);
+        swLoad.setChecked(prefs.getBoolean(KEY_MONITOR_LOAD, false));
+        swProcess.setChecked(prefs.getBoolean(KEY_MONITOR_PROCESS, false));
+        swThread.setChecked(prefs.getBoolean(KEY_MONITOR_THREAD, false));
+        swMini.setChecked(prefs.getBoolean(KEY_MONITOR_MINI, false));
+        swFps.setChecked(prefs.getBoolean(KEY_MONITOR_FPS, false));
+        swTemperature.setChecked(prefs.getBoolean(KEY_MONITOR_TEMPERATURE, false));
+        new androidx.appcompat.app.AlertDialog.Builder(this, com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog)
+                .setView(view)
+                .setPositiveButton("确定", (dialog, which) -> prefs.edit()
+                        .putBoolean(KEY_MONITOR_LOAD, swLoad.isChecked())
+                        .putBoolean(KEY_MONITOR_PROCESS, swProcess.isChecked())
+                        .putBoolean(KEY_MONITOR_THREAD, swThread.isChecked())
+                        .putBoolean(KEY_MONITOR_MINI, swMini.isChecked())
+                        .putBoolean(KEY_MONITOR_FPS, swFps.isChecked())
+                        .putBoolean(KEY_MONITOR_TEMPERATURE, swTemperature.isChecked())
+                        .apply())
+                .show();
     }
 
     private void showQuickRebootPopupMenu(View anchor) {

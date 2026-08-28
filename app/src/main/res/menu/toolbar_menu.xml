@@ -2,6 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_usage_monitor"
+        android:icon="@drawable/ic_monitor_speed"
+        android:title="使用监视器"
+        app:showAsAction="always" />
+    <item
         android:id="@+id/action_overflow_quick_reboot"
         android:icon="@drawable/ic_toolbar_overflow_custom"
         android:title="快捷重启菜单"

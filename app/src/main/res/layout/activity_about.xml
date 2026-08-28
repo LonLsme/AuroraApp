@@ -45,7 +45,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="该项目由哔哩哔哩UP主“泡菜学不会”开发，开发此项目希望能为安卓玩机生态贡献自己的一份力量。"
+                    android:text="本项目在 violet_Box（紫罗兰Box）（GPL-3.0）基础上二次开发"
                     android:textAppearance="@style/Widget.IOS.Body"
                     android:textColor="@color/ios_text_secondary" />
 
