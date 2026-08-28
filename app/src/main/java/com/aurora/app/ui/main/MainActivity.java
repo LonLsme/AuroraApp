@@ -98,6 +98,23 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "aurora_detection_logs";
 
     private static final String PREFS_USAGE_MONITOR = OverlayConfig.PREFS_NAME;
+
+    /**
+     * 隐藏/恢复状态栏脚本（与用户提供的「隐藏状态栏.sh」一致）：
+     * 内部按全局设置 sb_hidden 标志自动 toggle ——
+     * 首次执行隐藏（禁用系统图标/时钟/通知图标），再次执行恢复。
+     */
+    private static final String HIDE_STATUSBAR_SCRIPT =
+            "KEY=sb_hidden\n" +
+            "FLAG=$(settings get global $KEY 2>/dev/null)\n" +
+            "[ -z \"$FLAG\" ] && FLAG=0\n" +
+            "if [ $FLAG -eq 0 ]; then\n" +
+            "  cmd statusbar send-disable-flag system-icons clock notification-icons\n" +
+            "  settings put global $KEY 1\n" +
+            "else\n" +
+            "  cmd statusbar send-disable-flag none\n" +
+            "  settings put global $KEY 0\n" +
+            "fi";
     private static final String KEY_LOG_PATH = "log_path";
     private static final long EXPLORE_ROOT_STATUS_CACHE_MS = 5_000L;
 
@@ -255,6 +272,10 @@ public class MainActivity extends AppCompatActivity {
         if (btnDeviceIdModify != null) {
             btnDeviceIdModify.setOnClickListener(v ->
                     startActivity(new Intent(this, DeviceIdModifyActivity.class)));
+        }
+        View btnHideStatusBar = findViewById(R.id.btnHideStatusBar);
+        if (btnHideStatusBar != null) {
+            btnHideStatusBar.setOnClickListener(v -> toggleHideStatusBar());
         }
         View cardGithubRepo = findViewById(R.id.cardGithubRepo);
         if (cardGithubRepo != null) {
@@ -668,6 +689,58 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         t.start();
+    }
+
+    /**
+     * 隐藏/恢复状态栏（玩机页「扩展功能」按钮）：
+     * 以 root 权限执行 {@link #HIDE_STATUSBAR_SCRIPT}（脚本自带 toggle），
+     * 执行后读回 sb_hidden 标志，Toast 反馈当前状态。
+     */
+    private void toggleHideStatusBar() {
+        if (!canExecuteSuAsRoot()) {
+            Toast.makeText(this, "请先授予应用ROOT权限", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Thread t = new Thread(() -> {
+            // 执行 toggle 脚本
+            execSuCapture(HIDE_STATUSBAR_SCRIPT);
+            // 读回状态用于反馈
+            String flag = execSuCapture("settings get global sb_hidden");
+            boolean hidden = "1".equals(flag.trim());
+            runOnUiThread(() -> Toast.makeText(this,
+                    hidden ? "状态栏已隐藏" : "状态栏已恢复", Toast.LENGTH_SHORT).show());
+        });
+        t.start();
+    }
+
+    /**
+     * 以 root 权限执行一段 shell 脚本并返回 stdout（合并 stderr）。
+     * 依次尝试多个 su 路径；全部失败返回空串。
+     */
+    private String execSuCapture(String script) {
+        String[] suBins = new String[]{"su", "/system/bin/su", "/system/xbin/su"};
+        for (String suBin : suBins) {
+            Process process = null;
+            try {
+                process = new ProcessBuilder(suBin, "-c", script).redirectErrorStream(true).start();
+                if (process.waitFor(3000, TimeUnit.MILLISECONDS)) {
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            sb.append(line).append('\n');
+                        }
+                        return sb.toString().trim();
+                    }
+                }
+            } catch (Exception ignored) {
+            } finally {
+                if (process != null) {
+                    process.destroy();
+                }
+            }
+        }
+        return "";
     }
 
     private void resetAllTabs() {
