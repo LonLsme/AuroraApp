@@ -17,7 +17,9 @@ public final class GpuMonitor {
     private GpuMonitor() {
     }
 
-    /** GPU 使用率（0-100）；读取失败返回 -1。 */
+    /**
+     * GPU 使用率（0-100）；读取失败返回 -1。
+     */
     public static int readGpuUsagePercent() {
         // 方式一：直接百分比节点
         long pct = readLongFirstLine("/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage");
@@ -40,6 +42,31 @@ public final class GpuMonitor {
         } catch (Exception ignored) {
         }
         return -1;
+    }
+
+    /**
+     * GPU 当前频率（MHz）；读取失败返回 0。
+     * <ul>
+     *   <li>/sys/class/kgsl/kgsl-3d0/gpuclk：高通 kgsl，单位 kHz；</li>
+     *   <li>/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq：devfreq 框架，单位 Hz。</li>
+     * </ul>
+     * 按数值量级粗略判断单位（≥1e6 视为 Hz，否则视为 kHz）。
+     */
+    public static int readGpuFreqMhz() {
+        String[] paths = {
+                "/sys/class/kgsl/kgsl-3d0/gpuclk",
+                "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq",
+        };
+        for (String path : paths) {
+            long raw = readLongFirstLine(path);
+            if (raw > 0) {
+                if (raw >= 1_000_000L) {
+                    return (int) (raw / 1_000_000L); // Hz → MHz
+                }
+                return (int) (raw / 1000L); // kHz → MHz
+            }
+        }
+        return 0;
     }
 
     private static long readLongFirstLine(String path) {

@@ -2,10 +2,12 @@ package com.aurora.app.ui.overlay;
 
 import android.content.Context;
 import android.graphics.Typeface;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.aurora.app.core.monitor.BatteryMonitor;
 import com.aurora.app.core.monitor.CpuCoreMonitor;
 import com.aurora.app.core.monitor.FpsMonitor;
 import com.aurora.app.core.monitor.GpuMonitor;
@@ -14,13 +16,15 @@ import com.aurora.app.core.monitor.MemoryMonitor;
 import com.aurora.app.core.monitor.PowerMonitor;
 import com.aurora.app.core.monitor.TemperatureMonitor;
 
+import java.util.List;
 import java.util.Locale;
 
 /**
  * 负载监视器悬浮窗（折叠/展开双状态）：
  * <ul>
- *   <li>折叠小窗（默认）：两个圆环（CPU / GPU 使用率）+ 电池温度，窗口小巧；</li>
- *   <li>展开大窗：完整详细数据 —— 各 CPU 核心频率与占用、内存、FPS、功耗、温度、负载；</li>
+ *   <li>折叠小窗（默认）：3 个圆环 —— CPU（中心标"CPU"，环下 MHz）、
+ *       GPU（中心标"GPU"，环下 MHz）、电池（中心显示电量 %，环下显示温度）；</li>
+ *   <li>展开大窗：完整详细数据 —— 各 CPU 核心频率与占用（MHz）、内存、FPS、功耗、温度、负载；</li>
  *   <li>交互：<b>单击</b>切换折叠/展开；<b>双击</b>关闭销毁本悬浮窗（并同步开关状态）；</li>
  *   <li>状态记忆：展开/折叠状态持久化到 {@link OverlayConfig}，App 重启恢复时维持；</li>
  *   <li>背景：浅色半透明，可穿透看到下层内容。</li>
@@ -38,18 +42,21 @@ public final class LoadOverlayWindow extends OverlayWindow {
     private boolean expanded;
 
     // ─── 折叠态视图引用 ───
-    private GaugeRingView cpuRing;  // CPU 使用率圆环
-    private GaugeRingView gpuRing;  // GPU 使用率圆环
-    private TextView batteryTempView; // 折叠态电池温度文本
+    private GaugeRingView cpuRing;     // CPU 使用率圆环
+    private GaugeRingView gpuRing;     // GPU 使用率圆环
+    private GaugeRingView batteryRing; // 电池电量圆环（下方显示温度）
+    private TextView cpuFreqView;      // CPU 环下方：实时 MHz
+    private TextView gpuFreqView;      // GPU 环下方：实时 MHz
+    private TextView batteryTempView;  // 电池环下方：温度
 
     // ─── 展开态视图引用 ───
-    private TextView overviewView;     // CPU · GPU 概览行
-    private final java.util.List<TextView> coreRows = new java.util.ArrayList<>(); // 每行两个核心
-    private TextView memView;          // 内存
-    private TextView fpsView;          // FPS
-    private TextView powerView;        // 功耗
-    private TextView tempView;         // 温度
-    private TextView loadView;         // 负载
+    private TextView overviewView;            // CPU · GPU 概览行
+    private final List<TextView> coreRows = new java.util.ArrayList<>(); // 每行两个核心
+    private TextView memView;                 // 内存
+    private TextView fpsView;                 // FPS
+    private TextView powerView;               // 功耗
+    private TextView tempView;                // 温度
+    private TextView loadView;                // 负载
 
     public LoadOverlayWindow(Context context) {
         super(context, MonitorType.LOAD);
@@ -64,7 +71,7 @@ public final class LoadOverlayWindow extends OverlayWindow {
         // 根容器：替换内容时由基类 swapContent 维持同一窗口实例
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        int pad = OverlayWindowStyle.dpToPx(context, 10);
+        int pad = OverlayWindowStyle.dpToPx(context, 8);
         root.setPadding(pad, pad, pad, pad);
         root.setBackground(OverlayWindowStyle.createWindowBackgroundLight(context));
         root.addView(expanded ? buildExpandedContent() : buildCollapsedContent());
@@ -115,12 +122,21 @@ public final class LoadOverlayWindow extends OverlayWindow {
         return 1000L;
     }
 
-    /** 折叠态刷新：两个圆环 + 电池温度。 */
+    /** 折叠态刷新：3 个圆环（CPU/GPU 使用率、电池电量）+ 环下 MHz/温度。 */
     private void refreshCollapsed() {
         int cpu = loadMonitor.readCpuUsagePercent();
         int gpu = GpuMonitor.readGpuUsagePercent();
+        int battery = BatteryMonitor.readBatteryPercent();
+        int cpuMhz = CpuCoreMonitor.readMaxCoreFreqMhz();
+        int gpuMhz = GpuMonitor.readGpuFreqMhz();
+
         cpuRing.setProgress(cpu);
         gpuRing.setProgress(gpu);
+        batteryRing.setProgress(battery);
+        batteryRing.setCenterText(battery < 0 ? "--" : battery + "%");
+
+        cpuFreqView.setText(cpuMhz > 0 ? cpuMhz + "MHz" : "--");
+        gpuFreqView.setText(gpuMhz > 0 ? gpuMhz + "MHz" : "--");
         batteryTempView.setText(TemperatureMonitor.formatTemp(
                 TemperatureMonitor.readBatteryTempC(context)));
     }
@@ -172,44 +188,60 @@ public final class LoadOverlayWindow extends OverlayWindow {
             return "";
         }
         CpuCoreMonitor.CoreState c = cores[index];
-        return String.format(Locale.US, "C%d %dM %d%%", c.index, c.freqMhz, c.percent);
+        return String.format(Locale.US, "C%d %dMHz %d%%", c.index, c.freqMhz, c.percent);
     }
 
     // ─── 视图构建 ───
 
-    /** 折叠小窗内容：CPU 环 + GPU 环 + 电池温度。 */
+    /** 折叠小窗内容：CPU 环 + GPU 环 + 电池电量环，环下分别显示 MHz/MHz/温度。 */
     private View buildCollapsedContent() {
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
 
+        // 三列：CPU / GPU / 电池
         cpuRing = new GaugeRingView(context, OverlayWindowStyle.COLOR_ACCENT_DARK);
-        gpuRing = new GaugeRingView(context, 0xFF00B8D4); // GPU 用青色环
+        cpuRing.setCenterText("CPU");
+        gpuRing = new GaugeRingView(context, 0xFF00B8D4); // GPU 青色环
+        gpuRing.setCenterText("GPU");
+        batteryRing = new GaugeRingView(context, 0xFFFB8C00); // 电池橙色环
+        batteryRing.setCenterText("--");
 
-        int ringSize = OverlayWindowStyle.dpToPx(context, 42);
-        LinearLayout.LayoutParams ringLp =
-                new LinearLayout.LayoutParams(ringSize, ringSize);
-        ringLp.setMargins(0, 0, OverlayWindowStyle.dpToPx(context, 4), 0);
-        row.addView(cpuRing, ringLp);
-        row.addView(gpuRing, ringLp);
+        cpuFreqView = createRingSubLabel();
+        gpuFreqView = createRingSubLabel();
+        batteryTempView = createRingSubLabel();
 
-        // 温度列
-        LinearLayout tempCol = new LinearLayout(context);
-        tempCol.setOrientation(LinearLayout.VERTICAL);
-        tempCol.setGravity(android.view.Gravity.CENTER);
-        batteryTempView = new TextView(context);
-        batteryTempView.setTextColor(OverlayWindowStyle.COLOR_TEXT_DARK);
-        batteryTempView.setTextSize(14);
-        batteryTempView.setTypeface(Typeface.DEFAULT_BOLD);
-        batteryTempView.setText("--");
-        tempCol.addView(batteryTempView);
-        TextView tempLabel = OverlayWindowStyle.createDarkTitleView(context, "温度");
-        tempCol.addView(tempLabel);
-        row.addView(tempCol);
+        row.addView(buildRingColumn(cpuRing, cpuFreqView));
+        row.addView(buildRingColumn(gpuRing, gpuFreqView));
+        row.addView(buildRingColumn(batteryRing, batteryTempView));
         return row;
     }
 
-    /** 展开大窗内容：完整详细数据文本。 */
+    /** 圆环列：上方圆环 + 下方小字（MHz / 温度）。 */
+    private View buildRingColumn(GaugeRingView ring, TextView subLabel) {
+        LinearLayout col = new LinearLayout(context);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        int ringSize = OverlayWindowStyle.dpToPx(context, 34);
+        col.addView(ring, new LinearLayout.LayoutParams(ringSize, ringSize));
+        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        subLp.topMargin = OverlayWindowStyle.dpToPx(context, 2);
+        col.addView(subLabel, subLp);
+        return col;
+    }
+
+    /** 环下方的标签文字（10sp 深灰）。 */
+    private TextView createRingSubLabel() {
+        TextView tv = new TextView(context);
+        tv.setText("--");
+        tv.setTextColor(OverlayWindowStyle.COLOR_TEXT_DARK);
+        tv.setTextSize(10);
+        tv.setIncludeFontPadding(false);
+        return tv;
+    }
+
+    /** 展开大窗内容：完整详细数据文本（紧凑排版）。 */
     private View buildExpandedContent() {
         LinearLayout col = new LinearLayout(context);
         col.setOrientation(LinearLayout.VERTICAL);
@@ -219,14 +251,14 @@ public final class LoadOverlayWindow extends OverlayWindow {
         // 概览行：CPU · GPU
         overviewView = new TextView(context);
         overviewView.setTextColor(OverlayWindowStyle.COLOR_ACCENT_DARK);
-        overviewView.setTextSize(16);
+        overviewView.setTextSize(14);
         overviewView.setTypeface(Typeface.DEFAULT_BOLD);
         overviewView.setText("--");
         col.addView(overviewView);
 
         col.addView(newDivider());
 
-        // 各核心行（动态按行数添加，每行两个核心）
+        // 各核心行（动态按行数添加，每行两个核心，等宽字体对齐）
         coreRows.clear();
         int coreCount = Runtime.getRuntime().availableProcessors();
         int rowCount = (coreCount + 1) / 2;
@@ -234,38 +266,42 @@ public final class LoadOverlayWindow extends OverlayWindow {
             TextView row = OverlayWindowStyle.createDarkBodyView(context);
             row.setText("--");
             row.setTypeface(Typeface.MONOSPACE);
+            row.setTextSize(11);
             col.addView(row);
             coreRows.add(row);
         }
 
         col.addView(newDivider());
 
-        memView = OverlayWindowStyle.createDarkBodyView(context);
-        memView.setText("内存 --");
+        memView = createDetailRow("内存 --");
         col.addView(memView);
 
-        fpsView = OverlayWindowStyle.createDarkBodyView(context);
-        fpsView.setText("FPS --");
+        fpsView = createDetailRow("FPS --");
         col.addView(fpsView);
 
-        powerView = OverlayWindowStyle.createDarkBodyView(context);
-        powerView.setText("功耗 --");
+        powerView = createDetailRow("功耗 --");
         col.addView(powerView);
 
-        tempView = OverlayWindowStyle.createDarkBodyView(context);
-        tempView.setText("温度 --");
+        tempView = createDetailRow("温度 --");
         col.addView(tempView);
 
-        loadView = OverlayWindowStyle.createDarkBodyView(context);
-        loadView.setText("负载 --");
+        loadView = createDetailRow("负载 --");
         col.addView(loadView);
         return col;
+    }
+
+    /** 展开态详情行（11sp 深灰）。 */
+    private TextView createDetailRow(String initial) {
+        TextView tv = OverlayWindowStyle.createDarkBodyView(context);
+        tv.setText(initial);
+        tv.setTextSize(11);
+        return tv;
     }
 
     /** 细分隔线。 */
     private View newDivider() {
         View div = new View(context);
-        int margin = OverlayWindowStyle.dpToPx(context, 6);
+        int margin = OverlayWindowStyle.dpToPx(context, 5);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, OverlayWindowStyle.dpToPx(context, 1));
         lp.setMargins(0, margin, 0, margin);

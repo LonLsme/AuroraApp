@@ -234,18 +234,18 @@ public abstract class OverlayWindow {
             windowManager.updateViewLayout(rootView, params);
             if (animate) {
                 rootView.setAlpha(0f);
-                rootView.setScaleX(0.92f);
-                rootView.setScaleY(0.92f);
+                rootView.setScaleX(0.95f);
+                rootView.setScaleY(0.95f);
                 rootView.animate()
                         .alpha(1f).scaleX(1f).scaleY(1f)
-                        .setDuration(180)
+                        .setDuration(100)
                         .start();
             }
         };
         if (animate) {
             rootView.animate()
-                    .alpha(0f).scaleX(0.9f).scaleY(0.9f)
-                    .setDuration(120)
+                    .alpha(0f).scaleX(0.95f).scaleY(0.95f)
+                    .setDuration(60)
                     .withEndAction(doSwap)
                     .start();
         } else {

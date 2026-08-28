@@ -68,6 +68,19 @@ public final class CpuCoreMonitor {
         return 0;
     }
 
+    /**
+     * 读取全部核心中的最大频率（MHz）。
+     * 折叠小窗的 CPU 环下显示的"实时 MHz"取性能核频率，更能代表当前状态。
+     */
+    public static int readMaxCoreFreqMhz() {
+        int cores = Math.min(Runtime.getRuntime().availableProcessors(), 32);
+        int max = 0;
+        for (int i = 0; i < cores; i++) {
+            max = Math.max(max, readCoreFreqMhz(i));
+        }
+        return max;
+    }
+
     private static long readLongFirstLine(String path) {
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
             String line = br.readLine();

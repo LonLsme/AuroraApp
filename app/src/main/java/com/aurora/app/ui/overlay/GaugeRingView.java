@@ -8,8 +8,6 @@ import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.View;
 
-import java.util.Locale;
-
 /**
  * 圆环进度控件（Gauge Ring）：
  * 折叠小窗口用于展示 CPU / GPU 使用率的圆形进度环，
@@ -65,13 +63,21 @@ public final class GaugeRingView extends View {
     }
 
     /**
-     * 更新进度并刷新绘制。
+     * 更新进度（弧线）并刷新绘制。
      *
-     * @param percent 0-100；小于 0 视为未知，显示 "--"。
+     * @param percent 0-100；小于 0 视为未知（不画弧）。
      */
     public void setProgress(int percent) {
         this.progress = percent;
-        this.centerText = percent < 0 ? "--" : String.format(Locale.US, "%d", percent);
+        invalidate();
+    }
+
+    /**
+     * 设置圆环中心文字（如 "CPU" / "GPU" / "67%"）。
+     * 与进度弧相互独立，可单独更新。
+     */
+    public void setCenterText(String text) {
+        this.centerText = text == null ? "--" : text;
         invalidate();
     }
 
