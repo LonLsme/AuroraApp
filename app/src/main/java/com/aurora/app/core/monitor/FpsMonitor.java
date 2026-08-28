@@ -18,6 +18,12 @@ public final class FpsMonitor implements Choreographer.FrameCallback {
     private long windowStartNanos = 0L;   // 当前统计窗口起点
     private float currentFps = 0f;        // 最近一个窗口的 FPS
 
+    // ─── 累计统计（展开大窗展示平均/最高/最低） ───
+    private int sampleCount = 0;          // 已结算的窗口数
+    private float sumFps = 0f;            // 累计 FPS 之和
+    private float maxFps = 0f;            // 历史最高 FPS
+    private float minFps = Float.MAX_VALUE; // 历史最低 FPS
+
     /**
      * 开始监听帧回调。重复调用会被忽略。
      */
@@ -48,6 +54,26 @@ public final class FpsMonitor implements Choreographer.FrameCallback {
         return currentFps;
     }
 
+    /** 平均 FPS（自启动以来的窗口均值）。 */
+    public float getAvgFps() {
+        return sampleCount > 0 ? sumFps / sampleCount : 0f;
+    }
+
+    /** 历史最高 FPS。 */
+    public float getMaxFps() {
+        return sampleCount > 0 ? maxFps : 0f;
+    }
+
+    /** 历史最低 FPS。 */
+    public float getMinFps() {
+        return sampleCount > 0 ? minFps : 0f;
+    }
+
+    /** 已结算的采样窗口数（供 UI 判断是否有统计数据）。 */
+    public int getSampleCount() {
+        return sampleCount;
+    }
+
     @Override
     public void doFrame(long frameTimeNanos) {
         if (!running) {
@@ -63,8 +89,12 @@ public final class FpsMonitor implements Choreographer.FrameCallback {
         }
         long elapsed = frameTimeNanos - windowStartNanos;
         if (elapsed >= 1_000_000_000L) {
-            // 满 1s：结算 FPS 并开启新窗口
+            // 满 1s：结算 FPS、更新累计统计并开启新窗口
             currentFps = frameCount * 1_000_000_000f / Math.max(elapsed, 1L);
+            sampleCount++;
+            sumFps += currentFps;
+            maxFps = Math.max(maxFps, currentFps);
+            minFps = Math.min(minFps, currentFps);
             frameCount = 0;
             windowStartNanos = frameTimeNanos;
         }

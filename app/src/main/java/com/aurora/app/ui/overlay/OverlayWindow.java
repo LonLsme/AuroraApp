@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.LinearLayout;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,19 +20,22 @@ import java.util.concurrent.Executors;
  * 悬浮窗抽象基类：
  * 封装所有监视窗口共有的能力——
  * <ul>
+ *   <li><b>折叠/展开双状态</b>：所有窗口统一为「折叠小窗 ↔ 展开大窗」两种形态，
+ *       单击切换（带平滑动画）、双击关闭销毁，状态持久化到 {@link OverlayConfig}；
+ *       子类只需实现 {@link #buildCollapsedView()} / {@link #buildExpandedView()} 两套内容；</li>
  *   <li>窗口创建/销毁（WindowManager addView / removeView）；</li>
- *   <li>定时刷新循环：<b>后台线程采集数据（{@link #collectData()}）→ 主线程更新 UI（{@link #refreshContent()}）</b>，
- *       避免 /proc、/sys 等文件 IO 阻塞主线程；</li>
- *   <li>触摸拖动（按住窗口任意位置即可移动，松手停在原地）；</li>
- *   <li>单击 {@link #onSingleTap()} / 双击 {@link #onDoubleTap()} 手势回调；</li>
- *   <li>内容平滑切换 {@link #swapContent(View, boolean)}（折叠/展开动画，带防竞态保护）；</li>
- *   <li>多窗口堆叠的默认初始位置（按 MonitorType 顺序错开）。</li>
+ *   <li>定时刷新循环：<b>后台线程采集（{@link #collectData()}）→ 主线程更新 UI（{@link #refreshContent()}）</b>；</li>
+ *   <li>触摸拖动：拖动期间用 View translation 跟手（GPU 合成层移动，不触发窗口重布局），
+ *       松手才一次性更新窗口位置 —— 避免高频 updateViewLayout 造成拖动卡顿；</li>
+ *   <li>统一浅色可穿透背景 + 深色文字（与负载监视器一致的风格）。</li>
  * </ul>
  *
  * <p>子类实现约定：
- * {@link #buildContentView()} 构建窗口内容视图、
- * {@link #collectData()} 在后台线程做耗时 IO（可选覆写）、
- * {@link #refreshContent()} 在主线程只更新 UI、
+ * {@link #buildCollapsedView()} 折叠小窗内容、
+ * {@link #buildExpandedView()} 展开大窗内容、
+ * {@link #collectData()} 后台线程做耗时 IO（可选覆写）、
+ * {@link #refreshContent()} 主线程只更新 UI、
+ * {@link #onStateChanged(boolean)} 折叠/展开切换钩子（如 FPS 启停）、
  * 可选覆写 {@link #getRefreshIntervalMs()} 调整刷新周期。
  *
  * <p>生命周期由 {@link OverlayWindowManager} 驱动：
@@ -51,6 +55,9 @@ public abstract class OverlayWindow {
     private final WindowManager.LayoutParams params;
     private final Handler refreshHandler = new Handler(Looper.getMainLooper());
     private boolean running = false;
+
+    /** 当前是否展开大窗（false = 折叠小窗）；初始值在 show 时从 OverlayConfig 读取。 */
+    protected boolean expanded;
 
     // ─── 拖动状态 ───
     private final int touchSlop;
@@ -156,8 +163,26 @@ public abstract class OverlayWindow {
     protected void onHidden() {
     }
 
-    /** 子类必须实现：构建窗口内容视图。 */
-    protected abstract View buildContentView();
+    /**
+     * 统一构建窗口根视图（子类无需覆写）：
+     * 浅色可穿透圆角背景 + 按记忆状态加载折叠/展开内容。
+     */
+    protected final View buildContentView() {
+        expanded = OverlayConfig.isExpanded(context, type);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        int pad = OverlayWindowStyle.dpToPx(context, 8);
+        root.setPadding(pad, pad, pad, pad);
+        root.setBackground(OverlayWindowStyle.createWindowBackgroundLight(context));
+        root.addView(expanded ? buildExpandedView() : buildCollapsedView());
+        return root;
+    }
+
+    /** 子类必须实现：折叠小窗内容视图。 */
+    protected abstract View buildCollapsedView();
+
+    /** 子类必须实现：展开大窗内容视图。 */
+    protected abstract View buildExpandedView();
 
     /**
      * 子类可覆写：在<b>后台线程</b>采集数据（读 /proc、/sys 等文件 IO 放这里），
@@ -173,6 +198,14 @@ public abstract class OverlayWindow {
     /** 子类可覆写：刷新周期（毫秒），默认 1s。 */
     protected long getRefreshIntervalMs() {
         return 1000L;
+    }
+
+    /**
+     * 子类可覆写：折叠/展开状态切换后的钩子（如展开态才开启 FPS 统计）。
+     *
+     * @param nowExpanded 切换后的状态
+     */
+    protected void onStateChanged(boolean nowExpanded) {
     }
 
     // ─── 定时刷新循环：后台采集 → 主线程更新 UI ───
@@ -203,12 +236,29 @@ public abstract class OverlayWindow {
         }
     };
 
+    // ─── 单击/双击（所有窗口统一交互） ───
+
+    /** 单击：折叠 ↔ 展开，带平滑动画，并记忆状态。 */
+    protected void onSingleTap() {
+        expanded = !expanded;
+        OverlayConfig.setExpanded(context, type, expanded);
+        onStateChanged(expanded);
+        swapContent(expanded ? buildExpandedView() : buildCollapsedView(), true);
+    }
+
+    /** 双击：关闭并销毁本悬浮窗，同时把开关状态同步为关闭。 */
+    protected void onDoubleTap() {
+        OverlayConfig.setEnabled(context, type, false);
+        MonitorOverlayService.stopOverlay(context, type);
+    }
+
     /**
      * 给窗口内容视图安装触摸处理：
      * <ul>
      *   <li>手势识别：单击触发 {@link #onSingleTap()}（切换折叠/展开），
      *       双击触发 {@link #onDoubleTap()}（关闭窗口）；</li>
-     *   <li>拖动：按住移动超过 touchSlop 即进入拖动，松手停留在当前位置。</li>
+     *   <li>拖动：拖动期间用 View.translation 跟手（不触发窗口重布局，保证流畅），
+     *       松手才一次性提交窗口新位置（updateViewLayout 只调用一次）。</li>
      * </ul>
      * 拖动期间手势识别器会自动判定为 scroll，不会误触发单击/双击。
      */
@@ -230,18 +280,34 @@ public abstract class OverlayWindow {
                         dragging = true;
                     }
                     if (dragging && rootView != null) {
-                        params.x = (int) (windowStartX + dx);
-                        params.y = (int) (windowStartY + dy);
-                        try {
-                            windowManager.updateViewLayout(rootView, params);
-                        } catch (Exception ignored) {
-                            // 拖动过程中窗口可能被销毁，忽略
-                        }
+                        // 拖动期间只改 translation：视图在 GPU 合成层移动，避免每帧重布局
+                        rootView.setTranslationX(dx);
+                        rootView.setTranslationY(dy);
                     }
                     return true;
                 }
-                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_UP: {
+                    if (dragging && rootView != null) {
+                        // 松手：一次性提交最终位置，并复位 translation
+                        params.x = (int) (windowStartX + event.getRawX() - downRawX);
+                        params.y = (int) (windowStartY + event.getRawY() - downRawY);
+                        rootView.setTranslationX(0f);
+                        rootView.setTranslationY(0f);
+                        try {
+                            windowManager.updateViewLayout(rootView, params);
+                        } catch (Exception ignored) {
+                            // 窗口可能已被销毁，忽略
+                        }
+                    }
+                    dragging = false;
+                    return true;
+                }
                 case MotionEvent.ACTION_CANCEL:
+                    // 取消：放弃拖动，回到按下前位置
+                    if (dragging && rootView != null) {
+                        rootView.setTranslationX(0f);
+                        rootView.setTranslationY(0f);
+                    }
                     dragging = false;
                     return true;
                 default:
@@ -250,25 +316,12 @@ public abstract class OverlayWindow {
         });
     }
 
-    /** 子类可覆写：单击窗口（用于切换折叠/展开）。 */
-    protected void onSingleTap() {
-    }
-
-    /** 子类可覆写：双击窗口（用于关闭销毁）。 */
-    protected void onDoubleTap() {
-    }
-
     /**
      * 平滑替换窗口内容（用于折叠/展开切换）：
      * 旧内容淡出缩小 → 替换为新视图 → 重新测量窗口尺寸 → 新内容淡入放大。
      *
-     * <p>防竞态保护：
-     * <ul>
-     *   <li>切换前取消上一次动画，防止快速连点导致回调堆积互相踩；</li>
-     *   <li>动画回调中检查窗口是否仍存活（running + rootView 存在），
-     *       且对 updateViewLayout 做异常保护 —— 避免窗口销毁后操作已移除视图导致崩溃。</li>
-     * </ul>
-     * 注意：调用方需自行维护状态（如展开/折叠标记与持久化）。
+     * <p>防竞态保护：切换前取消上一次动画（防快速连点回调堆积），
+     * 动画回调中检查窗口是否仍存活，并对 updateViewLayout 做异常保护。
      */
     protected final void swapContent(View newContent, boolean animate) {
         if (!(rootView instanceof ViewGroup)) {

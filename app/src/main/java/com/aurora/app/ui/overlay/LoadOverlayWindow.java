@@ -85,18 +85,6 @@ public final class LoadOverlayWindow extends OverlayWindow {
     // ─── 生命周期 ───
 
     @Override
-    protected View buildContentView() {
-        // 根容器：替换内容时由基类 swapContent 维持同一窗口实例
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        int pad = OverlayWindowStyle.dpToPx(context, 8);
-        root.setPadding(pad, pad, pad, pad);
-        root.setBackground(OverlayWindowStyle.createWindowBackgroundLight(context));
-        root.addView(expanded ? buildExpandedContent() : buildCollapsedContent());
-        return root;
-    }
-
-    @Override
     protected void onShown() {
         // 只有展开态需要 FPS；折叠态不统计，省去无谓的每帧回调
         if (expanded) {
@@ -109,27 +97,14 @@ public final class LoadOverlayWindow extends OverlayWindow {
         fpsMonitor.stop();
     }
 
-    // ─── 交互：单击切换 / 双击关闭 ───
-
     @Override
-    protected void onSingleTap() {
-        // 单击：折叠 ↔ 展开，带平滑过渡动画，并记忆状态
-        expanded = !expanded;
-        OverlayConfig.setExpanded(context, MonitorType.LOAD, expanded);
-        // FPS 统计只在展开态开启
-        if (expanded) {
+    protected void onStateChanged(boolean nowExpanded) {
+        // 折叠/展开切换时按需启停 FPS 统计
+        if (nowExpanded) {
             fpsMonitor.start();
         } else {
             fpsMonitor.stop();
         }
-        swapContent(expanded ? buildExpandedContent() : buildCollapsedContent(), true);
-    }
-
-    @Override
-    protected void onDoubleTap() {
-        // 双击：关闭并销毁本悬浮窗，同时把开关状态同步为关闭
-        OverlayConfig.setEnabled(context, MonitorType.LOAD, false);
-        MonitorOverlayService.stopOverlay(context, MonitorType.LOAD);
     }
 
     // ─── 数据采集（后台线程） ───
@@ -239,7 +214,8 @@ public final class LoadOverlayWindow extends OverlayWindow {
     // ─── 视图构建 ───
 
     /** 折叠小窗内容：CPU 环 + GPU 环 + 电池电量环，环下分别显示 MHz/MHz/温度。 */
-    private View buildCollapsedContent() {
+    @Override
+    protected View buildCollapsedView() {
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -287,7 +263,8 @@ public final class LoadOverlayWindow extends OverlayWindow {
     }
 
     /** 展开大窗内容：完整详细数据文本（紧凑排版）。 */
-    private View buildExpandedContent() {
+    @Override
+    protected View buildExpandedView() {
         LinearLayout col = new LinearLayout(context);
         col.setOrientation(LinearLayout.VERTICAL);
 

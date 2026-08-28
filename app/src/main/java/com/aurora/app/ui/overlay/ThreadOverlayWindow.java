@@ -1,61 +1,102 @@
 package com.aurora.app.ui.overlay;
 
 import android.content.Context;
+import android.graphics.Typeface;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.aurora.app.core.monitor.ThreadMonitor;
 
+import java.util.List;
 import java.util.Locale;
 
 /**
- * 线程监视器悬浮窗：
- * 显示系统当前全部线程总数（遍历 /proc/[pid]/task 求和）。
- * 刷新周期 2s（目录遍历开销较大，降低频率以省电）。
+ * 线程监视器悬浮窗（折叠/展开双状态，风格与负载监视器统一）：
+ * <ul>
+ *   <li>折叠小窗：系统线程总数（大数字）；</li>
+ *   <li>展开大窗：线程总数 + 线程数最多的 TOP 5 进程；</li>
+ *   <li>交互/状态记忆/浅色穿透背景由基类统一提供。</li>
+ * </ul>
+ * 数据采集（遍历 /proc 全部 task 目录）在后台线程进行。
  */
 public final class ThreadOverlayWindow extends OverlayWindow {
 
-    private TextView valueView; // 线程总数大数字
-    private TextView hintView;  // 说明小字
+    /** 展开态展示的进程条数。 */
+    private static final int TOP_COUNT = 5;
 
-    /** 最近一次采集的线程总数（后台线程写，主线程读）。 */
+    /** 最近一次采集的线程总数与 TOP 进程（后台线程写，主线程读）。 */
     private int threadCount = -1;
+    private List<String> topThreadProcesses = java.util.Collections.emptyList();
+
+    // ─── 折叠态视图引用 ───
+    private TextView valueView; // 线程总数大数字
+
+    // ─── 展开态视图引用 ───
+    private TextView totalRow;  // 展开态总数行
+    private final TextView[] rows = new TextView[TOP_COUNT];
 
     public ThreadOverlayWindow(Context context) {
         super(context, MonitorType.THREAD);
     }
 
     @Override
-    protected View buildContentView() {
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        int pad = OverlayWindowStyle.dpToPx(context, OverlayWindowStyle.PADDING_DP);
-        root.setPadding(pad, pad, pad, pad);
-        root.setBackground(OverlayWindowStyle.createWindowBackground(context));
-
-        root.addView(OverlayWindowStyle.createTitleView(context, "线程"));
-
-        valueView = OverlayWindowStyle.createValueView(context);
+    protected View buildCollapsedView() {
+        LinearLayout col = new LinearLayout(context);
+        col.setOrientation(LinearLayout.VERTICAL);
+        valueView = new TextView(context);
+        valueView.setTextColor(OverlayWindowStyle.COLOR_ACCENT_DARK);
+        valueView.setTextSize(20);
+        valueView.setTypeface(Typeface.DEFAULT_BOLD);
         valueView.setText("--");
-        root.addView(valueView);
+        col.addView(valueView);
+        col.addView(OverlayWindowStyle.createDarkTitleView(context, "线程"));
+        return col;
+    }
 
-        hintView = OverlayWindowStyle.createBodyView(context);
-        hintView.setText("系统全部线程数");
-        root.addView(hintView);
-        return root;
+    @Override
+    protected View buildExpandedView() {
+        LinearLayout col = new LinearLayout(context);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.addView(OverlayWindowStyle.createDarkTitleView(context, "线程"));
+
+        totalRow = OverlayWindowStyle.createDarkBodyView(context);
+        totalRow.setText("--");
+        totalRow.setTextSize(14);
+        totalRow.setTypeface(Typeface.DEFAULT_BOLD);
+        col.addView(totalRow);
+
+        col.addView(OverlayWindowStyle.createDarkTitleView(context, "线程数 TOP"));
+        for (int i = 0; i < TOP_COUNT; i++) {
+            TextView row = OverlayWindowStyle.createDarkBodyView(context);
+            row.setText("--");
+            row.setTypeface(Typeface.MONOSPACE);
+            row.setTextSize(11);
+            col.addView(row);
+            rows[i] = row;
+        }
+        return col;
     }
 
     @Override
     protected void collectData() {
-        // 后台线程：遍历 /proc 全部 task 目录开销较大，不阻塞主线程
+        // 后台线程：遍历 /proc 全部 task 目录开销大，不阻塞主线程
         threadCount = ThreadMonitor.readSystemThreadCount();
+        topThreadProcesses = ThreadMonitor.readTopThreadProcesses(TOP_COUNT);
     }
 
     @Override
     protected void refreshContent() {
-        valueView.setText(threadCount >= 0
-                ? String.format(Locale.US, "%,d", threadCount) : "--");
+        String totalText = threadCount >= 0
+                ? String.format(Locale.US, "%,d", threadCount) : "--";
+        if (expanded) {
+            totalRow.setText("系统线程总数 " + totalText);
+            for (int i = 0; i < TOP_COUNT; i++) {
+                rows[i].setText(i < topThreadProcesses.size() ? topThreadProcesses.get(i) : "--");
+            }
+        } else {
+            valueView.setText(totalText);
+        }
     }
 
     @Override

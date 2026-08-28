@@ -97,4 +97,33 @@ public final class TemperatureMonitor {
         }
         return String.format(Locale.US, "%.1f°C", tempC);
     }
+
+    /**
+     * 读取全部 thermal zone 温度，返回 "类型 温度" 文本列表（用于展开大窗）。
+     * 类型缺失时回退 zone 名称；无热区返回空列表。
+     */
+    public static java.util.List<String> readAllZones() {
+        java.util.List<String> zones = new java.util.ArrayList<>();
+        File[] dirs = new File("/sys/class/thermal").listFiles();
+        if (dirs == null) {
+            return zones;
+        }
+        for (File dir : dirs) {
+            String name = dir.getName();
+            if (!dir.isDirectory() || !name.startsWith("thermal_zone")) {
+                continue;
+            }
+            String type = readFirstLine(new File(dir, "type"));
+            if (type == null) {
+                type = name;
+            }
+            long raw = readLongFirstLine(new File(dir, "temp").getAbsolutePath());
+            if (raw <= 0) {
+                continue;
+            }
+            float tempC = raw > 1000 ? raw / 1000f : raw / 10f;
+            zones.add(type + " " + formatTemp(tempC));
+        }
+        return zones;
+    }
 }
