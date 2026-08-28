@@ -29,6 +29,14 @@ public final class OverlayWindowStyle {
     /** 高亮数值：Aurora 主绿 #00E676。 */
     public static final int COLOR_ACCENT = 0xFF00E676;
 
+    // ─── 浅色可穿透样式（负载监视器折叠/展开窗口使用） ───
+    /** 主文字：深灰（浅色半透明底上的可读色）。 */
+    public static final int COLOR_TEXT_DARK = 0xE61F2937;
+    /** 次级文字：深灰 55%。 */
+    public static final int COLOR_TEXT_MUTED_DARK = 0x8C1F2937;
+    /** 高亮数值：深一点的 Aurora 绿（浅底可读）。 */
+    public static final int COLOR_ACCENT_DARK = 0xFF00C853;
+
     // ─── 尺寸常量 ───
     /** 窗口圆角半径（dp）。 */
     public static final int CORNER_RADIUS_DP = 14;
@@ -76,6 +84,38 @@ public final class OverlayWindowStyle {
     public static TextView createBodyView(Context context) {
         TextView tv = new TextView(context);
         tv.setTextColor(COLOR_TEXT_PRIMARY);
+        tv.setTextSize(12);
+        tv.setIncludeFontPadding(false);
+        return tv;
+    }
+
+    /**
+     * 可穿透淡灰背景（浅色系）：
+     * 白色 45% 半透明圆角底 + 深灰细描边，下层内容透出呈淡灰调。
+     */
+    public static GradientDrawable createWindowBackgroundLight(Context context) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(dpToPx(context, CORNER_RADIUS_DP));
+        bg.setColor(0x73F2F2F7);
+        bg.setStroke(dpToPx(context, 1), 0x33000000);
+        return bg;
+    }
+
+    /** 浅色系标题文字（深灰小字）。 */
+    public static TextView createDarkTitleView(Context context, String title) {
+        TextView tv = new TextView(context);
+        tv.setText(title);
+        tv.setTextColor(COLOR_TEXT_MUTED_DARK);
+        tv.setTextSize(11);
+        tv.setIncludeFontPadding(false);
+        return tv;
+    }
+
+    /** 浅色系正文文字（深灰）。 */
+    public static TextView createDarkBodyView(Context context) {
+        TextView tv = new TextView(context);
+        tv.setTextColor(COLOR_TEXT_DARK);
         tv.setTextSize(12);
         tv.setIncludeFontPadding(false);
         return tv;

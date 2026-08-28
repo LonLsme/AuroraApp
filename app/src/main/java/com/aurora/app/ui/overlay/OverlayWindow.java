@@ -5,9 +5,11 @@ import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 
 /**
@@ -46,11 +48,28 @@ public abstract class OverlayWindow {
     private float windowStartX, windowStartY;
     private boolean dragging = false;
 
+    /** 手势识别器：区分单击（切换状态）与双击（关闭窗口）。 */
+    private final GestureDetector gestureDetector;
+
     protected OverlayWindow(Context context, MonitorType type) {
         this.context = context;
         this.type = type;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         this.touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+        this.gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent e) {
+                // 显式指定外层方法，避免与 SimpleOnGestureListener 的同名方法解析混淆
+                OverlayWindow.this.onSingleTap();
+                return true;
+            }
+
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+                OverlayWindow.this.onDoubleTap();
+                return true;
+            }
+        });
         this.params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -146,11 +165,17 @@ public abstract class OverlayWindow {
     };
 
     /**
-     * 给窗口内容视图安装拖动手势：
-     * 按下记录起点，移动超过 touchSlop 即进入拖动，松手停留在当前位置。
+     * 给窗口内容视图安装触摸处理：
+     * <ul>
+     *   <li>手势识别：单击触发 {@link #onSingleTap()}（切换折叠/展开），
+     *       双击触发 {@link #onDoubleTap()}（关闭窗口）；</li>
+     *   <li>拖动：按住移动超过 touchSlop 即进入拖动，松手停留在当前位置。</li>
+     * </ul>
+     * 拖动期间手势识别器会自动判定为 scroll，不会误触发单击/双击。
      */
     private void installDrag(View view) {
         view.setOnTouchListener((v, event) -> {
+            gestureDetector.onTouchEvent(event);
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     downRawX = event.getRawX();
@@ -180,5 +205,51 @@ public abstract class OverlayWindow {
                     return false;
             }
         });
+    }
+
+    /** 子类可覆写：单击窗口（用于切换折叠/展开）。 */
+    protected void onSingleTap() {
+    }
+
+    /** 子类可覆写：双击窗口（用于关闭销毁）。 */
+    protected void onDoubleTap() {
+    }
+
+    /**
+     * 平滑替换窗口内容（用于折叠/展开切换）：
+     * 旧内容淡出缩小 → 替换为新视图 → 重新测量窗口尺寸 → 新内容淡入放大。
+     *
+     * <p>窗口容器必须是 ViewGroup（子类 buildContentView 返回的根视图）。
+     * 注意：调用方需自行维护状态（如展开/折叠标记与持久化）。
+     */
+    protected final void swapContent(View newContent, boolean animate) {
+        if (!(rootView instanceof ViewGroup)) {
+            return;
+        }
+        final ViewGroup container = (ViewGroup) rootView;
+        Runnable doSwap = () -> {
+            container.removeAllViews();
+            container.addView(newContent);
+            // WRAP_CONTENT 窗口：内容变化后需手动刷新窗口尺寸
+            windowManager.updateViewLayout(rootView, params);
+            if (animate) {
+                rootView.setAlpha(0f);
+                rootView.setScaleX(0.92f);
+                rootView.setScaleY(0.92f);
+                rootView.animate()
+                        .alpha(1f).scaleX(1f).scaleY(1f)
+                        .setDuration(180)
+                        .start();
+            }
+        };
+        if (animate) {
+            rootView.animate()
+                    .alpha(0f).scaleX(0.9f).scaleY(0.9f)
+                    .setDuration(120)
+                    .withEndAction(doSwap)
+                    .start();
+        } else {
+            doSwap.run();
+        }
     }
 }
