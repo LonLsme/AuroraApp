@@ -83,7 +83,7 @@
                         style="@style/Widget.Aurora.Miuix.PrefSummary"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="4dp"
                         android:text="启动时检查是否有新版本" />
                 </LinearLayout>
 
@@ -131,7 +131,7 @@
                         style="@style/Widget.Aurora.Miuix.PrefSummary"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="4dp"
                         android:text="当前版本 --" />
                 </LinearLayout>
 
@@ -190,7 +190,7 @@
                         style="@style/Widget.Aurora.Miuix.PrefSummary"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="4dp"
                         android:text="色彩模式 · 强调色 · 调色板 · 液态玻璃 · 字号" />
                 </LinearLayout>
 
@@ -255,7 +255,7 @@
                         style="@style/Widget.Aurora.Miuix.PrefSummary"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="4dp"
                         android:text="版本信息 · 开源协议 · 鸣谢" />
                 </LinearLayout>
 

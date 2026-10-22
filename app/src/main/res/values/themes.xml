@@ -90,17 +90,25 @@
         <item name="android:textSize">14sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:textStyle">bold</item>
+        <!-- targetSdk 35+ 起系统把 includeFontPadding 默认改成 false（Android 15 变更），
+             中文汉字的 ascent/descent 被裁到字形边界，上下两行会挤在一起。
+             这里显式恢复，让行高按字体真实度量算。 -->
+        <item name="android:includeFontPadding">true</item>
     </style>
 
     <style name="Widget.Aurora.Miuix.PrefTitle" parent="TextAppearance.Material3.BodyLarge">
         <item name="android:textColor">@color/ios_text_primary</item>
         <item name="android:textSize">17sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
+        <!-- includeFontPadding：见 GroupTitle 处的说明。标题 + 摘要两行纵向堆叠时，
+             缺了它上行的降部与下行的升部会互相顶到，看起来像"字压在一起"。 -->
+        <item name="android:includeFontPadding">true</item>
     </style>
 
     <style name="Widget.Aurora.Miuix.PrefSummary" parent="TextAppearance.Material3.BodyMedium">
         <item name="android:textColor">@color/ios_text_secondary</item>
         <item name="android:textSize">14sp</item>
+        <item name="android:includeFontPadding">true</item>
     </style>
 
     <!-- code.html 快捷重启标签 text-slate-600 -->
