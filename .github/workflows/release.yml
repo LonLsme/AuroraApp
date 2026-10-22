@@ -25,19 +25,38 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # 钉 24.04：ubuntu-latest 已于 2026-10-19 起迁往 Ubuntu 26，预装 SDK 组件版本可能变。
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: '21'
 
+      # 与 build.yml 同款：runner 已预装 SDK，这里只补 compileSdk 36.1 需要的组件。
+      - name: Prepare Android SDK
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          export ANDROID_HOME="$SDK_ROOT"
+          export ANDROID_SDK_ROOT="$SDK_ROOT"
+          echo "ANDROID_HOME=$SDK_ROOT"
+          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+
+          SDKMGR="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMGR" ]; then
+            SDKMGR="$(command -v sdkmanager || find "$SDK_ROOT" -name sdkmanager -type f | head -1)"
+          fi
+          yes | "$SDKMGR" --licenses > /dev/null 2>&1 || true
+          "$SDKMGR" --install "platform-tools" "platforms;android-36.1" "build-tools;36.1.0" \
+            || echo "::warning::SDK 组件预装失败，交由 AGP 自动下载"
+
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6.4.0
 
       # tag 与 versionName 不一致是发版最容易犯的错：包里写着 1.1.0，Release 标着 v1.2.0，
       # 装到手机上「检查更新」永远认为已是最新。这里直接让构建失败，别等到用户发现。
@@ -153,7 +172,7 @@ jobs:
           cat release-notes.md
 
       - name: Create draft release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.3
         with:
           name: ${{ github.ref_name }}
           draft: true
