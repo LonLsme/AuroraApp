@@ -41,6 +41,17 @@
     <dimen name="miuix_group_title_gap">8dp</dimen>
     <dimen name="miuix_pref_row_min_height">56dp</dimen>
     <dimen name="miuix_pref_row_padding">16dp</dimen>
+    <!--
+      行内**垂直**内边距。Miuix 的 BasicComponent 是 PaddingValues(16.dp) 四边等距，
+      但那是在「一行一张卡」的前提下 —— 卡与卡之间还有 layout_margin 兜着
+      （本页是 12dp）。一张卡里并排两行时若仍用四边 16dp：
+        上一行底 16 + 下一行顶 16 = 32dp 的中间空洞，比卡片之间的 12dp 还大，
+        同一个卡片里的两行反而显得比跨卡片更疏远。
+      故合卡内的行改成「水平 16dp + 垂直 12dp」：行高 ≈ 12 + 内容 48 + 12 = 72dp，
+      正好落在 Material 双行列表条目的 72dp 上，两行间距 24dp，紧凑但能呼吸。
+      设置页的四行统一按 16dp / 12dp 拆分（哪怕它是单行卡），全页行高才是同一个 72dp。
+    -->
+    <dimen name="miuix_pref_row_padding_v">12dp</dimen>
 
     <!--
       「应用工具」三页（应用卸载冻结 / 免root激活 / 应用安装）：设备侧应用列表高度。
