@@ -21,7 +21,7 @@ import com.aurora.app.ui.theme.ThemeManager;
  * <ul>
  *   <li><b>版本信息</b> —— 版本名 / 版本码 / 包名 / 构建类型，全部取自
  *       {@link BuildConfig}，不写死，避免与 {@code app/build.gradle.kts} 脱节；</li>
- *   <li><b>开源</b> —— 上游项目 violet_Box（紫罗兰Box）与 GPL-3.0 协议；</li>
+ *   <li><b>开源</b> —— 本项目 GitHub 仓库、上游项目 violet_Box（紫罗兰Box）与 GPL-3.0 协议；</li>
  *   <li><b>鸣谢</b> —— KernelSU / 星野Scene / Miuix 三个参考来源；</li>
  *   <li><b>作者</b> —— 四个公开平台的入口。</li>
  * </ul>
@@ -37,6 +37,10 @@ import com.aurora.app.ui.theme.ThemeManager;
 public class AboutActivity extends AppCompatActivity {
 
     // ── 外部链接：全部有出处，不臆造 ──
+    // 本项目仓库地址**不写死**，直接由 gradle.properties 的 aurora.updateRepo 拼出来：
+    // 那个值已经通过 BuildConfig.UPDATE_REPO 驱动「检查更新」，两处共用一份配置，
+    // Fork / 改仓库名时只改一个地方，不会出现「更新查 A 仓、关于页却指向 B 仓」的错位。
+    private static final String URL_REPO = "https://github.com/" + BuildConfig.UPDATE_REPO;
     // 上游项目地址与 README.md / docs/ARCHITECTURE.md 中登记的完全一致。
     private static final String URL_UPSTREAM = "https://github.com/Smart-Paocai/violet_Box";
     private static final String URL_LICENSE = "https://www.gnu.org/licenses/gpl-3.0.html";
@@ -87,6 +91,8 @@ public class AboutActivity extends AppCompatActivity {
         setText(R.id.tvAboutBuildType, "debug".equalsIgnoreCase(buildType)
                 ? "debug（调试版）"
                 : buildType);
+        // 仓库地址去掉协议头，一行放得下；值仍是运行时拼的，与检查更新同源
+        setText(R.id.tvAboutRepo, URL_REPO.replace("https://", ""));
     }
 
     private void setText(int id, String text) {
@@ -99,6 +105,7 @@ public class AboutActivity extends AppCompatActivity {
     // ===== 可点行 =====
 
     private void bindLinks() {
+        click(R.id.rowAboutRepo, URL_REPO, "无法打开 GitHub 仓库页面");
         click(R.id.rowAboutUpstream, URL_UPSTREAM, "无法打开上游项目页面");
         click(R.id.rowAboutLicense, URL_LICENSE, "无法打开协议页面");
         click(R.id.rowAboutKernelSu, URL_KERNEL_SU, "无法打开 KernelSU 页面");
