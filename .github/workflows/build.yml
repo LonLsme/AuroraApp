@@ -2,9 +2,9 @@ name: Build
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ main ]
   pull_request:
-    branches: [ master, main ]
+    branches: [ main ]
   workflow_dispatch:
 
 # 同一分支的新提交自动取消旧的运行，省 runner 时间
@@ -15,30 +15,49 @@ concurrency:
 jobs:
   build:
     name: assembleDebug + unit test
-    runs-on: ubuntu-latest
+    # 刻意钉 24.04 而不是 ubuntu-latest：latest 已于 2026-10-19 起迁往 Ubuntu 26，
+    # 预装 Android SDK 的路径与组件版本都可能变。等 26 上的构建验证通过再放开。
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
 
       # AGP 9.x 要求 JDK 21，低版本会在配置阶段直接失败
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: '21'
 
-      # compileSdk 为 36.1，必须显式装 android-36.1（runner 自带的不一定够）
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK packages
+      # 不用第三方 setup-android action：它仍是 Node 20 目标，在强制 Node 24 的
+      # runner 上会失败。runner 镜像本身已预装 SDK 并设好 ANDROID_HOME，
+      # 这里只补项目需要的版本，缺什么就交给 AGP 自动下载。
+      - name: Prepare Android SDK
         run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager --install "platform-tools" "platforms;android-36.1" "build-tools;36.1.0"
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          export ANDROID_HOME="$SDK_ROOT"
+          export ANDROID_SDK_ROOT="$SDK_ROOT"
+          echo "ANDROID_HOME=$SDK_ROOT"
+          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+
+          SDKMGR="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMGR" ]; then
+            SDKMGR="$(command -v sdkmanager || find "$SDK_ROOT" -name sdkmanager -type f | head -1)"
+          fi
+          echo "sdkmanager=$SDKMGR"
+
+          yes | "$SDKMGR" --licenses > /dev/null 2>&1 || true
+
+          # compileSdk 是 API 36 的 minor 版本（36.1），runner 预装的不一定带。
+          # 预装失败不直接判死，让下面的 AGP 构建给出真正的错误。
+          "$SDKMGR" --install "platform-tools" "platforms;android-36.1" "build-tools;36.1.0" \
+            || echo "::warning::SDK 组件预装失败，交由 AGP 自动下载"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6.4.0
 
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
@@ -48,7 +67,7 @@ jobs:
 
       - name: Upload APK
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: aurora-debug-apk
           path: app/build/outputs/apk/debug/*.apk
@@ -57,7 +76,7 @@ jobs:
 
       - name: Upload test report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: unit-test-report
           path: app/build/reports/tests/
