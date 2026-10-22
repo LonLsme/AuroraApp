@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
@@ -73,6 +74,7 @@ import com.kyant.capsule.ContinuousCapsule
 import com.aurora.app.R
 import com.aurora.app.ui.animation.DampedDragAnimation
 import com.aurora.app.ui.animation.InteractiveHighlight
+import com.aurora.app.ui.theme.rememberAuroraColorScheme
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
@@ -85,7 +87,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 
 fun attachMainScreen(composeView: ComposeView, nativeContentView: View, onTabSelected: (Int) -> Unit) {
     composeView.setContent {
-        MaterialTheme {
+        /*
+         * 底栏配色统一由 AuroraPalette（与 XML 侧 ThemeOverlay.Aurora.Accent.* 同源）生成，
+         * 因此强调色 / 调色板风格 / 色彩规范 / 深色模式都能在底栏正确体现，不会出现
+         * 「底栏一种强调色、tab 指示线另一种」的割裂。
+         */
+        val context = LocalContext.current
+        val dark = isSystemInDarkTheme()
+        val scheme = rememberAuroraColorScheme(context, dark)
+        // 底栏效果开关：均由设置项控制，通过状态流即时生效（无需重建 MainActivity）
+        val glassEnabled by BottomBarState.liquidGlass.collectAsState()
+        val blurEnabled by BottomBarState.blur.collectAsState()
+        MaterialTheme(colorScheme = scheme) {
             val backdrop = rememberLayerBackdrop {
                 drawRect(Color.Transparent)
                 drawContent()
@@ -126,7 +139,8 @@ fun attachMainScreen(composeView: ComposeView, nativeContentView: View, onTabSel
                         },
                         backdrop = backdrop,
                         tabsCount = 4,
-                        isBlurEnabled = true
+                        glassEnabled = glassEnabled,
+                        blurEnabled = blurEnabled
                     ) {
                     FloatingBottomBarItem(
                         onClick = {
@@ -158,12 +172,12 @@ fun attachMainScreen(composeView: ComposeView, nativeContentView: View, onTabSel
                     ) {
                         androidx.compose.material3.Icon(
                             modifier = Modifier.width(22.dp).height(22.dp),
-                            painter = painterResource(R.drawable.ic_ms_selinux),
-                            contentDescription = "安全",
+                            painter = painterResource(R.drawable.ic_nav_flash),
+                            contentDescription = "刷机",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "安全",
+                            text = "刷机",
                             fontSize = 11.sp,
                             lineHeight = 14.sp,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -261,12 +275,22 @@ fun FloatingBottomBar(
     onSelected: (index: Int) -> Unit,
     backdrop: Backdrop,
     tabsCount: Int,
-    isBlurEnabled: Boolean = true,
+    /**
+     * 液态玻璃：折射（lens）+ 色彩增强（vibrancy）。参考 KernelSU 的 `settings_enable_glass`。
+     */
+    glassEnabled: Boolean = true,
+    /**
+     * 模糊：仅做背景模糊。与液态玻璃相互独立（参考 KernelSU 的 `settings_enable_blur`），
+     * 两者都关闭时底栏退化为不透明胶囊。
+     */
+    blurEnabled: Boolean = true,
     content: @Composable RowScope.() -> Unit
 ) {
     val isInLightTheme = !isSystemInDarkTheme()
     val accentColor = MaterialTheme.colorScheme.primary
-    val containerColor = if (isBlurEnabled) {
+    /** 任一效果开启即需要半透明底与交互高光；全关则退化为不透明底栏。 */
+    val isTranslucent = glassEnabled || blurEnabled
+    val containerColor = if (isTranslucent) {
         MaterialTheme.colorScheme.surfaceContainer.copy(0.4f)
     } else {
         MaterialTheme.colorScheme.surfaceContainer
@@ -386,14 +410,14 @@ fun FloatingBottomBar(
                     backdrop = backdrop,
                     shape = { ContinuousCapsule },
                     effects = {
-                        if (isBlurEnabled) {
-                            vibrancy()
-                            blur(8f.dp.toPx())
-                            lens(24f.dp.toPx(), 24f.dp.toPx())
+                        if (isTranslucent) {
+                            if (glassEnabled) vibrancy()
+                            if (blurEnabled) blur(8f.dp.toPx())
+                            if (glassEnabled) lens(24f.dp.toPx(), 24f.dp.toPx())
                         }
                     },
                     highlight = {
-                        Highlight.Default.copy(alpha = if (isBlurEnabled) 1f else 0f)
+                        Highlight.Default.copy(alpha = if (isTranslucent) 1f else 0f)
                     },
                     shadow = {
                         Shadow.Default.copy(
@@ -401,7 +425,7 @@ fun FloatingBottomBar(
                         )
                     },
                     layerBlock = {
-                        if (isBlurEnabled) {
+                        if (isTranslucent) {
                             val progress = dampedDragAnimation.pressProgress
                             val scale = lerp(1f, 1f + 16f.dp.toPx() / size.width, progress)
                             scaleX = scale
@@ -410,7 +434,7 @@ fun FloatingBottomBar(
                     },
                     onDrawSurface = { drawRect(containerColor) }
                 )
-                .then(if (isBlurEnabled) interactiveHighlight.modifier else Modifier)
+                .then(if (isTranslucent) interactiveHighlight.modifier else Modifier)
                 .height(64.dp)
                 .padding(4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -419,7 +443,7 @@ fun FloatingBottomBar(
 
         CompositionLocalProvider(
             LocalFloatingBottomBarTabScale provides {
-                if (isBlurEnabled) lerp(1f, 1.2f, dampedDragAnimation.pressProgress) else 1f
+                if (isTranslucent) lerp(1f, 1.2f, dampedDragAnimation.pressProgress) else 1f
             }
         ) {
             Row(
@@ -432,19 +456,19 @@ fun FloatingBottomBar(
                         backdrop = backdrop,
                         shape = { ContinuousCapsule },
                         effects = {
-                            if (isBlurEnabled) {
+                            if (isTranslucent) {
                                 val progress = dampedDragAnimation.pressProgress
-                                vibrancy()
-                                blur(8f.dp.toPx())
-                                lens(24f.dp.toPx() * progress, 24f.dp.toPx() * progress)
+                                if (glassEnabled) vibrancy()
+                                if (blurEnabled) blur(8f.dp.toPx())
+                                if (glassEnabled) lens(24f.dp.toPx() * progress, 24f.dp.toPx() * progress)
                             }
                         },
                         highlight = {
-                            Highlight.Default.copy(alpha = if (isBlurEnabled) dampedDragAnimation.pressProgress else 0f)
+                            Highlight.Default.copy(alpha = if (isTranslucent) dampedDragAnimation.pressProgress else 0f)
                         },
                         onDrawSurface = { drawRect(containerColor) }
                     )
-                    .then(if (isBlurEnabled) interactiveHighlight.modifier else Modifier)
+                    .then(if (isTranslucent) interactiveHighlight.modifier else Modifier)
                     .height(56.dp)
                     .padding(horizontal = 4.dp)
                     .graphicsLayer(colorFilter = ColorFilter.tint(accentColor)),
@@ -463,29 +487,29 @@ fun FloatingBottomBar(
                         val progressOffset = dampedDragAnimation.value * singleTabWidth
                         translationX = if (isLtr) progressOffset + panelOffset else -progressOffset + panelOffset
                     }
-                    .then(if (isBlurEnabled) interactiveHighlight.gestureModifier else Modifier)
+                    .then(if (isTranslucent) interactiveHighlight.gestureModifier else Modifier)
                     .then(dampedDragAnimation.modifier)
                     .drawBackdrop(
                         backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
                         shape = { ContinuousCapsule },
                         effects = {
-                            if (isBlurEnabled) {
+                            if (glassEnabled) {
                                 val progress = dampedDragAnimation.pressProgress
                                 lens(10f.dp.toPx() * progress, 14f.dp.toPx() * progress, true)
                             }
                         },
                         highlight = {
-                            Highlight.Default.copy(alpha = if (isBlurEnabled) dampedDragAnimation.pressProgress else 0f)
+                            Highlight.Default.copy(alpha = if (isTranslucent) dampedDragAnimation.pressProgress else 0f)
                         },
-                        shadow = { Shadow(alpha = if (isBlurEnabled) dampedDragAnimation.pressProgress else 0f) },
+                        shadow = { Shadow(alpha = if (isTranslucent) dampedDragAnimation.pressProgress else 0f) },
                         innerShadow = {
                             InnerShadow(
                                 radius = 8f.dp * dampedDragAnimation.pressProgress,
-                                alpha = if (isBlurEnabled) dampedDragAnimation.pressProgress else 0f
+                                alpha = if (isTranslucent) dampedDragAnimation.pressProgress else 0f
                             )
                         },
                         layerBlock = {
-                            if (isBlurEnabled) {
+                            if (isTranslucent) {
                                 scaleX = dampedDragAnimation.scaleX
                                 scaleY = dampedDragAnimation.scaleY
                                 val velocity = dampedDragAnimation.velocity / 10f
@@ -494,7 +518,7 @@ fun FloatingBottomBar(
                             }
                         },
                         onDrawSurface = {
-                            val progress = if (isBlurEnabled) dampedDragAnimation.pressProgress else 0f
+                            val progress = if (isTranslucent) dampedDragAnimation.pressProgress else 0f
                             drawRect(
                                 color = if (isInLightTheme) Color.Black.copy(0.1f) else Color.White.copy(0.1f),
                                 alpha = 1f - progress

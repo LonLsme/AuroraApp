@@ -9,7 +9,7 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/ios_background_elevated"
+        android:background="?attr/auroraBackgroundElevated"
         android:fitsSystemWindows="true"
         app:elevation="0dp">
 
@@ -58,7 +58,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="@color/ios_card"
+                app:cardBackgroundColor="?attr/auroraCard"
                 app:cardCornerRadius="@dimen/explore_card_radius"
                 app:cardElevation="@dimen/explore_card_elevation"
                 app:strokeWidth="0dp">

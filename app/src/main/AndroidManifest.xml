@@ -14,6 +14,12 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!--
+      应用内更新：下载完 Release 里的 APK 后调起系统安装器。
+      Android 8.0 起这是「按应用授权」的普通权限 —— 声明只代表可以申请，
+      真正安装前还需用户在「安装未知应用」里单独允许（见 UpdateInstaller）。
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name="com.aurora.app.AuroraApplication"
@@ -35,6 +41,9 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".ui.settings.ThemeActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.selinux.SelinuxManagerActivity"
             android:exported="false" />
         <activity
@@ -54,6 +63,91 @@
             android:exported="false" />
         <activity
             android:name=".ui.payload.PayloadActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.cpu.CpuControlActivity"
+            android:exported="false" />
+        <!--
+          屏幕页：必须自行处理分辨率/密度引起的配置变化。
+          否则改完分辨率系统会重建 Activity，倒计时状态随之丢失，
+          容易出现「刚应用就被回滚」或「没人执行回滚」两种失控情况。
+        -->
+        <activity
+            android:name=".ui.display.DisplayTuneActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|keyboardHidden|uiMode|layoutDirection|fontScale|navigation|touchscreen|colorMode"
+            android:exported="false" />
+        <!--
+          欧加真线刷页：竖屏独立页面（自带返回箭头 + 大标题）。
+          声明 configChanges 里的 orientation/screenSize/density ——
+          刷写过程中改分辨率或旋转屏幕不该把页面重建（重建会让这一页丢掉当前输出）。
+        -->
+        <activity
+            android:name=".ui.flash.OplusFlashActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false" />
+        <!--
+          「设备重启」与「刷入 KernelSU」：同为竖屏独立页，同款 configChanges 理由 ——
+          页内输出区里的内容就是刷机过程中唯一的进度来源，重建会把整段输出清空。
+        -->
+        <activity
+            android:name=".ui.flash.RebootActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false" />
+        <activity
+            android:name=".ui.flash.KernelSuActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false" />
+        <!--
+          「执行命令」：页内有输入框，额外要 adjustResize —— 键盘弹出时把输入框顶上来，
+          而不是盖住它。configChanges 同其它刷机子页（输出区不能被重建清空）。
+        -->
+        <activity
+            android:name=".ui.flash.ExecCommandActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.flash.MiFlashActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false" />
+        <activity
+            android:name=".ui.flash.PartitionFlashActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false" />
+        <activity
+            android:name=".ui.flash.SideloadActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false" />
+        <!--
+          「高通 QDL 深刷」页：同样是竖屏独立页、输出区是唯一进度来源，configChanges 的理由一致。
+          它与上面几个子页的区别在执行者 —— 命令不是 adb / fastboot，而是内置的 qdl 可执行文件。
+        -->
+        <activity
+            android:name=".ui.flash.QdlActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false" />
+        <!--
+          「应用工具」三页（应用卸载冻结 / 免root激活 / 应用安装）：同款竖屏独立页。
+          它们的命令都经内置 adb 打到<b>连着的那台设备</b>上，输出区同样是唯一的进度来源，
+          所以 configChanges 的理由与上面几个刷机子页完全一致。
+        -->
+        <activity
+            android:name=".ui.flash.AppUninstallActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false" />
+        <activity
+            android:name=".ui.flash.ActivateActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false" />
+        <activity
+            android:name=".ui.flash.InstallActivity"
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|uiMode|fontScale|layoutDirection"
+            android:exported="false" />
+        <activity
+            android:name=".ui.fps.FpsRecordActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.process.ProcessListActivity"
             android:exported="false" />
         <activity
             android:name=".ui.plugin.AuroraPluginActivity"
@@ -109,6 +203,17 @@
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!--
+          屏幕断点兜底的第二通道：持久化 JobScheduler 任务。
+          小米 / HyperOS 会拦掉本应用的开机广播（日志：process is not permitted to auto start），
+          而持久化任务由系统 JobScheduler 持有并跨重启保留，是另一条独立启动路径。
+          exported 必须为 true 才能被系统侧绑定，安全性由 BIND_JOB_SERVICE 签名级权限保证。
+        -->
+        <service
+            android:name=".core.display.DisplayRestoreJobService"
+            android:exported="true"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <!-- 监视悬浮窗前台服务：窗口在后台/游戏中保持存活 -->
         <service

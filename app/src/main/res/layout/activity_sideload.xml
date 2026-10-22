@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「ADB Sideload」页（竖屏，独立 Activity，无顶栏，Miuix 风格）。
+
+  版式（自上而下，顺序固定）：
+    · 顶部区域：左上角返回箭头 + 右上角设备状态下拉（胶囊，点开是 10 个槽位）
+    · 大标题「ADB Sideload」（加粗大字）
+    · 第一行：保存日志 / 终止
+    · 小标题「选择刷机包」+ 一行两个按钮：选择 .zip 文件（次要）/ 开始刷入（主色）
+    · 小标题「输出」+ 日志输出区（初始占位「选择 .zip 刷机包后点击「开始刷入」」）
+
+  文案全部取自既有工具的字符串资源：
+    title_sideload「ADB Sideload」/ sideload_select_title「选择刷机包」/
+    sideload_select_file「选择 .zip 文件」/ sideload_start「开始刷入」/
+    sideload_placeholder「选择 .zip 刷机包后点击「开始刷入」」
+  「开始刷入」用主色底按钮：既有工具里它是唯一带主色参数的那个（s80.java 里
+  {@code fj.b(re0Var)} 只传给第二个按钮），次要按钮则不带。
+
+  外层是 NestedScrollView 且 overScrollMode="always"：内容不满一屏时也保留上下回弹。
+  日志区刻意用 wrap_content + minHeight（不用 weight 占满）—— 这样日志变长时页面会跟着变高，
+  外层才真的滚得动；若用 weight 撑满一屏则滚动范围恒为 0，只剩回弹没有滚动。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollSideload"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:overScrollMode="always"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/ios_screen_edge"
+        android:paddingTop="6dp"
+        android:paddingBottom="20dp">
+
+        <!-- ───────── 顶部区域：返回箭头 + 设备状态下拉 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnFlashBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="-10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="返回"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/ios_text_primary" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!--
+              下拉胶囊：整体可点（点开弹 10 个槽位列表），文字由页面按探测结果刷新。
+              id 仍叫 tvFlashDeviceState —— 基类据此绑定设备状态文字。
+            -->
+            <LinearLayout
+                android:id="@+id/btnSideloadDevicePill"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_flash_device_pill"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="7dp">
+
+                <TextView
+                    android:id="@+id/tvFlashDeviceState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxWidth="170dp"
+                    android:singleLine="true"
+                    android:text="未连接设备"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="13sp"
+                    tools:text="ADB sideload · 45850c2f" />
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="展开设备状态"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_chevron_down"
+                    android:tint="@color/ios_text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ───────── 大标题 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="ADB Sideload"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashSaveLog"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="保存日志" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashStop"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="终止" />
+        </LinearLayout>
+
+        <!-- ───────── 小标题：选择刷机包 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="4dp"
+            android:text="选择刷机包"
+            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+        <!-- 一行：选择 .zip 文件（次要）/ 开始刷入（主色） -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSideloadPickZip"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="选择 .zip 文件" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSideloadStart"
+                style="@style/Widget.Aurora.Miuix.Button.Primary"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="开始刷入" />
+        </LinearLayout>
+
+        <!-- ───────── 小标题：输出 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="4dp"
+            android:text="输出"
+            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+        <!--
+          日志区随内容增长、起步 240dp；由外层 NestedScrollView 负责滚动，
+          所以页面里不给它设 ScrollingMovementMethod（否则手势被它吃掉，外层就不再回弹）。
+          初始文字是既有工具的 sideload_placeholder，第一次输出时由基类自动清掉。
+        -->
+        <TextView
+            android:id="@+id/tvFlashConsole"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_console"
+            android:fontFamily="monospace"
+            android:minHeight="@dimen/miuix_console_height"
+            android:padding="14dp"
+            android:text="选择 .zip 刷机包后点击「开始刷入」"
+            android:textColor="@color/ios_text_secondary"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

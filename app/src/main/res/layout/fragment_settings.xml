@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  设置页：Miuix preference 范式（参考 compose-miuix-ui/miuix 的 SettingsPage）。
+
+  范式三要素（参数逐条对照 miuix 源码，见 dimens.xml 的同名注释）：
+    1) 分组小标题 SmallTitle —— 14sp Bold、次级色、左右内缩 28dp、上下 8dp；
+    2) 卡片 Card —— 16dp 圆角、零阴影、无内置分隔线，承载一组同义行；
+    3) 行 BasicComponent —— 最小高 56dp、内边距 16dp、标题 17sp Medium + 摘要 14sp、
+       尾部控件右对齐。Miuix 的行默认<b>不带前置图标</b>，本页据此去掉了图标：
+       原来每行左侧那枚 34dp 图标块会在 17sp 标题旁显得拥挤，且 Miuix 靠
+       「标题 + 摘要」的字号层级而非图标来区分主次。
+
+  颜色全部走语义色（@color/ios_* 与 ?attr/aurora*），主题切换与 AMOLED 覆盖层照常生效。
+  注意：顶栏（标题 Aurora 那一行）在设置页已整行收起，本页顶部的大标题「设置」即页面标题。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:overScrollMode="always"
+    android:paddingBottom="88dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/miuix_pref_card_margin"
+        android:paddingTop="12dp"
+        android:paddingBottom="24dp">
+
+        <!-- 大标题（页面标题；顶栏已收起，故这里是全页唯一的一级标题） -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="设置"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp" />
+
+        <!-- ===================== 通用 ===================== -->
+        <TextView
+            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/miuix_group_title_inset"
+            android:paddingTop="@dimen/miuix_group_title_gap"
+            android:paddingEnd="@dimen/miuix_group_title_inset"
+            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:text="通用" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <!-- 开关行：Switch 走行尾，标题与摘要靠左 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/miuix_pref_row_min_height"
+                android:orientation="horizontal"
+                android:padding="@dimen/miuix_pref_row_padding">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="自动检查更新" />
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="启动时检查是否有新版本" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swCheckUpdate"
+                    style="@style/Widget.Aurora.Switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:minHeight="28dp"
+                    android:padding="0dp" />
+            </LinearLayout>
+
+            <!--
+              手动检查更新：开关只决定「启动时检不检」，这一行是「现在马上检一次」。
+              两者是两件事，不能合成一行 —— 开关打开的用户依然需要一个手动触发的入口。
+              卡片内不放 Divider，行与行靠 minHeight + padding 分隔（Miuix 范式）。
+            -->
+            <LinearLayout
+                android:id="@+id/rowCheckUpdate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/miuix_pref_row_min_height"
+                android:orientation="horizontal"
+                android:padding="@dimen/miuix_pref_row_padding">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="检查更新" />
+
+                    <TextView
+                        android:id="@+id/tvUpdateSummary"
+                        style="@style/Widget.Aurora.Miuix.PrefSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="当前版本 --" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/ios_text_secondary" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ===================== 外观 ===================== -->
+        <TextView
+            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/miuix_group_title_inset"
+            android:paddingTop="@dimen/miuix_group_title_gap"
+            android:paddingEnd="@dimen/miuix_group_title_inset"
+            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:text="外观" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:id="@+id/rowTheme"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/miuix_pref_row_min_height"
+                android:orientation="horizontal"
+                android:padding="@dimen/miuix_pref_row_padding">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="主题" />
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="色彩模式 · 强调色 · 调色板 · 液态玻璃 · 字号" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/ios_text_secondary" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ===================== 关于 ===================== -->
+        <TextView
+            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/miuix_group_title_inset"
+            android:paddingTop="@dimen/miuix_group_title_gap"
+            android:paddingEnd="@dimen/miuix_group_title_inset"
+            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:text="关于" />
+
+        <!--
+          关于只有单行入口：版本信息 / 开源协议 / 鸣谢已全部收进 AboutActivity。
+          这里刻意不铺开细节——设置页每多一行都要占掉一张卡的高度，
+          而这三项都属于「一年看一次」的信息。
+          摘要里的版本号由 SettingsFragment 动态填，不写死，避免与 build.gradle.kts 脱节。
+        -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:id="@+id/rowAbout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/miuix_pref_row_min_height"
+                android:orientation="horizontal"
+                android:padding="@dimen/miuix_pref_row_padding">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="关于 Aurora" />
+
+                    <TextView
+                        android:id="@+id/tvAboutSummary"
+                        style="@style/Widget.Aurora.Miuix.PrefSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="版本信息 · 开源协议 · 鸣谢" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron_right"
+                    android:tint="@color/ios_text_secondary" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

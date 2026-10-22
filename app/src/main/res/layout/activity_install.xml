@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「应用安装」页（竖屏，独立 Activity，无顶栏，Miuix 风格）。
+
+  把本机选中的 .apk 装到<b>连着的那台设备</b>上（逐个 adb install -r），支持一次选多个。
+
+  版式（自上而下，顺序固定）：
+    · 顶部区域：左上角返回箭头 + 右上角设备状态下拉
+    · 大标题「应用安装」
+    · 保存日志 / 终止
+    · 小标题「选择安装包」（右侧带已选个数）+ 选择 .apk 文件 / 清空 + 已选清单
+    · 开始安装（主色，整行 —— 这一页唯一的主操作）
+    · 小标题「输出」+ 输出区
+
+  「开始安装」用主色，与「ADB Sideload」页的「开始刷入」同一层级：一页里只强调一个动作。
+
+  外层 NestedScrollView 开 overScrollMode="always"：内容不满一屏时也保留上下回弹。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollInstall"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:overScrollMode="always"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/ios_screen_edge"
+        android:paddingTop="6dp"
+        android:paddingBottom="20dp">
+
+        <!-- ───────── 顶部区域：返回箭头 + 设备状态下拉 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnFlashBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="-10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="返回"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/ios_text_primary" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                android:id="@+id/btnInstallDevicePill"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_flash_device_pill"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="7dp">
+
+                <TextView
+                    android:id="@+id/tvFlashDeviceState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxWidth="170dp"
+                    android:singleLine="true"
+                    android:text="未连接设备"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="13sp"
+                    tools:text="ADB 已连接 · 45850c2f" />
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="展开设备状态"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_chevron_down"
+                    android:tint="@color/ios_text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ───────── 大标题 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="应用安装"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashSaveLog"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="保存日志" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashStop"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="终止" />
+        </LinearLayout>
+
+        <!-- ───────── 小标题：选择安装包（右侧带已选个数） ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:text="选择安装包"
+                android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+            <TextView
+                android:id="@+id/tvApkCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="已选 0 个"
+                android:textAppearance="@style/Widget.IOS.SectionLabel" />
+        </LinearLayout>
+
+        <!-- 一行：选择 .apk 文件（次要）/ 清空 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnInstallPickApk"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="选择 .apk 文件" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnInstallClear"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="清空" />
+        </LinearLayout>
+
+        <!--
+          已选清单：随内容增高。初始一句占位，选包后由页面逐行填「文件名（体积）」。
+        -->
+        <TextView
+            android:id="@+id/tvApkSelection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/miuix_button_gap"
+            android:background="@drawable/bg_flash_input"
+            android:fontFamily="sans-serif"
+            android:minHeight="72dp"
+            android:padding="14dp"
+            android:text="尚未选择安装包"
+            android:textColor="@color/ios_text_primary"
+            android:textIsSelectable="true"
+            android:textSize="13sp" />
+
+        <!-- 主操作：开始安装（整行主色） -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnInstallStart"
+            style="@style/Widget.Aurora.Miuix.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/miuix_button_height"
+            android:layout_marginTop="@dimen/miuix_button_gap"
+            android:text="开始安装" />
+
+        <!-- ───────── 小标题：输出 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:text="输出"
+            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+        <!--
+          输出区随内容增高、由外层滚动（不给它 ScrollingMovementMethod，
+          否则竖向手势被它吃掉，页面就不再回弹）。
+        -->
+        <TextView
+            android:id="@+id/tvFlashConsole"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_console"
+            android:fontFamily="monospace"
+            android:minHeight="@dimen/miuix_console_height"
+            android:padding="14dp"
+            android:text="选择 .apk 安装包后点击「开始安装」"
+            android:textColor="@color/ios_text_secondary"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

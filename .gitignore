@@ -1,19 +1,51 @@
+# ───────── Gradle / Android 构建产物 ─────────
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
+.gradle/
+.gradle-local/
+.kotlin/
+build/
 /captures
-.externalNativeBuild
-.cxx
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# ───────── IDE ─────────
+.idea/
+*.iws
+*.ipr
+
+# ───────── 本机环境（绝不能入库） ─────────
 local.properties
-/.android
-/.gradle-local
-/.kotlin
-/.idea
+# 调试签名目录：debug.keystore 及其 .lock 都是本机产物
+.android/
+
+# ───────── 签名密钥（绝不能入库） ─────────
+*.jks
+*.keystore
+keystore.properties
+
+# ───────── 系统 ─────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ───────── 临时文件与日志 ─────────
+*.log
+*.tmp
+*.swp
+*~
+
+# ───────── 仅本机使用的第三方工具（jadx 反编译工具，非项目代码） ─────────
+jadx.zip
+
+# ───────── 可再生成的打包产物 ─────────
+# 模块源码目录里的 zip 由源码重打得到（打包命令见 aurora_box_module/README.md）；
+# 真正要随 APK 分发的那一份在 app/src/main/assets/，那份必须入库。
+aurora_box_module/aurora_box_module.zip
+
+# ───────── 工作区私有数据 ─────────
+.workbuddy/

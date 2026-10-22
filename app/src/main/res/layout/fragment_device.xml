@@ -7,7 +7,7 @@
     android:background="@color/fluent_background"
     android:clipToPadding="false"
     android:fillViewport="true"
-    android:overScrollMode="never"
+    android:overScrollMode="always"
     android:paddingBottom="88dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout

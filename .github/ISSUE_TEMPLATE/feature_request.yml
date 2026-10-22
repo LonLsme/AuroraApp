@@ -1,0 +1,72 @@
+name: 功能建议
+description: 希望 Aurora 支持某个能力
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Aurora 的定位是**面向 Root 用户的设备工具箱**，所有功能都应满足：
+        能在设备本地完成、不依赖云端账号、不修改系统不可逆的部分。
+        提出建议前，先看一眼 [`docs/FEATURES.md`](../docs/FEATURES.md) 是否已经覆盖。
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 相关模块
+      options:
+        - 设备页
+        - 刷机页
+        - 玩机页
+        - 监视悬浮窗
+        - 帧率记录
+        - 主题与外观
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你遇到的实际问题
+      description: 先说场景，再说方案 —— 「我想在 X 情况下做 Y，但现在只能 Z」
+      placeholder: "例如：刷完机想确认 vbmeta 是否真的关掉了校验，现在只能自己开终端敲命令"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的做法
+      description: 描述你期望的交互与结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 你考虑过的替代方案
+      description: 有没有别的 App / 命令能完成这件事？
+    validations:
+      required: false
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: 是否涉及高风险操作
+      description: 直接影响实现方式（是否加二次确认、是否默认关闭）
+      options:
+        - 只读查询，无风险
+        - 会修改设备设置，但可回滚
+        - 会写入分区 / 刷写固件（不可逆）
+        - 不确定
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 确认
+      options:
+        - label: 我已搜索过已有 issue，没有找到相同建议
+          required: true

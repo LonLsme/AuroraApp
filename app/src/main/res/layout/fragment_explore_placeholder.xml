@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:clipToPadding="false"
-    android:overScrollMode="never"
+    android:fillViewport="true"
+    android:overScrollMode="always"
     android:paddingBottom="96dp">
 
     <!-- 背景只铺内容区，勿放在 NestedScrollView 上，否则会盖住 CoordinatorLayout 里的标题栏 -->
@@ -14,13 +16,13 @@
         android:background="@color/ios_background_grouped"
         android:orientation="vertical"
         android:paddingHorizontal="@dimen/ios_screen_edge"
-        android:paddingTop="72dp">
+        android:paddingTop="12dp">
 
         <!-- stitch code.html：Status & System Quick Info -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/ios_card"
+            app:cardBackgroundColor="?attr/auroraCard"
             app:cardCornerRadius="@dimen/explore_card_radius"
             app:cardElevation="0dp"
             app:strokeWidth="0dp">
@@ -105,8 +107,6 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- code.html space-y-5：与下一区块间距 20dp -->
-
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -119,7 +119,7 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/ios_card"
+            app:cardBackgroundColor="?attr/auroraCard"
             app:cardCornerRadius="@dimen/explore_card_radius"
             app:cardElevation="0dp"
             app:strokeWidth="0dp">
@@ -409,7 +409,7 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/ios_card"
+            app:cardBackgroundColor="?attr/auroraCard"
             app:cardCornerRadius="@dimen/explore_card_radius"
             app:cardElevation="0dp"
             app:strokeWidth="0dp">
@@ -593,6 +593,58 @@
                             android:textSize="14sp" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0.5dp"
+                    android:background="@color/explore_slate_100" />
+
+                <!--
+                  「屏幕」入口（分辨率 / 密度 / 刷新率 / 刷新率实测）。
+                  原属「调节」页，「调节」页并入玩机页后迁入本组。
+                -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:id="@+id/btnDisplayTune"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:foreground="?attr/selectableItemBackground"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            app:cardBackgroundColor="@color/explore_purple_100"
+                            app:cardCornerRadius="@dimen/explore_tool_icon_radius"
+                            app:cardElevation="0dp"
+                            app:strokeWidth="0dp">
+
+                            <androidx.appcompat.widget.AppCompatImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:layout_gravity="center"
+                                android:importantForAccessibility="no"
+                                app:srcCompat="@drawable/ic_display_tune"
+                                app:tint="@color/explore_purple_600" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="屏幕"
+                            android:textColor="@color/explore_slate_800"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -608,7 +660,7 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/ios_card"
+            app:cardBackgroundColor="?attr/auroraCard"
             app:cardCornerRadius="@dimen/explore_card_radius"
             app:cardElevation="0dp"
             app:strokeWidth="0dp">
@@ -666,30 +718,165 @@
                         android:background="@color/explore_slate_100" />
 
                     <LinearLayout
+                        android:id="@+id/btnCpuControl"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
+                        android:foreground="?attr/selectableItemBackground"
                         android:gravity="center"
                         android:orientation="vertical"
-                        android:padding="20dp"
-                        android:visibility="invisible">
+                        android:padding="20dp">
 
                         <com.google.android.material.card.MaterialCardView
                             android:layout_width="40dp"
                             android:layout_height="40dp"
-                            app:cardBackgroundColor="@color/explore_slate_100"
+                            app:cardBackgroundColor="@color/explore_blue_100"
                             app:cardCornerRadius="@dimen/explore_tool_icon_radius"
                             app:cardElevation="0dp"
-                            app:strokeWidth="0dp" />
+                            app:strokeWidth="0dp">
+
+                            <androidx.appcompat.widget.AppCompatImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:layout_gravity="center"
+                                android:importantForAccessibility="no"
+                                app:srcCompat="@drawable/ic_cpu_control"
+                                app:tint="@color/explore_blue_600" />
+                        </com.google.android.material.card.MaterialCardView>
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="12dp"
-                            android:text="占位"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="CPU控制"
                             android:textColor="@color/explore_slate_800"
                             android:textSize="14sp" />
                     </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 进程管理：全宽入口 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="?attr/auroraCard"
+            app:cardCornerRadius="@dimen/explore_card_radius"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:id="@+id/btnProcessList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:foreground="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    app:cardBackgroundColor="@color/explore_cyan_100"
+                    app:cardCornerRadius="@dimen/explore_tool_icon_radius"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:importantForAccessibility="no"
+                        app:srcCompat="@drawable/ic_process_android"
+                        app:tint="@color/explore_cyan_600" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="进程管理"
+                        android:textColor="@color/explore_slate_800"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="查看/搜索/结束系统进程，支持按 CPU 与内存排序"
+                        android:textColor="@color/ios_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 帧率记录：全宽入口 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="?attr/auroraCard"
+            app:cardCornerRadius="@dimen/explore_card_radius"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:id="@+id/btnFpsRecord"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:foreground="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    app:cardBackgroundColor="@color/explore_emerald_100"
+                    app:cardCornerRadius="@dimen/explore_tool_icon_radius"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:importantForAccessibility="no"
+                        app:srcCompat="@drawable/ic_fps_record"
+                        app:tint="@color/explore_emerald_600" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="帧率记录"
+                        android:textColor="@color/explore_slate_800"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="记录系统帧率并生成曲线与统计"
+                        android:textColor="@color/ios_text_secondary"
+                        android:textSize="12sp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

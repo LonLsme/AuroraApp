@@ -1,0 +1,30 @@
+# 统一换行符：仓库内一律存 LF，检出到 Windows 时由 git 自行转换。
+# 不加这一条时，Windows 上 IDE 保存的 CRLF 会让每次 PR 出现「整文件重写」的假 diff。
+* text=auto eol=lf
+
+# 明确的文本类型
+*.java    text diff=java
+*.kt      text diff=kotlin
+*.kts     text
+*.xml     text
+*.md      text
+*.sh      text eol=lf
+*.prop    text
+*.toml    text
+*.properties text
+
+# 二进制：禁止任何换行/合并处理
+*.png     binary
+*.jpg     binary
+*.webp    binary
+*.jar     binary
+*.zip     binary
+*.so      binary
+*.a       binary
+*.jks     binary
+*.keystore binary
+aurora_box_module/tools/ksu_susfs_arm64 binary
+
+# 让 GitHub 的语言统计不要被生成文件干扰
+app/src/main/res/values/aurora_accent_overlays.xml linguist-generated=true
+app/src/main/res/values-night/aurora_accent_overlays.xml linguist-generated=true

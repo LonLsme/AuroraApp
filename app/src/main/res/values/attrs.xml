@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- 全局强调色：默认指向品牌绿，强调色主题覆盖层可在此覆盖 -->
+    <attr name="auroraAccent" format="color" />
+
+    <!-- 强调色之上的前景色（强调色作背景时的文字/图标色），由覆盖层按明度给出，避免白字白底 -->
+    <attr name="auroraOnAccent" format="color" />
+
+    <!-- 表面类颜色故意走主题属性：AMOLED 覆盖层需要把它们改成纯黑，
+         而直接引用 @color/ 的资源无法在运行时被覆盖层改写。 -->
+    <attr name="auroraCard" format="color" />
+    <attr name="auroraBackgroundElevated" format="color" />
+    <attr name="auroraFill" format="color" />
+
     <declare-styleable name="CpuRingGaugeView">
         <attr name="gaugeStyle" format="enum">
             <enum name="semi" value="0" />

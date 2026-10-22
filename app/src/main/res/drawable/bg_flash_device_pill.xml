@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 刷机页右上角「设备状态下拉」触发器的胶囊底：随主题填充色（?attr/auroraFill）。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/auroraFill" />
+    <corners android:radius="18dp" />
+</shape>

@@ -15,8 +15,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.Context;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.provider.Settings;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.content.res.ColorStateList;
 import android.text.SpannableStringBuilder;
@@ -29,9 +32,6 @@ import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.Toast;
-import android.system.Os;
-import android.system.OsConstants;
-import android.system.StructStat;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.view.animation.OvershootInterpolator;
@@ -54,10 +54,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.scottyab.rootbeer.RootBeer;
-import com.aurora.app.core.util.SelinuxStatusReader;
+import com.aurora.app.ui.theme.ThemeManager;
 import com.aurora.app.data.detector.RootDetector;
 import com.aurora.app.ui.appmanager.AppManagerActivity;
-import com.aurora.app.ui.about.AboutActivity;
 import com.aurora.app.ui.font.FontLibraryBackupActivity;
 import com.aurora.app.ui.module.ModuleManagerActivity;
 import com.aurora.app.ui.partition.PartitionManagerActivity;
@@ -70,12 +69,22 @@ import com.aurora.app.ui.overlay.MonitorOverlayService;
 import com.aurora.app.ui.overlay.MonitorType;
 import com.aurora.app.ui.overlay.OverlayConfig;
 import com.aurora.app.ui.overlay.OverlayPermission;
+import com.aurora.app.ui.device.DeviceFragment;
+import com.aurora.app.ui.settings.SettingsFragment;
+import com.aurora.app.ui.update.UpdateDialog;
+import com.aurora.app.core.update.UpdateChecker;
 import com.aurora.app.ui.widget.AuroraSwitchStyler;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.view.menu.ActionMenuItemView;
+import androidx.appcompat.widget.ActionMenuView;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
 import androidx.compose.ui.platform.ComposeView;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
+import androidx.fragment.app.FragmentManager;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -85,7 +94,6 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 
 import com.aurora.app.R;
 import kotlin.Unit;
@@ -93,7 +101,35 @@ import kotlin.jvm.functions.Function1;
 
 public class MainActivity extends AppCompatActivity {
 
+    /**
+     * 字号缩放：在基类 Context 上套一层携带 fontScale 的派生 Context，
+     * 避免 {@code applyOverrideConfiguration} 在 recreate() 后触发 relaunch 死循环（卡死）。
+     * 由 {@link com.aurora.app.ui.theme.ThemeManager#wrapFontScale} 统一处理缩放值。
+     */
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(com.aurora.app.ui.theme.ThemeManager.wrapFontScale(newBase));
+    }
+
+
     public static final String EXTRA_OPEN_TAB = "extra_open_tab";
+
+    /** 重建（主题切换 / 配置变更）时保存当前 tab，避免跳回首页。 */
+    private static final String STATE_TAB = "aurora_state_tab";
+
+    /** 页面 Fragment 的 tag，供 {@link #installPageFragments()} 判重。 */
+    private static final String TAG_DEVICE_FRAGMENT = "aurora_device_fragment";
+    private static final String TAG_SETTINGS_FRAGMENT = "aurora_settings_fragment";
+
+    /**
+     * FragmentManager 在 Activity 状态中的保存键（即 {@code FragmentActivity.FRAGMENTS_TAG}）。
+     * 重建时移除该键，使 FragmentManager 放弃自动恢复页面 Fragment。
+     *
+     * <p>原因见 {@link #installPageFragments()}：页面 View 会被 {@link #setupTabPager()}
+     * 摘出视图树交给 ViewPager2 托管，自动恢复的时机早于 ViewPager2 布局完成，
+     * 容器定位不到会导致整页空白。
+     */
+    private static final String FRAGMENT_STATE_TAG = "android:support:fragments";
 
     private static final String PREFS_NAME = "aurora_detection_logs";
 
@@ -118,19 +154,17 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_LOG_PATH = "log_path";
     private static final long EXPLORE_ROOT_STATUS_CACHE_MS = 5_000L;
 
-    private int environmentRiskCount = 0;
-    private int totalDetectionRiskCount = 0;
-    private int riskAppsDetectionPoint = 0;
-
     private int colorSemanticSafe() {
         return ContextCompat.getColor(this, R.color.ios_semantic_positive);
     }
 
-    private int colorSemanticDanger() {
-        return ContextCompat.getColor(this, R.color.ios_semantic_negative);
-    }
-
     private int currentTab = 0;
+    /** 「设备」页在底栏里的索引（tab 0）。这是<b>唯一</b>保留顶栏的页面，见 {@link #updateToolbarForTab(int)}。 */
+    private static final int TAB_DEVICE = 0;
+    /** 「刷机」页在底栏里的索引（tab 1）。 */
+    private static final int TAB_FLASH = 1;
+    /** 上次已套用的主题版本号：返回前台时若发现主题已变更，则重建一次以套用新配色。 */
+    private int appliedThemeRevision = -1;
     private LinearLayout navHome, navDevice, navExplore, navSettings;
     private LinearLayout navRow;
     private ImageView iconHome, iconDevice, iconExplore, iconSettings;
@@ -139,12 +173,36 @@ public class MainActivity extends AppCompatActivity {
     private AppBarLayout appBarLayout;
     private View overflowMenuScrim;
     private PopupMenu quickRebootPopupMenu;
+    /** 顶栏「快捷重启」这一格 ActionView，用于播放按住/回弹过渡。 */
+    private View quickRebootActionView;
+    /** 按住态的圆形高亮底（透明度由动画驱动，见 {@link #animateQuickRebootHold}）。 */
+    private Drawable quickRebootHoldBg;
+    private ValueAnimator quickRebootHoldAnimator;
+    /** KernelSU Miuix 的 holdDownState 观感：展开期间图标收缩到该比例。 */
+    private static final float QUICK_REBOOT_HOLD_SCALE = 0.86f;
     /** 待开启的监视器类型：开关打开但悬浮窗权限未授予时记录，授权返回后自动开启。 */
     private MonitorType pendingMonitorType;
     private final ArgbEvaluator argbEvaluator = new ArgbEvaluator();
-    private AnimatorSet tabSwitchAnimator;
+    private ViewPager2 mainPager;
+    /** 「刷机」页（tab 1）的绑定与交互逻辑。 */
+    private com.aurora.app.ui.flash.FlashPage flashPage;
 
     private View nativeContentView;
+
+    /**
+     * 四个页面 View 的固定实例（设备页 / 安全页 / 玩机页 / 设置页），由 {@link #setupTabPager()} 填充。
+     *
+     * <p><b>为什么需要它：</b>这四个 View 会被 {@link #setupTabPager()} 从 CoordinatorLayout 摘出、
+     * 交给 ViewPager2 托管，只有在 ViewPager2 完成布局后才回到视图树上；而「设备页 / 设置页」
+     * 的 {@code FragmentContainerView} 就在它们内部。FragmentManager 创建 Fragment 的 View 时
+     * 需要按容器 id 定位容器（{@code FragmentStateManager.createView()}），若只能从
+     * {@code nativeContentView} 子树查找，在「已摘出、尚未布局」的时间窗内必然查不到并抛
+     * {@code IllegalArgumentException: No view found for id}（2026-10-08 启动即崩的根因）。
+     * 本字段让 {@link #findViewById(int)} 能兜底扫描这几个未挂树的页面 View，
+     * 使容器查找与视图树状态彻底解耦。
+     */
+    private View[] pageViews;
+
     private volatile boolean exploreAutoInstallTriggered = false;
     private volatile boolean exploreAutoInstallRunning = false;
     private volatile ExploreRootStatus cachedExploreRootStatus;
@@ -180,11 +238,37 @@ public class MainActivity extends AppCompatActivity {
                 return view;
             }
         }
+        // 兜底：页面 View 被 ViewPager2 摘出后不在 nativeContentView 子树内，
+        // 但它们的实例仍在 pageViews 里（见字段注释）。FragmentManager 按容器 id
+        // 定位容器时会经由本方法，缺了这段兜底就会抛「No view found for id」。
+        if (pageViews != null) {
+            for (View page : pageViews) {
+                if (page == null) {
+                    continue;
+                }
+                T view = page.findViewById(id);
+                if (view != null) {
+                    return view;
+                }
+            }
+        }
         return super.findViewById(id);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 重建（主题切换 / 旋转屏幕 / 系统深色切换）时，先丢弃 FragmentManager 对「设备页 /
+        // 设置页」两个页面 Fragment 的恢复状态，改由 installPageFragments() 一手创建。
+        //
+        // 为什么必须丢弃：这两个页面的容器位于会被 setupTabPager() 摘出视图树、交给 ViewPager2
+        // 托管的页面 View 内部。自动恢复的时机早于 ViewPager2 首次布局，按容器 id 定位必然失败；
+        // 更糟的是失败后 Fragment 对象仍留在 FragmentManager 里，会让后续按 tag 判重的安装
+        // 误以为「已装好」而跳过 —— 于是整页永久空白。丢弃后重建路径与冷启动完全一致。
+        //
+        // 注意：此处 remove 的是 FragmentActivity 的内部键，STATE_TAB 等自定义状态不受影响。
+        if (savedInstanceState != null) {
+            savedInstanceState.remove(FRAGMENT_STATE_TAG);
+        }
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
@@ -212,8 +296,13 @@ public class MainActivity extends AppCompatActivity {
             getSupportActionBar().setTitle("Aurora");
         }
         ensureToolbarVisible();
-        // 恢复上次退出时仍开启的监视悬浮窗
-        restoreMonitorOverlays();
+        // 顶栏「快捷重启」按钮的按压过渡：此时菜单刚 inflate，ActionView 可能还没布局，
+        // bindQuickRebootActionAnimation() 内部会 post 到工具栏再去取。
+        bindQuickRebootActionAnimation();
+        // 恢复上次退出时仍开启的监视悬浮窗。
+        // 错峰到首页首帧渲染完成后再拉起（前台服务 + addView 会抢冷启动主线程时间，
+        // 与 ViewPager2 首帧争资源是「启动卡一下」的来源之一）。
+        nativeContentView.postDelayed(this::restoreMonitorOverlays, 300L);
         if (overflowMenuScrim != null) {
             overflowMenuScrim.setOnClickListener(v -> {
                 if (quickRebootPopupMenu != null) {
@@ -258,6 +347,27 @@ public class MainActivity extends AppCompatActivity {
             btnPayload.setOnClickListener(v ->
                     startActivity(new Intent(this, PayloadActivity.class)));
         }
+        View btnCpuControl = findViewById(R.id.btnCpuControl);
+        if (btnCpuControl != null) {
+            btnCpuControl.setOnClickListener(v ->
+                    startActivity(new Intent(this, com.aurora.app.ui.cpu.CpuControlActivity.class)));
+        }
+        View btnDisplayTune = findViewById(R.id.btnDisplayTune);
+        if (btnDisplayTune != null) {
+            btnDisplayTune.setOnClickListener(v ->
+                    startActivity(new Intent(this,
+                            com.aurora.app.ui.display.DisplayTuneActivity.class)));
+        }
+        View btnFpsRecord = findViewById(R.id.btnFpsRecord);
+        if (btnFpsRecord != null) {
+            btnFpsRecord.setOnClickListener(v ->
+                    startActivity(new Intent(this, com.aurora.app.ui.fps.FpsRecordActivity.class)));
+        }
+        View btnProcessList = findViewById(R.id.btnProcessList);
+        if (btnProcessList != null) {
+            btnProcessList.setOnClickListener(v ->
+                    startActivity(new Intent(this, com.aurora.app.ui.process.ProcessListActivity.class)));
+        }
         View btnAuroraPlugin = findViewById(R.id.btnAuroraPlugin);
         if (btnAuroraPlugin != null) {
             btnAuroraPlugin.setOnClickListener(v ->
@@ -277,44 +387,42 @@ public class MainActivity extends AppCompatActivity {
         if (btnHideStatusBar != null) {
             btnHideStatusBar.setOnClickListener(v -> toggleHideStatusBar());
         }
-        View cardGithubRepo = findViewById(R.id.cardGithubRepo);
-        if (cardGithubRepo != null) {
-            cardGithubRepo.setOnClickListener(v -> {
-                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Smart-Paocai/violet_Box"));
-                try {
-                    startActivity(browserIntent);
-                } catch (Exception e) {
-                    Toast.makeText(this, "无法打开 GitHub 链接", Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-        View cardTelegramChannel = findViewById(R.id.cardTelegramChannel);
-        if (cardTelegramChannel != null) {
-            cardTelegramChannel.setOnClickListener(v -> {
-                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/violettoolbox"));
-                try {
-                    startActivity(browserIntent);
-                } catch (Exception e) {
-                    Toast.makeText(this, "无法打开 Telegram 频道链接", Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-        View cardAbout = findViewById(R.id.cardAbout);
-        if (cardAbout != null) {
-            cardAbout.setOnClickListener(v -> startActivity(new Intent(this, AboutActivity.class)));
-        }
 
+        // tab 恢复顺序：重建（主题变更等）优先用 savedInstanceState，其次 Intent 指定，最后首页。
+        // 这样主题切换重建 MainActivity 后不会跳回首页（原实现只读 Intent，重建必回首页）。
         int defaultTab = 0;
-        Intent intent = getIntent();
-        if (intent != null && intent.hasExtra(EXTRA_OPEN_TAB)) {
-            int requested = intent.getIntExtra(EXTRA_OPEN_TAB, defaultTab);
-            if (requested >= 0 && requested <= 3) {
-                defaultTab = requested;
+        if (savedInstanceState != null) {
+            defaultTab = savedInstanceState.getInt(STATE_TAB, 0);
+        } else {
+            Intent intent = getIntent();
+            if (intent != null && intent.hasExtra(EXTRA_OPEN_TAB)) {
+                int requested = intent.getIntExtra(EXTRA_OPEN_TAB, defaultTab);
+                if (requested >= 0 && requested <= 3) {
+                    defaultTab = requested;
+                }
             }
         }
+        if (defaultTab < 0 || defaultTab > 3) {
+            defaultTab = 0;
+        }
+        // 记录当前已套用的主题版本，供 onResume 判断是否需要重建
+        appliedThemeRevision = ThemeManager.getRevision(this);
         currentTab = defaultTab;
         BottomBarState.INSTANCE.setSelectedTab(defaultTab);
-        
+        // 同步底栏效果开关初值（Compose 侧据此决定 blur / 液态玻璃是否生效）
+        BottomBarState.INSTANCE.setLiquidGlass(ThemeManager.isLiquidGlassEnabled(this));
+        BottomBarState.INSTANCE.setBlur(ThemeManager.isBlurEnabled(this));
+
+        // 页面 Fragment 的安装由 setupTabPager() 内部完成（需要先收集 pageViews，
+        // 见 installPageFragments() 的说明）。此处再幂等地补一次，覆盖 setupTabPager()
+        // 因 mainPager 缺失而中途返回的极端情况（按 tag 判重，正常是空操作）。
+        setupTabPager();
+        installPageFragments();
+
+        // 绑定「刷机」页（tab 1）：构建分区 / 重启选项、恢复上次选择的镜像、准备工具链。
+        flashPage = new com.aurora.app.ui.flash.FlashPage(this);
+        flashPage.bind();
+
         FloatingBottomBarComposeKt.attachMainScreen(composeView, nativeContentView, new Function1<Integer, Unit>() {
             @Override
             public Unit invoke(Integer index) {
@@ -324,6 +432,14 @@ public class MainActivity extends AppCompatActivity {
         });
 
         selectTab(defaultTab, false);
+        // setCurrentItem 在 ViewPager2 尚未布局时不一定派发 onPageSelected，
+        // 这里显式补一次，保证「启动就落在刷机页」时顶栏也是隐藏的。
+        updateToolbarForTab(currentTab);
+        // 同理补一次刷机页的可见性：否则「启动就在刷机页」时它的自动轮询不会启动，
+        // 表现为设备状态要等切走再切回来才动。（其余 tab 默认就是不可见，无需处理。）
+        if (flashPage != null && currentTab == 1) {
+            flashPage.onTabShown();
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -333,13 +449,77 @@ public class MainActivity extends AppCompatActivity {
         });
 
         clearLog();
-        setupDeviceInfo();
-        updateExploreUptime();
+        // 设备信息与玩机页 uptime 依赖 4 个页面 View，而 setupTabPager() 已把它们从视图树移除、
+        // 等待 ViewPager2 首次布局时重新挂载。若此处同步调用，findViewById 会返回 null，
+        // 表现为「设备信息与运行时长不刷新」。因此延后到 ViewPager2 布局完成后执行。
+        if (mainPager != null) {
+            mainPager.post(() -> {
+                if (!isFinishing() && !isDestroyed()) {
+                    setupDeviceInfo();
+                    updateExploreUptime();
+                }
+            });
+        } else {
+            setupDeviceInfo();
+            updateExploreUptime();
+        }
+
+        // 启动后静默检查一次更新。延后 3 秒是为了不和首屏的设备信息采集、页面 Fragment
+        // 安装抢主线程 —— 检查本身在后台线程，但请求发出时的调度仍值得错开。
+        maybeAutoCheckUpdate();
+    }
+
+    /**
+     * 静默更新检查。
+     *
+     * <p>「静默」在这里有明确含义：<b>没更新或检查失败都不留任何痕迹</b>，
+     * 只有确实发现新版本、且用户没对这个版本点过「稍后」时，才弹一次对话框。
+     * 网络在部分环境不可达是常态，为此每次启动弹一个「检查失败」会非常烦人 ——
+     * 检查失败要看详情，用户自己会去设置页点「检查更新」。
+     */
+    private void maybeAutoCheckUpdate() {
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            UpdateChecker.autoCheckIfDue(this, ThemeManager.isCheckUpdateEnabled(this), result -> {
+                if (result == null || result.release == null) {
+                    return;
+                }
+                // 用户对这个版本点过「稍后」→ 不再自动打扰；想装的话手动检查仍能看到
+                if (result.release.tag.equals(UpdateChecker.getDismissedTag(this))) {
+                    return;
+                }
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) {
+                        UpdateDialog.show(this, result, null);
+                    }
+                });
+            });
+        }, 3000L);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        // 重建时恢复当前 tab（recreate() 会把 savedInstanceState 传回 onCreate）
+        outState.putInt(STATE_TAB, currentTab);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        // 从「主题」子页返回：强调色 / 字号 / 动态取色变更后，重建一次以套用新配色。
+        // 色彩模式变更由 setDefaultNightMode 自动重建（onCreate 已同步 appliedThemeRevision），
+        // 因此这里不会重复重建 —— 避免"重建两次"卡死。
+        int revision = ThemeManager.getRevision(this);
+        if (appliedThemeRevision != revision) {
+            appliedThemeRevision = revision;
+            if (!isFinishing() && !isDestroyed()) {
+                recreate();
+            }
+            return;
+        }
         // 从「悬浮窗权限」设置页返回：权限已授予则自动开启之前请求的监视器
         if (pendingMonitorType != null && OverlayPermission.canDrawOverlays(this)) {
             MonitorType type = pendingMonitorType;
@@ -348,6 +528,16 @@ public class MainActivity extends AppCompatActivity {
                     .edit().putBoolean(type.prefKey, true).apply();
             MonitorOverlayService.startOverlay(this, type);
         }
+        // 底栏视觉/交互开关：只改 Compose 状态与 ViewPager2 的一个开关，
+        // 无需重建本 Activity（重建这个 God Activity 有明显卡顿）。
+        BottomBarState.INSTANCE.setLiquidGlass(ThemeManager.isLiquidGlassEnabled(this));
+        BottomBarState.INSTANCE.setBlur(ThemeManager.isBlurEnabled(this));
+        if (mainPager != null) {
+            mainPager.setUserInputEnabled(ThemeManager.isSwipeTabsEnabled(this));
+        }
+        // 兜底：正常情况下页面 Fragment 已在 onCreate 装好，这里是幂等空操作
+        // （按 tag 判重）。万一因异常没装上，在此补一次，避免「必须重启 App 才有内容」。
+        installPageFragments();
         mainHandler.removeCallbacks(exploreResumeRefresh);
         // 返回时先让界面完成首帧绘制，再延后刷新 Explore 状态，降低体感卡顿。
         if (currentTab == 2) {
@@ -359,139 +549,48 @@ public class MainActivity extends AppCompatActivity {
                 mainHandler.postDelayed(exploreResumeRefresh, 120);
             }
         }
+        // 刷机页：回到前台（含从刷机子页返回 —— 那时设备多半已经换了个模式）立刻追一次探测，
+        // 并恢复可见性轮询。是否真的探测由页面自己按「是否停在本页」判断。
+        if (flashPage != null) {
+            flashPage.onActivityResumed();
+        }
     }
 
     @Override
     protected void onPause() {
         mainHandler.removeCallbacks(exploreResumeRefresh);
+        if (flashPage != null) {
+            // 收回设备下拉（弹窗不随生命周期自动关闭，留着会 WindowLeaked），
+            // 并停掉设备状态轮询 —— 切进刷机子页后主界面不该还在背后跑 su 抢闸门。
+            flashPage.onActivityPaused();
+        }
         super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        // 刷机页的设备下拉是挂在 Activity 窗口上的 PopupWindow：主题切换会 recreate()，
+        // 不在这里收掉就会 WindowLeaked；顺带注销 USB 插拔监听、清掉待执行的轮询回调。
+        if (flashPage != null) {
+            flashPage.release();
+        }
+        super.onDestroy();
     }
 
     private void selectTab(int tab) {
         selectTab(tab, true);
     }
 
+    /**
+     * 切换到指定页：ViewPager2 自带左右滑动与切换动画，
+     * 底栏点击与手势滑动通过 {@link ViewPager2.OnPageChangeCallback} 双向同步。
+     */
     private void selectTab(int tab, boolean animate) {
-        int previousTab = currentTab;
-        if (animate && previousTab == tab) {
+        if (mainPager == null || tab < 0 || tab > 3) {
             return;
         }
-        currentTab = tab;
-        BottomBarState.INSTANCE.setSelectedTab(tab);
-        ensureToolbarVisible();
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("Aurora");
-        }
-
-        View targetView = getTabContentView(tab);
-        View currentView = getTabContentView(previousTab);
-        if (targetView == null) return;
-
-        if (tabSwitchAnimator != null) {
-            tabSwitchAnimator.cancel();
-            tabSwitchAnimator = null;
-        }
-
-        if (!animate || previousTab == tab || currentView == null) {
-            showOnlyTabContent(tab);
-            return;
-        }
-
-        normalizeTabViewsForAnimation(currentView, targetView);
-
-        // 1. 获取屏幕宽度作为完整的滑屏距离，避免重叠堆叠
-        int screenWidth = getResources().getDisplayMetrics().widthPixels;
-        final float fromOffset = tab > previousTab ? screenWidth : -screenWidth;
-        final float toOffset = -fromOffset;
-        final long durationMs = 380L;
-        final FastOutSlowInInterpolator tabInterpolator = new FastOutSlowInInterpolator();
-        final int targetTab = tab;
-
-        // 2. 重置目标页和当前页的基础属性，去除 scale 和 alpha 的缩放/淡入淡出逻辑
-        currentView.setVisibility(View.VISIBLE);
-        currentView.setTranslationX(0f);
-        // 开启硬件加速以极大提升全屏滑动的流畅度
-        currentView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-
-        targetView.bringToFront();
-        targetView.setVisibility(View.VISIBLE);
-        targetView.setTranslationX(fromOffset);
-        targetView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        
-        ensureToolbarVisible();
-
-        // 3. 仅通过 translationX 执行纯净的侧滑动画，解决堆叠问题
-        AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.playTogether(
-                ObjectAnimator.ofFloat(targetView, View.TRANSLATION_X, fromOffset, 0f),
-                ObjectAnimator.ofFloat(currentView, View.TRANSLATION_X, 0f, toOffset)
-        );
-        animatorSet.setDuration(durationMs);
-        animatorSet.setInterpolator(tabInterpolator);
-        animatorSet.addListener(new AnimatorListenerAdapter() {
-            private boolean cancelled;
-
-            @Override
-            public void onAnimationCancel(Animator animation) {
-                cancelled = true;
-            }
-
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                // 动画结束时必须关闭硬件加速，防止内存泄漏或显示异常
-                currentView.setLayerType(View.LAYER_TYPE_NONE, null);
-                targetView.setLayerType(View.LAYER_TYPE_NONE, null);
-                
-                resetTabViewTransform(currentView);
-                resetTabViewTransform(targetView);
-                if (!cancelled && currentTab == targetTab) {
-                    showOnlyTabContent(targetTab);
-                }
-                tabSwitchAnimator = null;
-            }
-        });
-        tabSwitchAnimator = animatorSet;
-        animatorSet.start();
-    }
-
-    private View getTabContentView(int tab) {
-        switch (tab) {
-            case 0:
-                return findViewById(R.id.contentDevice);
-            case 1:
-                return findViewById(R.id.contentHome);
-            case 2:
-                return findViewById(R.id.fragmentExplorePlaceholder);
-            case 3:
-                return findViewById(R.id.fragmentSettingsPlaceholder);
-            default:
-                return null;
-        }
-    }
-
-    private void showOnlyTabContent(int tab) {
-        View[] views = new View[]{
-                findViewById(R.id.contentHome),
-                findViewById(R.id.contentDevice),
-                findViewById(R.id.fragmentExplorePlaceholder),
-                findViewById(R.id.fragmentSettingsPlaceholder)
-        };
-        for (View view : views) {
-            if (view == null) continue;
-            resetTabViewTransform(view);
-            view.setVisibility(View.GONE);
-        }
-
-        View selectedView = getTabContentView(tab);
-        if (selectedView != null) {
-            selectedView.setVisibility(View.VISIBLE);
-            selectedView.bringToFront();
-        }
-        ensureToolbarVisible();
-
-        // 切到“玩机”(Explore) 时：静默检测并自动安装核心模块（只触发一次）
-        if (tab == 2) {
-            maybeAutoInstallCoreModuleSilently();
+        if (mainPager.getCurrentItem() != tab) {
+            mainPager.setCurrentItem(tab, animate);
         }
     }
 
@@ -511,7 +610,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                File zip = extractAssetToCache("violet_box_module.zip", "violet_box_module_autoinstall.zip");
+                File zip = extractAssetToCache("aurora_box_module.zip", "aurora_box_module_autoinstall.zip");
                 if (zip == null || !zip.exists()) {
                     return;
                 }
@@ -524,10 +623,16 @@ public class MainActivity extends AppCompatActivity {
                         "ksud module install " + p,
                         "apd module install " + p
                 };
+                boolean installed = false;
                 for (String cmd : candidates) {
                     if (runSuCommand(cmd) == 0) {
+                        installed = true;
                         break;
                     }
+                }
+                // 只有新模块确实装上了才清旧目录，避免「旧的删了、新的没装上」导致能力全失
+                if (installed) {
+                    cleanupLegacyCoreModuleViaSu();
                 }
             } catch (Throwable ignored) {
             } finally {
@@ -536,10 +641,33 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    /**
+     * 判断核心扩展模块是否已安装。
+     *
+     * <p>模块 id 已由 {@code violet_box_module} 改名为 {@code aurora_box_module}。</p>
+     */
     private boolean isCoreModulePresentViaSu() {
         // 兼容已安装与待更新目录
-        String check = "[ -d /data/adb/modules/violet_box_module ] || [ -d /data/adb/modules_update/violet_box_module ]";
-        return runSuCommand(check) == 0;
+        String check = "[ -d /data/adb/modules/aurora_box_module ] || [ -d /data/adb/modules_update/aurora_box_module ]";
+        if (runSuCommand(check) == 0) {
+            // 新版已在位，清掉旧 id 的残留，避免两个模块在同一开机阶段互相覆盖
+            cleanupLegacyCoreModuleViaSu();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 清掉旧 id（{@code violet_box_module}）的模块目录。
+     *
+     * <p>改名后若只删新不删旧，两个模块会同时执行 set_uname / resetprop，
+     * 启动顺序不保证，最终生效值不可预期。配置目录的迁移由模块的 customize.sh 负责。</p>
+     */
+    private void cleanupLegacyCoreModuleViaSu() {
+        String legacy = "[ -d /data/adb/modules/violet_box_module ] || [ -d /data/adb/modules_update/violet_box_module ]";
+        if (runSuCommand(legacy) == 0) {
+            runSuCommand("rm -rf /data/adb/modules/violet_box_module /data/adb/modules_update/violet_box_module");
+        }
     }
 
     private File extractAssetToCache(String assetName, String outName) {
@@ -585,57 +713,233 @@ public class MainActivity extends AppCompatActivity {
         return "'" + s.replace("'", "'\\''") + "'";
     }
 
-    private void normalizeTabViewsForAnimation(View currentView, View targetView) {
-        View[] views = new View[]{
-                findViewById(R.id.contentHome),
+    /**
+     * 把 4 个页面 View 从 CoordinatorLayout 中装入 ViewPager2：
+     * <ul>
+     *   <li>页面 View 仍是 nativeContentView 的后代（ViewPager2 在 CoordinatorLayout 内），
+     *       {@link #findViewById} 覆写遍历整棵 nativeContentView，因此页面内所有 id 引用不受影响；</li>
+     *   <li>{@code setOffscreenPageLimit(3)}：4 页全部预加载，FragmentContainerView（设备页）
+     *       不会被 ViewPager2 回收销毁，fragment 生命周期安全；</li>
+     *   <li>底栏点击（{@link #selectTab}）与手势滑动通过 OnPageChangeCallback 双向同步。</li>
+     * </ul>
+     */
+    private void setupTabPager() {
+        mainPager = findViewById(R.id.mainPager);
+        if (mainPager == null) {
+            return;
+        }
+        View[] pages = new View[]{
                 findViewById(R.id.contentDevice),
+                findViewById(R.id.contentHome),
                 findViewById(R.id.fragmentExplorePlaceholder),
                 findViewById(R.id.fragmentSettingsPlaceholder)
         };
-        for (View view : views) {
-            if (view == null) continue;
-            resetTabViewTransform(view);
-            if (view == currentView || view == targetView) {
-                view.setVisibility(View.VISIBLE);
-                view.setAlpha(1f);
-            } else {
-                view.setAlpha(1f);
-                view.setVisibility(View.GONE);
+        // 保存页面 View 的固定实例：交给 ViewPager2 之后它们就离开了 nativeContentView
+        // 子树，findViewById 需要靠这份引用才能定位到页面内部的 FragmentContainerView。
+        pageViews = pages;
+        // 从 CoordinatorLayout 解绑，交给 ViewPager2 管理。
+        // 关键：XML 中 3 个页面是 visibility="gone"（原实现靠 showOnlyTabContent 切换可见性），
+        // 现在由 ViewPager2 控制显示，必须全部置为 VISIBLE，否则滑到该页会空白。
+        for (View page : pages) {
+            if (page == null) {
+                continue;
+            }
+            page.setVisibility(View.VISIBLE);
+            // 重置为 ViewPager2 需要的铺满参数（原 CoordinatorLayout.LayoutParams 带
+            // layout_behavior 等属性，直接复用可能导致 item 尺寸异常）
+            page.setLayoutParams(new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            if (page.getParent() instanceof ViewGroup) {
+                ((ViewGroup) page.getParent()).removeView(page);
+            }
+        }
+        mainPager.setAdapter(new TabPagerAdapter(pages));
+        mainPager.setOffscreenPageLimit(pages.length - 1);
+        mainPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                currentTab = position;
+                BottomBarState.INSTANCE.setSelectedTab(position);
+                updateToolbarForTab(position);
+                if (getSupportActionBar() != null) {
+                    getSupportActionBar().setTitle("Aurora");
+                }
+                // 切到“玩机”(Explore) 时：静默检测并自动安装核心模块（只触发一次）
+                if (position == 2) {
+                    maybeAutoInstallCoreModuleSilently();
+                }
+                // 切到“刷机”时：让本页的自动轮询跑起来（切走时停掉），并立刻追一次设备探测
+                if (flashPage != null) {
+                    if (position == TAB_FLASH) {
+                        flashPage.onTabShown();
+                    } else {
+                        // 离开刷机页：收回设备状态下拉（PopupWindow 挂在 Activity 窗口上，
+                        // 跨页留着会一直浮在其它页面之上），并停掉设备轮询。
+                        flashPage.onTabHidden();
+                    }
+                }
+            }
+        });
+
+        // 页面 Fragment 的安装放在这里而不是 onCreate：本方法刚完成 pageViews 的收集，
+        // 此时 installPageFragments() 才能通过 findViewById 的页面 View 兜底分支定位到容器。
+        // 注意 Fragment 的 View 实际创建会被 FragmentManager 推迟到 onStart 之后
+        // （Activity 达到 ACTIVITY_CREATED 时），那一刻 ViewPager2 还没开始布局，
+        // 所以容器查找必须与视图树状态无关 —— 这正是 pageViews 兜底存在的意义。
+        installPageFragments();
+    }
+
+    /**
+     * 安装「设备页 / 设置页」两个页面 Fragment（按 tag 判重，幂等，可重复调用）。
+     *
+     * <p><b>调用时机</b>：{@link #setupTabPager()} 内部（页面 View 收集完 → {@code pageViews} 就绪），
+     * 以及 {@link #onResume()} 兜底一次。
+     *
+     * <p><b>为什么容器查找能成功（本方法的核心）：</b>
+     * FragmentManager 创建 Fragment 的 View 时（{@code FragmentStateManager.createView()}），
+     * 若 {@code mContainer} 为空则按 {@code mContainerId} 定位容器，走的是
+     * {@code FragmentActivity.findViewById()} —— 也就是本类 {@link #findViewById(int)} 的重写版。
+     * 而这两个页面的 {@code FragmentContainerView} 位于会被 {@link #setupTabPager()} 摘出
+     * CoordinatorLayout、交给 ViewPager2 托管的页面 View 内部；ViewPager2 要等首次布局
+     * 才把页面挂回视图树，届时 {@code nativeContentView} 子树里<b>查不到</b>容器。
+     * 因此 {@link #findViewById(int)} 增加了对 {@code pageViews} 的兜底扫描
+     * （页面 View 是预创建的固定实例，容器永远在它们内部，与是否挂树无关）。
+     *
+     * <p><b>时序要点：</b>{@code commitNowAllowingStateLoss()} 提交时 FragmentManager 仍处于
+     * {@code CREATED}（{@code onCreate} 阶段），Fragment 的 View 创建会被推迟到
+     * {@code FragmentActivity.onStart()} 的 {@code dispatchActivityCreated} —— 那一刻
+     * ViewPager2 尚未 measure/layout。这正是「提交时容器可达、创建 View 时不可达」的
+     * 时间窗，也是 2026-10-08 启动即崩
+     * （{@code IllegalArgumentException: No view found for id .../device_fragment_container}）
+     * 的根因；{@code pageViews} 兜底扫平了这个窗口。
+     *
+     * <p><b>更早的历史坑（现象：设备页 / 设置页整页空白，必须重启 App 才恢复）：</b>
+     * 最初这两页在 XML 里用 {@code android:name} <b>静态声明</b>。{@code FragmentContainerView}
+     * 静态声明的添加路径是 {@code add(View, Fragment, tag)}，会把容器 <b>View 引用</b>直接
+     * 赋给 Fragment（{@code mContainerId == 0}），因此首次启动永远正常；但 Activity 重建时
+     * FragmentManager 只能从 {@code savedInstanceState} 恢复，<b>View 引用无法序列化</b>、
+     * 只剩 {@code mContainerId == 0} → {@code createView} 时 {@code container == null}
+     * → View 不挂载 → 整页空白（不抛异常，故只是白屏）。现改为代码创建 +
+     * {@code onCreate} 移除 {@code android:support:fragments} 键放弃自动恢复，
+     * 冷启动与重建走完全相同的路径。
+     *
+     * <p><b>两点加固</b>：① 两个容器各自独立判断，任一失配不再连累另一个；
+     * ② 用 {@code commitNowAllowingStateLoss()} 并捕获异常，即使时序异常也不会静默放弃
+     * （这两个页面 Fragment 不承载需要恢复的状态，放弃状态保存无副作用）。
+     */
+    private void installPageFragments() {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        FragmentManager fm = getSupportFragmentManager();
+        try {
+            if (fm.findFragmentByTag(TAG_DEVICE_FRAGMENT) == null
+                    && findViewById(R.id.device_fragment_container) != null) {
+                fm.beginTransaction()
+                        .replace(R.id.device_fragment_container, new DeviceFragment(), TAG_DEVICE_FRAGMENT)
+                        .commitNowAllowingStateLoss();
+            }
+            if (fm.findFragmentByTag(TAG_SETTINGS_FRAGMENT) == null
+                    && findViewById(R.id.settingsFragmentContainer) != null) {
+                fm.beginTransaction()
+                        .replace(R.id.settingsFragmentContainer, new SettingsFragment(), TAG_SETTINGS_FRAGMENT)
+                        .commitNowAllowingStateLoss();
+            }
+        } catch (Throwable t) {
+            // 单个页面安装失败不应影响另一个，也不能让主界面崩溃
+            android.util.Log.w("MainActivity", "安装页面 Fragment 失败", t);
+        }
+    }
+
+    /** ViewPager2 页面装载器：每个页面直接复用现有 View（懒加载不做，4 页固定）。 */
+    private static final class TabPagerAdapter extends RecyclerView.Adapter<TabPagerAdapter.Holder> {
+
+        private final View[] pages;
+
+        TabPagerAdapter(View[] pages) {
+            this.pages = pages;
+        }
+
+        @Override
+        public int getItemCount() {
+            return pages.length;
+        }
+
+        @Override
+        public int getItemViewType(int position) {
+            return position;
+        }
+
+        @Override
+        public Holder onCreateViewHolder(ViewGroup parent, int viewType) {
+            // viewType == position：直接以页面 View 作为 itemView
+            View page = pages[viewType];
+            // 页面 View 复用既有实例（非新建）：若仍挂在旧父容器上，入池前先解绑，
+            // 否则 RecyclerView.addView 会抛「specified child already has a parent」。
+            // 注意必须排除 RecyclerView 本身 —— 直接 removeView 会打乱其
+            // ViewHolder ↔ child 的映射，只能由 RecyclerView 自己回收。
+            if (page.getParent() instanceof ViewGroup
+                    && !(page.getParent() instanceof RecyclerView)) {
+                ((ViewGroup) page.getParent()).removeView(page);
+            }
+            return new Holder(page);
+        }
+
+        @Override
+        public void onBindViewHolder(Holder holder, int position) {
+            // 页面 View 已作为 itemView 装载，无需额外绑定
+        }
+
+        static final class Holder extends RecyclerView.ViewHolder {
+            Holder(View itemView) {
+                super(itemView);
             }
         }
     }
 
-    private float resolveTabAnimationDistance(View currentView, View targetView) {
-        int width = 0;
-        if (targetView != null) {
-            width = targetView.getWidth();
+    /**
+     * 按当前 tab 决定顶栏是否显示。
+     *
+     * <p>顶栏这一行（标题 Aurora + 监视器按钮 + 电源按钮 + 分隔线）现在<b>只在「设备」页保留</b>：
+     * <ul>
+     *   <li>「刷机」页自带页面头部，右上角就是设备状态下拉入口 —— 顶栏会把下拉挤下去；</li>
+     *   <li>「玩机」页与「设置」页的正文自带标题与分组小标题，顶栏那一行纯属重复。</li>
+     * </ul>
+     * 因此除 tab 0 外一律<b>整行收起</b>。
+     *
+     * <p><b>代价</b>：顶栏上的「监视器」「电源」两个入口此后只在设备页可用。
+     *
+     * <p><b>为什么用「高度置 0」而不是 {@code setVisibility(GONE)}：</b>
+     * 本页容器 ViewPager2 带 {@code appbar_scrolling_view_behavior}，测量与定位都来自
+     * {@code HeaderScrollingViewBehavior}：
+     * <pre>
+     *   childHeight = availableHeight - header.getMeasuredHeight() + getScrollRange(header)
+     *   childTop    = dependency.getBottom()
+     * </pre>
+     * CoordinatorLayout 的 onMeasure/onLayout 会<b>跳过 GONE 的子 View</b>，
+     * 于是 AppBar 的 {@code getMeasuredHeight()} 与 {@code getBottom()} 都停在收起前的旧值
+     * —— ViewPager2 既不会上移，高度也算多出一行，表现为顶部留一条空带、底部被裁掉一段。
+     * 把高度改成 0 则两个量都会被真实重算（{@code getTotalScrollRange()} 本来就是 0，
+     * 因为 toolbar 没配 {@code layout_scrollFlags}），结果完全确定。
+     */
+    private void updateToolbarForTab(int tab) {
+        if (appBarLayout == null) {
+            return;
         }
-        if (width <= 0 && currentView != null) {
-            width = currentView.getWidth();
+        boolean show = tab == TAB_DEVICE;
+        ViewGroup.LayoutParams params = appBarLayout.getLayoutParams();
+        int target = show ? ViewGroup.LayoutParams.WRAP_CONTENT : 0;
+        if (params != null && params.height != target) {
+            params.height = target;
+            appBarLayout.setLayoutParams(params);
         }
-        if (width <= 0 && nativeContentView != null) {
-            width = nativeContentView.getWidth();
+        if (show) {
+            appBarLayout.bringToFront();
         }
-        if (width <= 0) {
-            width = getResources().getDisplayMetrics().widthPixels;
-        }
-        return Math.max(width * 0.32f, dpToPx(104));
-    }
-
-    private void resetTabViewTransform(View view) {
-        if (view == null) return;
-        view.animate().cancel();
-        view.setTranslationX(0f);
-        view.setAlpha(1f);
-        view.setScaleX(1f);
-        view.setScaleY(1f);
     }
 
     private void ensureToolbarVisible() {
-        if (appBarLayout != null) {
-            appBarLayout.setVisibility(View.VISIBLE);
-            appBarLayout.bringToFront();
-        }
+        updateToolbarForTab(currentTab);
     }
 
     /** 打开内置应用管理（列表、提取 APK、卸载、Root 冻结与备份等）。 */
@@ -878,7 +1182,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         if (itemId == R.id.action_overflow_quick_reboot) {
-            View anchor = findViewById(R.id.action_overflow_quick_reboot);
+            View anchor = findToolbarActionView(R.id.action_overflow_quick_reboot);
             if (anchor == null) {
                 Toolbar toolbar = findViewById(R.id.toolbar);
                 if (toolbar != null) {
@@ -934,23 +1238,31 @@ public class MainActivity extends AppCompatActivity {
         AuroraSwitchStyler.apply(this, swTemperature);
         SharedPreferences prefs = getSharedPreferences(PREFS_USAGE_MONITOR, MODE_PRIVATE);
         // 先回显已保存的开关状态（此时尚未设置监听器，不会误触发悬浮窗操作）
-        swLoad.setChecked(prefs.getBoolean(MonitorType.LOAD.prefKey, false));
+        swLoad.setChecked(prefs.getBoolean(MonitorType.SYSTEM.prefKey, false));
         swProcess.setChecked(prefs.getBoolean(MonitorType.PROCESS.prefKey, false));
         swThread.setChecked(prefs.getBoolean(MonitorType.THREAD.prefKey, false));
         swMini.setChecked(prefs.getBoolean(MonitorType.MINI.prefKey, false));
         swFps.setChecked(prefs.getBoolean(MonitorType.FPS.prefKey, false));
         swTemperature.setChecked(prefs.getBoolean(MonitorType.TEMPERATURE.prefKey, false));
         // 开关即生效：切换时立即创建/销毁对应悬浮窗，并保存状态
-        swLoad.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.LOAD, isChecked));
+        swLoad.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.SYSTEM, isChecked));
         swProcess.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.PROCESS, isChecked));
         swThread.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.THREAD, isChecked));
         swMini.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.MINI, isChecked));
         swFps.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.FPS, isChecked));
         swTemperature.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.TEMPERATURE, isChecked));
-        new androidx.appcompat.app.AlertDialog.Builder(this, com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog)
+        AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this, com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog)
                 .setView(view)
                 .setPositiveButton("确定", null)
-                .show();
+                .create();
+        // 替换 Material3 自带的窗口背景（默认 28dp 大圆角）为 iOS 风格的 20dp 圆角。
+        // 注意是给整个 window 设背景而不是给 content view 设：
+        // AlertDialog 的按钮区由系统创建、位于自定义 view 之外，
+        // 只改 view 背景会让「确定」按钮浮在圆角卡片外面。
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(R.drawable.bg_dialog_rounded);
+        }
+        dialog.show();
     }
 
     /**
@@ -1027,10 +1339,122 @@ public class MainActivity extends AppCompatActivity {
         popupMenu.setOnDismissListener(menu -> {
             quickRebootPopupMenu = null;
             setOverflowMenuScrimVisible(false);
+            // 菜单收起 → 按钮回弹（KernelSU holdDownState 的逆过程）
+            animateQuickRebootHold(false);
         });
         quickRebootPopupMenu = popupMenu;
         setOverflowMenuScrimVisible(true);
         popupMenu.show();
+        animateQuickRebootHold(true);
+    }
+
+    // ───────────────── 顶栏「快捷重启」按钮的过渡动画 ─────────────────
+
+    /**
+     * 找到工具栏上某个 always 显示的菜单项对应的 View。
+     *
+     * <p>先按 id 直接查（ActionMenuPresenter 会把菜单项 id 设到 item view 上），
+     * 查不到再遍历 ActionMenuView 的子 View 比对 {@code getItemData().getItemId()} ——
+     * 后者不依赖 appcompat 的内部约定，是保底手段。
+     */
+    private View findToolbarActionView(int itemId) {
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar == null) {
+            return null;
+        }
+        View direct = toolbar.findViewById(itemId);
+        if (direct != null) {
+            return direct;
+        }
+        for (int i = 0; i < toolbar.getChildCount(); i++) {
+            View child = toolbar.getChildAt(i);
+            if (!(child instanceof ActionMenuView)) {
+                continue;
+            }
+            ActionMenuView actions = (ActionMenuView) child;
+            for (int j = 0; j < actions.getChildCount(); j++) {
+                View action = actions.getChildAt(j);
+                if (action instanceof ActionMenuItemView
+                        && ((ActionMenuItemView) action).getItemData().getItemId() == itemId) {
+                    return action;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 给顶栏「快捷重启」按钮装上按压过渡用的圆形高亮底。
+     *
+     * <p>用自绘图替代 Toolbar 默认的 {@code selectableItemBackground}：默认背景是
+     * <b>点击波纹</b>（松手即散），而这里需要的是「菜单开着就一直保持按下」的持续状态，
+     * 两者不是一回事 —— KernelSU Miuix 版就是用 IconButton 的 holdDownState 做这件事的。
+     */
+    private void bindQuickRebootActionAnimation() {
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        if (toolbar == null) {
+            return;
+        }
+        toolbar.post(() -> {
+            View action = findToolbarActionView(R.id.action_overflow_quick_reboot);
+            if (action == null) {
+                return;
+            }
+            Drawable highlight =
+                    androidx.core.content.ContextCompat.getDrawable(
+                            this, R.drawable.bg_toolbar_action_hold);
+            if (highlight != null) {
+                highlight = highlight.mutate();
+                highlight.setAlpha(0);
+                action.setBackground(highlight);
+            }
+            quickRebootHoldBg = highlight;
+            quickRebootActionView = action;
+        });
+    }
+
+    /**
+     * 顶栏「快捷重启」按钮的按住 / 回弹过渡。
+     *
+     * <p>直接对齐 KernelSU Miuix 版 {@code RebootListPopupMiuix} 里的
+     * {@code IconButton(holdDownState = showTopPopup.value)}：
+     * <ul>
+     *   <li>{@code held = true}（菜单展开）：图标收缩到 {@link #QUICK_REBOOT_HOLD_SCALE}，
+     *       圆形高亮底淡入 —— 用 Decelerate 快进，跟手；</li>
+     *   <li>{@code held = false}（菜单关闭）：带轻微回弹（Overshoot）恢复原状，
+     *       高亮淡出 —— 时长比进入长，收尾更松弛。</li>
+     * </ul>
+     */
+    private void animateQuickRebootHold(boolean held) {
+        final View target = quickRebootActionView;
+        if (target == null) {
+            return;
+        }
+        target.animate().cancel();
+        target.animate()
+                .scaleX(held ? QUICK_REBOOT_HOLD_SCALE : 1f)
+                .scaleY(held ? QUICK_REBOOT_HOLD_SCALE : 1f)
+                .setDuration(held ? 150L : 260L)
+                .setInterpolator(held
+                        ? new DecelerateInterpolator()
+                        : new OvershootInterpolator(2.2f))
+                .start();
+
+        final Drawable highlight = quickRebootHoldBg;
+        if (highlight == null) {
+            return;
+        }
+        if (quickRebootHoldAnimator != null) {
+            quickRebootHoldAnimator.cancel();
+        }
+        quickRebootHoldAnimator = ValueAnimator.ofInt(highlight.getAlpha(), held ? 255 : 0);
+        quickRebootHoldAnimator.setDuration(held ? 150L : 220L);
+        quickRebootHoldAnimator.setInterpolator(new DecelerateInterpolator());
+        quickRebootHoldAnimator.addUpdateListener(animation -> {
+            highlight.setAlpha((int) animation.getAnimatedValue());
+            target.invalidate();
+        });
+        quickRebootHoldAnimator.start();
     }
 
     private void applyPopupMenuOffsetCompat(PopupMenu popupMenu, int verticalOffsetPx) {
@@ -1174,14 +1598,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupDeviceInfo() {
-        appendLog("开始设备信息与 SELinux 诊断");
-        // 设备页 UI 由 DeviceFragment + fragment_device.xml 绑定；此处仅写日志与首页检测逻辑
-        String selinuxStatus = getSELinuxStatus();
-        appendLog(buildSelinuxDiagnostics(selinuxStatus));
+        appendLog("开始设备信息采集");
+        // 设备页 UI 由 DeviceFragment + fragment_device.xml 绑定；此处只写日志与玩机页联动。
+        //
+        // 注意：这里**不再做任何耗时的安全/Root 检测**。原实现在此处同步跑 SELinux 诊断
+        // （fork `su -c getenforce`，超时 2.5s）与 27 项 Root 检测，正好压住首个可见帧。
+        // 安全页已在本次改版中由「调节」页取代，相关检测代码整块移除；
+        // 玩机页所需的 Root 状态由 updateExploreRootStatus() 单独在后台线程解析。
+        // getBootSlot() 仅反射读系统属性，无进程开销，保留在主线程。
         String bootSlot = getBootSlot();
         appendLog("启动槽位 = " + bootSlot);
 
-        setupRootDetection();
         updateExploreRootStatus(true);
     }
 
@@ -1382,589 +1809,19 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    private void setupRootDetection() {
-        totalDetectionRiskCount = 0;
-        environmentRiskCount = 0;
-        riskAppsDetectionPoint = 0;
-
-        clearLog();
-        checkRiskApps();
-        appendLog("开始执行 Root 与安全检测");
-
-        android.widget.LinearLayout layoutRootDetails = findViewById(R.id.layoutRootDetails);
-        android.widget.LinearLayout layoutAdvancedDetails = findViewById(R.id.layoutAdvancedDetails);
-        TextView tvBootloader = findViewById(R.id.tvBootloader);
-        TextView tvUsbDebug = findViewById(R.id.tvUsbDebug);
-        if (layoutRootDetails == null || layoutAdvancedDetails == null
-                || tvBootloader == null || tvUsbDebug == null) {
-            appendLog("安全检测 UI 缺失，已跳过明细渲染");
-            return;
-        }
-
-        layoutRootDetails.removeAllViews();
-        layoutAdvancedDetails.removeAllViews();
-
-        try {
-            runRootDetectionBody(layoutRootDetails, layoutAdvancedDetails, tvBootloader, tvUsbDebug);
-        } catch (Throwable t) {
-            android.util.Log.e("MainActivity", "setupRootDetection", t);
-            appendLog("安全检测异常: " + (t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName()));
-            layoutRootDetails.removeAllViews();
-            layoutAdvancedDetails.removeAllViews();
-            totalDetectionRiskCount = 0;
-            environmentRiskCount = riskAppsDetectionPoint;
-            updateEnvironmentSummary();
-        }
-    }
-
-    private void runRootDetectionBody(android.widget.LinearLayout layoutRootDetails,
-                                      android.widget.LinearLayout layoutAdvancedDetails,
-                                      TextView tvBootloader,
-                                      TextView tvUsbDebug) {
-        RootBeer rootBeer = new RootBeer(this);
-
-        // 将每项单独检测提取出来
-        addRootCheckItem(layoutRootDetails, "1. 测试签名 (TestKeys)", rootBeer.detectTestKeys());
-        addRootCheckItem(layoutRootDetails, "2. Root 管理应用 (SuperSU/Magisk)", rootBeer.detectRootManagementApps());
-        addRootCheckItem(layoutRootDetails, "3. Root 隐藏应用 (RootCloakers)", rootBeer.detectRootCloakingApps());
-        addRootCheckItem(layoutRootDetails, "4. 潜在危险应用", rootBeer.detectPotentiallyDangerousApps());
-        addRootCheckItem(layoutRootDetails, "5. SU 二进制文件存在性", rootBeer.checkForSuBinary());
-        addRootCheckItem(layoutRootDetails, "6. SU 命令可用性 (which su)", rootBeer.checkSuExists());
-        addRootCheckItem(layoutRootDetails, "7. Magisk 二进制文件", rootBeer.checkForMagiskBinary());
-        addRootCheckItem(layoutRootDetails, "8. BusyBox 进程", rootBeer.checkForBusyBoxBinary());
-        addRootCheckItem(layoutRootDetails, "9. 系统分区可写 (RWPaths)", rootBeer.checkForRWPaths());
-        addRootCheckItem(layoutRootDetails, "10. 危险系统属性", rootBeer.checkForDangerousProps());
-        addRootCheckItem(layoutRootDetails, "11. Native层 Root 检测", rootBeer.checkForRootNative());
-
-        RootDetector advancedDetector = new RootDetector(this);
-        addAdvancedRootCheckItem(layoutRootDetails, "12. SU 痕迹检测", advancedDetector.checkSuBinaries());
-        addAdvancedRootCheckItem(layoutRootDetails, "14. Root 权限包检测", advancedDetector.checkRootPackages());
-        addAdvancedRootCheckItem(layoutRootDetails, "15. Magisk 核心路径", advancedDetector.checkMagiskPaths());
-        addAdvancedRootCheckItem(layoutRootDetails, "16. 危险二进制文件", advancedDetector.checkDangerousBinaries());
-        addAdvancedRootCheckItem(layoutRootDetails, "17. 隐藏与绕过模块", advancedDetector.checkHideBypassModules());
-        addAdvancedRootCheckItem(layoutRootDetails, "18. 危险挂载点扫描", advancedDetector.checkMountPoints());
-        addAdvancedRootCheckItem(layoutRootDetails, "19. 危险系统属性", advancedDetector.checkDangerousProperties());
-        addAdvancedRootCheckItem(layoutRootDetails, "20. 运行时深度扫描", advancedDetector.checkRuntimeArtifacts());
-        addAdvancedRootCheckItem(layoutRootDetails, "21. Data分区 tmpfs", advancedDetector.checkTmpfsOnData());
-        addAdvancedRootCheckItem(layoutRootDetails, "22. Root文件时间戳", advancedDetector.checkSuTimestamps());
-        addAdvancedRootCheckItem(layoutRootDetails, "23. 非官方ROM(LineageOS)", advancedDetector.checkLineageOS());
-        addAdvancedRootCheckItem(layoutRootDetails, "24. 第三方ROM探测", advancedDetector.checkCustomRom());
-        addAdvancedRootCheckItem(layoutRootDetails, "25. 构建指纹校验", advancedDetector.checkBuildFieldCoherence());
-        addAdvancedRootCheckItem(layoutRootDetails, "26. Zygote 命名空间检测", advancedDetector.checkAdvancedRuntime());
-        addAdvancedRootCheckItem(layoutRootDetails, "27. OverlayFS 挂载探测", advancedDetector.checkOverlayFS());
-        addAdvancedRootCheckItem(layoutRootDetails, "28. 非官方渠道安装", advancedDetector.checkApkInstallSource());
-
-        checkAdvancedEnvironment(layoutAdvancedDetails);
-        checkNativeMechanismsInJava(layoutAdvancedDetails);
-
-        totalDetectionRiskCount = countRiskChildren(layoutRootDetails) + countRiskChildren(layoutAdvancedDetails);
-
-        appendLog("总异常项 = " + totalDetectionRiskCount);
-
-        // 40. Bootloader 锁检测
-        String bootloaderStatus = getBootloaderStatus();
-        tvBootloader.setText("40. Bootloader锁: " + bootloaderStatus);
-        boolean hasBootloaderRisk = false;
-        if (bootloaderStatus.contains("已解锁")) {
-            tvBootloader.setVisibility(View.VISIBLE);
-            styleInlineRiskItem(tvBootloader);
-            hasBootloaderRisk = true;
-        } else if (bootloaderStatus.contains("已上锁")) {
-            tvBootloader.setVisibility(View.GONE);
-        } else {
-            tvBootloader.setVisibility(View.GONE);
-        }
-        appendLog("Bootloader = " + bootloaderStatus);
-
-        // 41. USB 调试检测
-        boolean isUsbDebugEnabled = Settings.Global.getInt(getContentResolver(), Settings.Global.ADB_ENABLED, 0) == 1;
-        if (isUsbDebugEnabled) {
-            tvUsbDebug.setVisibility(View.VISIBLE);
-            tvUsbDebug.setText("41. USB调试: 可疑（已开启）");
-            styleInlineWarningItem(tvUsbDebug);
-            appendLog("USB调试 = 可疑（已开启）");
-        } else {
-            tvUsbDebug.setVisibility(View.GONE);
-            appendLog("USB调试 = 正常（未开启）");
-        }
-
-        // 总览统计口径：明细风险点 + 风险应用模块 + Bootloader 风险（不计 USB 调试）
-        environmentRiskCount = totalDetectionRiskCount + riskAppsDetectionPoint + (hasBootloaderRisk ? 1 : 0);
-
-        updateEnvironmentSummary();
-    }
-
-    private void addRootCheckItem(android.widget.LinearLayout parent, String label, boolean isDetected) {
-        if (!isDetected) {
-            return;
-        }
-        TextView tv = new TextView(this);
-        tv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
-        tv.setTextSize(14);
-        
-        tv.setText(label + ": 发现异常痕迹");
-        tv.setTextColor(ContextCompat.getColor(this, R.color.ios_text_primary));
-        appendLog("RAW " + label + " -> 异常");
-        addRiskItemContainer(parent, tv);
-    }
-
-    private void addAdvancedRootCheckItem(android.widget.LinearLayout parent, String label, java.util.List<String> detectedItems) {
-        if (detectedItems == null || detectedItems.isEmpty()) {
-            appendLog(label + " = 正常");
-            return;
-        }
-        TextView tv = new TextView(this);
-        tv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
-        tv.setTextSize(14);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(label).append(": 发现 ").append(detectedItems.size()).append(" 处异常");
-        for (String item : detectedItems) {
-            sb.append("\n   - ").append(item);
-            appendLog(label + " => " + item);
-        }
-        tv.setText(sb.toString());
-        tv.setTextColor(ContextCompat.getColor(this, R.color.ios_text_primary));
-        appendLog(label + " = 异常(" + detectedItems.size() + ")");
-        addRiskItemContainer(parent, tv);
-    }
-
-    private void checkAdvancedEnvironment(android.widget.LinearLayout parent) {
-        boolean hasZygisk = false;
-        boolean hasLSPosed = false;
-        boolean hasShamiko = false;
-        boolean hasRiru = false;
-        boolean hasKsu = false;
-        boolean hasApatch = false;
-        boolean hasSuspiciousEnv = false;
-        boolean hasSuspiciousFiles = false;
-
-        // 检测 /proc/self/maps 中的注入库
-        try (BufferedReader reader = new BufferedReader(new FileReader("/proc/self/maps"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String lowerLine = line.toLowerCase();
-                if (lowerLine.contains("zygisk")) hasZygisk = true;
-                if (lowerLine.contains("lspd") || lowerLine.contains("lsposed")) hasLSPosed = true;
-                if (lowerLine.contains("shamiko")) hasShamiko = true;
-                if (lowerLine.contains("riru")) hasRiru = true;
-                if (lowerLine.contains("ksud")) hasKsu = true;
-                if (lowerLine.contains("apatch")) hasApatch = true;
-            }
-        } catch (Exception e) {
-            // ignore
-        }
-
-        // 检测 /proc/mounts 和 /proc/self/mounts 中的异常挂载点
-        boolean hasSuspiciousMounts = false;
-        String[] mountPaths = {"/proc/mounts", "/proc/self/mounts"};
-        for (String path : mountPaths) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String lowerLine = line.toLowerCase();
-                    // 典型特征：magisk, ksu, apatch, core/mirror 在 system 上的异常挂载
-                    if (lowerLine.contains("magisk") || lowerLine.contains("core/mirror") || 
-                        lowerLine.contains("ksu") || lowerLine.contains("apatch")) {
-                        hasSuspiciousMounts = true;
-                        break;
-                    }
-                }
-            } catch (Exception e) {
-                // ignore
-            }
-        }
-
-        // 检测环境变量
-        try {
-            String ldPreload = System.getenv("LD_PRELOAD");
-            if (ldPreload != null && !ldPreload.isEmpty()) {
-                String lowerPreload = ldPreload.toLowerCase();
-                if (lowerPreload.contains("riru") || lowerPreload.contains("zygisk") || lowerPreload.contains("lsposed")) {
-                    hasSuspiciousEnv = true;
-                }
-            }
-            
-            String javaToolOptions = System.getenv("JAVA_TOOL_OPTIONS");
-            if (javaToolOptions != null && !javaToolOptions.isEmpty()) {
-                String lowerOpts = javaToolOptions.toLowerCase();
-                if (lowerOpts.contains("riru") || lowerOpts.contains("zygisk") || lowerOpts.contains("lsposed")) {
-                    hasSuspiciousEnv = true;
-                }
-            }
-            // (移除对 PATH 的粗暴检查，防止系统自带包含敏感词)
-        } catch (Exception e) {
-            // ignore
-        }
-
-        // 常见敏感文件与目录探测
-        String[] suspiciousPaths = {
-            "/data/adb/magisk",
-            "/data/adb/ksu",
-            "/data/adb/ap",
-            "/data/adb/modules",
-            "/sbin/.magisk",
-            "/init.magisk.rc",
-            "/system/etc/init/hw/init.magisk.rc",
-            "/dev/ksu",
-            "/dev/apatch"
-        };
-        for (String path : suspiciousPaths) {
-            File f = new File(path);
-            if (f.exists()) {
-                hasSuspiciousFiles = true;
-                break;
-            }
-        }
-
-        // 敏感系统属性检测 (扩展)
-        boolean hasDangerousProps = false;
-        try {
-            Class<?> c = Class.forName("android.os.SystemProperties");
-            Method get = c.getMethod("get", String.class, String.class);
-            String secure = (String) get.invoke(null, "ro.secure", "1");
-            String debuggable = (String) get.invoke(null, "ro.debuggable", "0");
-            String tags = (String) get.invoke(null, "ro.build.tags", "");
-            
-            if ("0".equals(secure) || "1".equals(debuggable) || tags.contains("test-keys")) {
-                hasDangerousProps = true;
-            }
-        } catch (Exception e) {
-            // ignore
-        }
-
-        addRootCheckItem(parent, "29. Zygisk 注入痕迹", hasZygisk);
-        addRootCheckItem(parent, "30. LSPosed/Xposed 框架", hasLSPosed);
-        addRootCheckItem(parent, "31. Riru 注入框架", hasRiru);
-        addRootCheckItem(parent, "32. Shamiko 隐藏模块", hasShamiko);
-        addRootCheckItem(parent, "33. KernelSU (KSU) 痕迹", hasKsu);
-        addRootCheckItem(parent, "34. APatch 痕迹", hasApatch);
-        addRootCheckItem(parent, "35. 异常系统挂载 (Magisk/KSU/APatch)", hasSuspiciousMounts);
-        addRootCheckItem(parent, "36. 异常环境变量 (LD_PRELOAD等)", hasSuspiciousEnv);
-        addRootCheckItem(parent, "37. 敏感系统文件或目录", hasSuspiciousFiles);
-        addRootCheckItem(parent, "38. 危险系统属性 (Secure/Debug/Tags)", hasDangerousProps);
-    }
-
-    private void checkNativeMechanismsInJava(android.widget.LinearLayout parent) {
-        String[] suPaths = {
-            "/data/local/su", "/data/local/bin/su", "/data/local/xbin/su",
-            "/sbin/su", "/su/bin/su", "/system/bin/su", "/system/bin/.ext/su",
-            "/system/bin/failsafe/su", "/system/sd/xbin/su", "/system/usr/we-need-root/su",
-            "/system/xbin/su", "/cache/su", "/data/su", "/dev/su"
-        };
-
-        String[] magiskPaths = {
-            "/sbin/.magisk/", "/sbin/.core/mirror", "/sbin/.core/img",
-            "/sbin/.core/db-0/magisk.db", "/data/adb/magisk", "/data/adb/ksu", "/data/adb/ap"
-        };
-
-        boolean foundSuViaOs = false;
-        for (String path : suPaths) {
-            try {
-                // 使用 Os API 直接发起 syscall 级别的 access 检测
-                if (Os.access(path, OsConstants.F_OK)) {
-                    foundSuViaOs = true;
-                    break;
-                }
-            } catch (Exception e) {
-                // ignore
-            }
-            
-            try {
-                // 使用 Os API 发起 syscall 级别的 stat 检测
-                StructStat stat = Os.stat(path);
-                if (stat != null) {
-                    foundSuViaOs = true;
-                    break;
-                }
-            } catch (Exception e) {
-                // ignore
-            }
-        }
-
-        boolean foundMagiskViaOs = false;
-        for (String path : magiskPaths) {
-            try {
-                if (Os.access(path, OsConstants.F_OK)) {
-                    foundMagiskViaOs = true;
-                    break;
-                }
-            } catch (Exception e) {
-                // ignore
-            }
-
-            try {
-                StructStat stat = Os.stat(path);
-                if (stat != null) {
-                    foundMagiskViaOs = true;
-                    break;
-                }
-            } catch (Exception e) {
-                // ignore
-            }
-        }
-
-        addRootCheckItem(parent, "39. [Os API] 底层 SU 文件穿透检测", foundSuViaOs);
-        addRootCheckItem(parent, "40. [Os API] 底层敏感目录穿透探测", foundMagiskViaOs);
-    }
-
-    private int countRiskChildren(android.widget.LinearLayout parent) {
-        int count = 0;
-        for (int i = 0; i < parent.getChildCount(); i++) {
-            android.view.View child = parent.getChildAt(i);
-            Object tag = child.getTag();
-            if (tag instanceof String && "risk_item".equals(tag)) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    private void addRiskItemContainer(android.widget.LinearLayout parent, TextView contentView) {
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setTag("risk_item");
-        container.setPadding(dpToPx(14), dpToPx(12), dpToPx(14), dpToPx(12));
-
-        android.widget.LinearLayout.LayoutParams containerParams = new android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-        containerParams.topMargin = dpToPx(6);
-        containerParams.bottomMargin = dpToPx(10);
-        container.setLayoutParams(containerParams);
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0x14FF4D4F);
-        bg.setCornerRadius(dpToPx(12));
-        bg.setStroke(dpToPx(1), 0x33FF4D4F);
-        container.setBackground(bg);
-
-        container.addView(contentView);
-        parent.addView(container);
-    }
-
-    private void styleInlineRiskItem(TextView tv) {
-        tv.setTextColor(ContextCompat.getColor(this, R.color.ios_text_primary));
-        tv.setPadding(dpToPx(14), dpToPx(12), dpToPx(14), dpToPx(12));
-
-        ViewGroup.LayoutParams lpRaw = tv.getLayoutParams();
-        if (lpRaw instanceof ViewGroup.MarginLayoutParams) {
-            ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) lpRaw;
-            lp.topMargin = dpToPx(6);
-            lp.bottomMargin = dpToPx(10);
-            tv.setLayoutParams(lp);
-        }
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0x14FF4D4F);
-        bg.setCornerRadius(dpToPx(12));
-        bg.setStroke(dpToPx(1), 0x33FF4D4F);
-        tv.setBackground(bg);
-    }
-
-    private void styleInlineWarningItem(TextView tv) {
-        tv.setTextColor(ContextCompat.getColor(this, R.color.ios_text_primary));
-        tv.setPadding(dpToPx(14), dpToPx(12), dpToPx(14), dpToPx(12));
-
-        ViewGroup.LayoutParams lpRaw = tv.getLayoutParams();
-        if (lpRaw instanceof ViewGroup.MarginLayoutParams) {
-            ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) lpRaw;
-            lp.topMargin = dpToPx(6);
-            lp.bottomMargin = dpToPx(10);
-            tv.setLayoutParams(lp);
-        }
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0x14FFB74D);
-        bg.setCornerRadius(dpToPx(12));
-        bg.setStroke(dpToPx(1), 0x33FF9800);
-        tv.setBackground(bg);
-    }
-
     private int dpToPx(int dp) {
         return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }
 
-    private void updateEnvironmentSummary() {
-        TextView tvEnvironmentSummary = findViewById(R.id.tvEnvironmentSummary);
-        TextView tvEnvironmentDetail = findViewById(R.id.tvEnvironmentDetail);
-        ImageView ivEnvironmentIcon = findViewById(R.id.ivEnvironmentIcon);
-        
-        if (tvEnvironmentSummary == null) return;
-
-        if (environmentRiskCount == 0) {
-            tvEnvironmentSummary.setText("设备安全");
-            tvEnvironmentSummary.setTextColor(colorSemanticSafe());
-            if (tvEnvironmentDetail != null) {
-                tvEnvironmentDetail.setText("未检测到安全风险");
-            }
-            if (ivEnvironmentIcon != null) {
-                ivEnvironmentIcon.setImageResource(R.drawable.ic_safe);
-            }
-            appendLog("设备总览 = 正常设备");
-        } else {
-            tvEnvironmentSummary.setText("检测到风险");
-            tvEnvironmentSummary.setTextColor(colorSemanticDanger());
-            if (tvEnvironmentDetail != null) {
-                tvEnvironmentDetail.setText("发现 " + environmentRiskCount + " 个安全问题");
-            }
-            if (ivEnvironmentIcon != null) {
-                ivEnvironmentIcon.setImageResource(R.drawable.ic_risk);
-            }
-            appendLog("设备总览 = 风险设备");
-        }
-
-    }
-
-    private void checkRiskApps() {
-        TextView tvRiskApps = findViewById(R.id.tvRiskApps);
-        if (tvRiskApps == null) {
-            appendLog("风险应用: UI 缺失，已跳过");
-            return;
-        }
-
-        String[] targetPackages = {
-            "com.topjohnwu.magisk",
-            "io.github.vvb2060.magisk",
-            "io.github.vvb2060.magisk.lite",
-            "de.robv.android.xposed.installer",
-            "org.meowcat.edxposed.manager",
-            "org.lsposed.manager",
-            "top.canyie.dreamland.manager",
-            "me.weishu.exp",
-            "com.tsng.hidemyapplist",
-            "cn.geektang.privacyspace",
-            "moe.shizuku.redirectstorage",
-            "org.lsposed.lspatch",
-            "org.lsposed.patch",
-            "com.solohsu.android.edxp.manager",
-            "io.github.whale.manager",
-            "com.github.kr328.clash",
-            "com.github.kr328.riru",
-            "io.github.riyukichi.hidemyroot",
-            "com.github.tyty19728887777.android.systemless",
-            "com.android.vending.billing.InAppBillingService.COIN",
-            "com.dimonvideo.luckypatcher",
-            "com.chelpus.luckypatcher",
-            "com.github.kyuubiran.ezxhelper",
-            "com.sukisu.ultra"
-        };
-
-        PackageManager pm = getPackageManager();
-        List<String> foundApps = new ArrayList<>();
-        
-        for (String pkg : targetPackages) {
-            try {
-                pm.getPackageInfo(pkg, 0);
-                foundApps.add(pkg);
-            } catch (PackageManager.NameNotFoundException e) {
-                // 未安装该应用，跳过
-            }
-        }
-
-        if (foundApps.isEmpty()) {
-            riskAppsDetectionPoint = 0;
-            tvRiskApps.setVisibility(View.GONE);
-            appendLog("风险应用: 未发现");
-        } else {
-            riskAppsDetectionPoint = 1;
-            tvRiskApps.setVisibility(View.VISIBLE);
-            StringBuilder sb = new StringBuilder("发现以下风险应用：\n");
-            for (String app : foundApps) {
-                sb.append("- ").append(app).append("\n");
-            }
-            tvRiskApps.setText(sb.toString().trim());
-            styleInlineRiskItem(tvRiskApps);
-            appendLog("风险应用: 发现 " + foundApps.size() + " 项");
-            for (String app : foundApps) {
-                appendLog("风险应用项 = " + app);
-            }
-        }
-    }
-
-    private String getSELinuxStatus() {
-        return SelinuxStatusReader.getStatusString();
-    }
-
-    private String getBootloaderStatus() {
-        // 优先读取 /proc/cmdline (内核启动参数，更底层，较难被纯 Java 层 Hook)
-        try (BufferedReader reader = new BufferedReader(new FileReader("/proc/cmdline"))) {
-            String cmdline = reader.readLine();
-            if (cmdline != null) {
-                if (cmdline.contains("androidboot.flash.locked=0") || 
-                    cmdline.contains("androidboot.vbmeta.device_state=unlocked") ||
-                    cmdline.contains("androidboot.verifiedbootstate=orange") ||
-                    cmdline.contains("androidboot.verifiedbootstate=yellow")) {
-                    return "已解锁 (底层 cmdline 检测)";
-                }
-            }
-        } catch (Exception e) {
-            // ignore
-        }
-
-        // 读取 /proc/bootconfig (Android 12+ 引入，用于替代部分 cmdline 功能)
-        try (BufferedReader reader = new BufferedReader(new FileReader("/proc/bootconfig"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.contains("androidboot.flash.locked = \"0\"") || 
-                    line.contains("androidboot.vbmeta.device_state = \"unlocked\"") ||
-                    line.contains("androidboot.verifiedbootstate = \"orange\"") ||
-                    line.contains("androidboot.verifiedbootstate = \"yellow\"")) {
-                    return "已解锁 (底层 bootconfig 检测)";
-                }
-            }
-        } catch (Exception e) {
-            // ignore
-        }
-
-        // Fallback 到系统属性 SystemProperties (容易被 resetprop 等工具修改)
+    /** 读取当前应用版本号（settings 页「当前版本」展示用）。 */
+    private String getAppVersionName() {
         try {
-            Class<?> c = Class.forName("android.os.SystemProperties");
-            Method get = c.getMethod("get", String.class, String.class);
-            
-            // 尝试读取 ro.boot.flash.locked 属性
-            String flashLocked = (String) get.invoke(null, "ro.boot.flash.locked", "");
-            if ("0".equals(flashLocked)) return "已解锁 (属性: Unlocked)";
-            if ("1".equals(flashLocked)) return "已上锁 (属性: Locked)";
-            
-            // 尝试读取 verifiedbootstate 属性
-            String verifiedBootState = (String) get.invoke(null, "ro.boot.verifiedbootstate", "");
-            if ("orange".equals(verifiedBootState) || "yellow".equals(verifiedBootState)) {
-                return "已解锁 (属性: " + verifiedBootState + " state)";
-            }
-            if ("green".equals(verifiedBootState)) {
-                return "已上锁 (属性: green state)";
-            }
-            
-            // 尝试读取 vbmeta.device_state
-            String vbmetaState = (String) get.invoke(null, "ro.boot.vbmeta.device_state", "");
-            if ("unlocked".equals(vbmetaState)) return "已解锁 (属性: vbmeta unlocked)";
-            if ("locked".equals(vbmetaState)) return "已上锁 (属性: vbmeta locked)";
-
-            return "未知 (无法读取状态)";
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception e) {
-            return "未知 (获取异常)";
+            return "未知版本";
         }
     }
 
-    private String buildSelinuxDiagnostics(String finalStatus) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("SELinux诊断开始");
-        String enforceVal = SelinuxStatusReader.readEnforceNodeOrNull();
-        String getenforceVal = SelinuxStatusReader.readEnforceViaGetenforce();
-        Boolean enabled = SelinuxStatusReader.readEnabledFromStatusNode();
-        String apiVal = SelinuxStatusReader.readApiModeOrNull();
-        sb.append(" | enforce=").append(String.valueOf(enforceVal));
-        sb.append(" | getenforce=").append(String.valueOf(getenforceVal));
-        sb.append(" | status=").append(String.valueOf(enabled));
-        sb.append(" | api=").append(String.valueOf(apiVal));
-        sb.append(" | final=").append(finalStatus);
-        return sb.toString();
-    }
 
     private String getBootSlot() {
         try {

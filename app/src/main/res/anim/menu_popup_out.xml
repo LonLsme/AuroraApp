@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  顶栏菜单弹出的退出动画：淡出 + 向锚点角落轻微缩小（进入动画的逆过程）。
+  时长刻意比进入短：消失过程快一点才不会拖沓。
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_linear_in">
+
+    <alpha
+        android:duration="120"
+        android:fromAlpha="1.0"
+        android:toAlpha="0.0" />
+
+    <scale
+        android:duration="120"
+        android:fromXScale="1.0"
+        android:fromYScale="1.0"
+        android:pivotX="100%"
+        android:pivotY="0%"
+        android:toXScale="0.94"
+        android:toYScale="0.94" />
+</set>

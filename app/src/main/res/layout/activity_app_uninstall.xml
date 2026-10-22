@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「应用卸载冻结」页（竖屏，独立 Activity，无顶栏，Miuix 风格）。
+
+  操作对象是<b>连着的那台设备</b>，不是本机 —— 命令全部经内置 adb 打到目标机：
+    · 列应用   adb shell pm list packages
+    · 卸载     pm uninstall（限主用户 user 0）
+    · 冻结     pm disable-user（限主用户 user 0）
+    · 解冻     pm enable
+  这些都是 adb shell 权限内的操作，目标机<b>不需要 root</b>。
+  （命令原文见 AppCommands：XML 注释里不能出现连续两个短横线，故此处不写参数原文。）
+
+  版式（自上而下，顺序固定）：
+    · 顶部区域：左上角返回箭头 + 右上角设备状态下拉
+    · 大标题「应用卸载冻结」
+    · 保存日志 / 终止
+    · 小标题「设备应用」+ 刷新列表 / 应用范围切换 + 搜索框 + 应用列表（固定高度，框内滚动）
+    · 小标题「操作」+ 卸载 / 冻结 / 解冻
+    · 小标题「输出」+ 输出区
+
+  文案与按钮层级沿用「ADB Sideload」页那套（保存日志 / 终止 为普通按钮，
+  三个执行类操作用普通按钮、不抢主色 —— 这一页没有唯一的「主操作」）。
+
+  外层 NestedScrollView 开 overScrollMode="always"：内容不满一屏时也保留上下回弹。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollAppUninstall"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:overScrollMode="always"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/ios_screen_edge"
+        android:paddingTop="6dp"
+        android:paddingBottom="20dp">
+
+        <!-- ───────── 顶部区域：返回箭头 + 设备状态下拉 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnFlashBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="-10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="返回"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/ios_text_primary" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                android:id="@+id/btnAppUninstallDevicePill"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_flash_device_pill"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="7dp">
+
+                <TextView
+                    android:id="@+id/tvFlashDeviceState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxWidth="170dp"
+                    android:singleLine="true"
+                    android:text="未连接设备"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="13sp"
+                    tools:text="ADB 已连接 · 45850c2f" />
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="展开设备状态"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_chevron_down"
+                    android:tint="@color/ios_text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ───────── 大标题 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="应用卸载冻结"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashSaveLog"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="保存日志" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashStop"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="终止" />
+        </LinearLayout>
+
+        <!-- ───────── 小标题：设备应用 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:text="设备应用"
+            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+        <!-- 刷新列表 / 应用范围切换 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAppListRefresh"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="刷新列表" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAppListScope"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="第三方应用" />
+        </LinearLayout>
+
+        <!-- 搜索框：按包名过滤 -->
+        <EditText
+            android:id="@+id/etAppFilter"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/miuix_button_height"
+            android:layout_marginTop="@dimen/miuix_button_gap"
+            android:background="@drawable/bg_flash_input"
+            android:fontFamily="sans-serif"
+            android:gravity="center_vertical"
+            android:hint="按包名筛选"
+            android:importantForAutofill="no"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingHorizontal="14dp"
+            android:singleLine="true"
+            android:textColor="@color/ios_text_primary"
+            android:textColorHint="@color/ios_text_secondary"
+            android:textSize="13sp" />
+
+        <!--
+          应用列表：固定高度、框内自己滚动（滚到边界后手势交给外层）。
+          列表项是「勾选框 + 包名」，整行可点即切换勾选。
+        -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvDeviceApps"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/device_app_list_height"
+            android:layout_marginTop="@dimen/miuix_button_gap"
+            android:background="@drawable/bg_console"
+            android:clipToPadding="false"
+            android:paddingVertical="4dp"
+            android:scrollbars="vertical"
+            tools:listitem="@layout/item_device_app" />
+
+        <!-- ───────── 小标题：操作（右侧带已选计数） ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:text="操作"
+                android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+            <!-- 已选数量：只反映实时状态，不放提示文案 -->
+            <TextView
+                android:id="@+id/tvAppSelectionSummary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="已选 0 项"
+                android:textAppearance="@style/Widget.IOS.SectionLabel" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAppUninstall"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="卸载" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAppFreeze"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="冻结" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAppUnfreeze"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="解冻" />
+        </LinearLayout>
+
+        <!-- ───────── 小标题：输出 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:text="输出"
+            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+        <!--
+          输出区随内容增高、由外层滚动（所以不给它 ScrollingMovementMethod，
+          否则竖向手势被它吃掉，页面就不再回弹）。初始文字是占位引导，
+          第一次输出时由基类自动清掉。
+        -->
+        <TextView
+            android:id="@+id/tvFlashConsole"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_console"
+            android:fontFamily="monospace"
+            android:minHeight="@dimen/miuix_console_height"
+            android:padding="14dp"
+            android:text="点击「刷新列表」读取设备上的应用"
+            android:textColor="@color/ios_text_secondary"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.Aurora" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/ios_accent</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorSurface">@color/ios_card</item>
+        <item name="colorPrimary">?attr/auroraAccent</item>
+        <item name="colorOnPrimary">?attr/auroraOnAccent</item>
+        <item name="auroraAccent">@color/ios_accent</item>
+        <item name="auroraOnAccent">@color/white</item>
+        <item name="auroraCard">@color/ios_card</item>
+        <item name="auroraBackgroundElevated">@color/ios_background_elevated</item>
+        <item name="auroraFill">@color/ios_fill_tertiary</item>
+        <item name="colorSurface">?attr/auroraCard</item>
         <item name="android:colorBackground">@color/ios_background_grouped</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -26,7 +31,7 @@
     </style>
 
     <style name="Widget.IOS.SubsectionTitle" parent="TextAppearance.Material3.TitleSmall">
-        <item name="android:textColor">@color/ios_accent</item>
+        <item name="android:textColor">?attr/auroraAccent</item>
         <item name="android:textSize">15sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
@@ -38,6 +43,21 @@
 
     <style name="Widget.Aurora.ToolbarTitle" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textSize">17sp</item>
+    </style>
+
+    <!-- 三段式分段按钮（主题页：色彩模式 / 字号）。选中态由代码 setBackgroundTintList 决定 -->
+    <style name="Widget.Aurora.SegmentButton" parent="Widget.Material3.Button">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">38dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:padding">0dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="cornerRadius">10dp</item>
     </style>
 
     <style name="Widget.Aurora.Switch" parent="Widget.AppCompat.CompoundButton.Switch">
@@ -58,6 +78,31 @@
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
+    <!--
+      设置页的 Miuix preference 三件套。字号与字重逐条对应 miuix 源码：
+        SmallTitle  → MiuixTheme.textStyles.subtitle   = 14sp / Bold
+        BasicComponent 标题 → textStyles.headline1      = 17sp / Medium
+        BasicComponent 摘要 → textStyles.body2          = 14sp
+      颜色沿用 Aurora 语义色，以便主题覆盖层（含 AMOLED）继续生效。
+    -->
+    <style name="Widget.Aurora.Miuix.GroupTitle" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textColor">@color/ios_text_secondary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Widget.Aurora.Miuix.PrefTitle" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/ios_text_primary</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="Widget.Aurora.Miuix.PrefSummary" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/ios_text_secondary</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
     <!-- code.html 快捷重启标签 text-slate-600 -->
     <style name="Widget.IOS.ExploreQuickLabel" parent="TextAppearance.Material3.LabelSmall">
         <item name="android:textColor">@color/explore_slate_600</item>
@@ -65,7 +110,80 @@
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
+    <!-- ───────── Miuix 风格（刷机子页面：欧加真 / 设备重启 / 刷入 KernelSU） ─────────
+         Miuix 是小米 HyperOS 的组件库观感：大圆角、浅填充按钮、零阴影卡片。
+         这里全部用项目自己的 aurora* 属性表达，而不是直接引 @color/ ——
+         只有 attr 才会被「强调色覆盖层」与「AMOLED 色彩模式」改写，
+         写成 @color/ 的资源在运行时改不动。                                     -->
+    <style name="Widget.Aurora.Miuix.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardBackgroundColor">?attr/auroraCard</item>
+        <item name="cardCornerRadius">@dimen/miuix_card_corner</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">0dp</item>
+    </style>
+
+    <!-- 次要按钮：浅填充 + 主色文字（Miuix 的次级动作都是这个形态） -->
+    <style name="Widget.Aurora.Miuix.Button" parent="Widget.Material3.Button">
+        <item name="backgroundTint">?attr/auroraFill</item>
+        <item name="android:textColor">?attr/auroraAccent</item>
+        <!--
+          1dp 细描边是必要的，不是装饰：AMOLED 色彩模式下 auroraCard 被覆盖成纯黑、
+          auroraFill 被覆盖成 #0D0D0D，而页面背景本身也是纯黑 —— 没有描边时
+          「页面上直接放的整行按钮」会与背景糊成一片。描边色不在覆盖层改写范围内，
+          三种模式下都稳定可辨。
+        -->
+        <item name="strokeColor">@color/ios_separator</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="cornerRadius">@dimen/miuix_button_corner</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minHeight">@dimen/miuix_button_height</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:elevation">0dp</item>
+        <item name="rippleColor">?attr/auroraAccent</item>
+    </style>
+
+    <!-- 主按钮：主色底 + onAccent 文字 -->
+    <style name="Widget.Aurora.Miuix.Button.Primary" parent="Widget.Aurora.Miuix.Button">
+        <item name="backgroundTint">?attr/auroraAccent</item>
+        <item name="android:textColor">?attr/auroraOnAccent</item>
+    </style>
+
     <style name="ThemeOverlay.Aurora.ToolbarPopup" parent="ThemeOverlay.Material3.Light">
         <item name="android:popupBackground">@drawable/bg_toolbar_popup_menu</item>
+        <!--
+          菜单弹出/收起的过渡动画。appcompat 的 MenuPopupHelper 会从 popupStyleRes
+          里读 android:popupAnimationStyle（否则退回系统默认的 Animation.AppCompat.PopupMenu，
+          在部分 ROM 上就是「啪」地出现，没有任何过渡）。
+        -->
+        <item name="android:popupAnimationStyle">@style/Animation.Aurora.PopupMenu</item>
     </style>
+
+    <!-- 顶栏菜单的窗口动画：进入 淡入+右上角放大，退出 淡出+轻微缩小 -->
+    <style name="Animation.Aurora.PopupMenu" parent="@android:style/Animation">
+        <item name="android:windowEnterAnimation">@anim/menu_popup_in</item>
+        <item name="android:windowExitAnimation">@anim/menu_popup_out</item>
+    </style>
+
+    <!--
+      AMOLED 纯黑覆盖层：色彩模式选「深色（纯黑）」时叠加。
+      只改表面类属性——纯黑下卡片/工具栏与背景融为一体，是 AMOLED 省电且无边框观感的关键。
+    -->
+    <style name="ThemeOverlay.Aurora.Amoled" parent="">
+        <item name="auroraCard">#FF000000</item>
+        <item name="auroraBackgroundElevated">#FF000000</item>
+        <item name="auroraFill">#FF0D0D0D</item>
+        <item name="colorSurface">#FF000000</item>
+        <item name="colorSurfaceContainer">#FF000000</item>
+        <item name="colorSurfaceContainerHigh">#FF0D0D0D</item>
+        <item name="colorSurfaceContainerHighest">#FF121212</item>
+        <item name="android:colorBackground">#FF000000</item>
+    </style>
+
+    <!--
+      强调色覆盖层（ThemeOverlay.Aurora.Accent.<强调色索引>_<调色板风格>）由
+      AuroraPalette 生成，见 res/values/aurora_accent_overlays.xml 与 values-night/ 同名文件。
+    -->
 </resources>

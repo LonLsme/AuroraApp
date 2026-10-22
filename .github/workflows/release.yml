@@ -1,0 +1,166 @@
+# 打 tag 即出包：v1.2.0 → 校验版本号 → 构建 → 计算摘要 → 附到草稿 Release。
+#
+# 为什么单独一个 workflow 而不是塞进 build.yml：
+#   build.yml 管「每次 push / PR 能不能编过、测试过不过」；
+#   本文件管「发版」。两者的触发条件、权限、产物完全不同，混在一起会让
+#   普通 PR 也带上 contents:write 权限 —— 那是安全隐患。
+#
+# 发布流程：改 versionCode/versionName 与 CHANGELOG.md → git tag v1.2.0 → git push --tags
+# 产物先落成 **draft**（草稿），在 GitHub 上点一次 Publish release 才对外可见。
+# 多这一步是故意的：它保证「tag 打错了 / 包里是坏的」时还没人能看到。
+# 另外检查更新读的是 releases/latest，草稿与预发布不会被算进去，符合预期。
+#
+# 客户端会读两种东西，两者都由本文件产出，改动时要一起考虑：
+#   1. asset 的 digest 字段 —— 由 GitHub 在接收上传时自动算出，优先级最高；
+#   2. 正文里的「SHA-256：<64 位>」与 Aurora-vX.apk.sha256 侧车资产 —— 前两级兜底。
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # tag 与 versionName 不一致是发版最容易犯的错：包里写着 1.1.0，Release 标着 v1.2.0，
+      # 装到手机上「检查更新」永远认为已是最新。这里直接让构建失败，别等到用户发现。
+      - name: Verify tag matches versionName
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME#v}"
+          VN=$(grep -oE 'versionName = "[^"]+"' app/build.gradle.kts | head -1 \
+               | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "tag=$GITHUB_REF_NAME versionName=$VN"
+          if [ "$TAG" != "$VN" ]; then
+            echo "::error::tag $GITHUB_REF_NAME 与 app/build.gradle.kts 的 versionName $VN 不一致"
+            echo "::error::请先把 versionCode / versionName 改成与 tag 一致，再重新打 tag"
+            exit 1
+          fi
+
+      # 签名是可选的：没配 secret 时产物是未签名 APK，构建不会红。
+      # 注意 secrets 上下文不能直接写在 if 里，所以先落到 env 再判断。
+      - name: Prepare signing config
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          set -e
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::warning::未配置 SIGNING_KEYSTORE_BASE64，本次产出为未签名 APK（无法直接安装）"
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/aurora-release.jks"
+          cat > keystore.properties <<EOF
+          storeFile=$RUNNER_TEMP/aurora-release.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          echo "签名配置已写入 keystore.properties"
+
+      - name: Run unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      # 产物改成带版本号的文件名：下载下来一眼知道是哪个版本，
+      # 也避免多个 tag 的 asset 全叫 app-release.apk。
+      # 同时算出 SHA-256 并写成侧车文件 —— App 内自动更新靠它判断包有没有被改过。
+      - name: Rename artifact and compute digest
+        id: artifact
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          SRC=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          OUT="Aurora-${TAG}.apk"
+          SUM_FILE="Aurora-${TAG}.apk.sha256"
+          cp "$SRC" "$OUT"
+          SUM=$(sha256sum "$OUT" | cut -d' ' -f1)
+          # sha256sum 的标准格式：<摘要>  <文件名>，部分工具直接喂这个文件也能校验
+          echo "$SUM  $OUT" > "$SUM_FILE"
+          SIZE=$(stat -c %s "$OUT")
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "sum_file=$SUM_FILE" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SUM" >> "$GITHUB_OUTPUT"
+          echo "构建产物：$OUT（$SIZE 字节）"
+          echo "SHA-256：$SUM"
+
+      # 装了签名再验一次，防止 keystore 配错却没人发现（装到手机上才发现「应用未安装」）
+      - name: Verify APK signature
+        run: |
+          set -e
+          if [ ! -f keystore.properties ]; then
+            echo "未配置签名，跳过签名校验"
+            exit 0
+          fi
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs "${{ steps.artifact.outputs.path }}" | head -5
+
+      # 正文由 CHANGELOG 自动生成：手贴容易漏版本、也容易把上一版的内容贴进来。
+      # 找不到对应版本时留一句提示，不阻断发布。
+      - name: Compose release notes
+        id: notes
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          {
+            echo "## 安装包"
+            echo ""
+            echo "- \`${{ steps.artifact.outputs.path }}\`"
+            # 这一行的格式被 App 的 UpdateChecker.extractSha256 依赖，改格式会让自动更新退化成手动下载
+            echo "- SHA-256：\`${{ steps.artifact.outputs.sha256 }}\`"
+            echo ""
+            echo "## 变更"
+            echo ""
+            awk -v ver="$VERSION" '
+              $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
+              flag && /^## \[/ { exit }
+              flag { print }
+            ' CHANGELOG.md > "$RUNNER_TEMP/section.md" || true
+            if [ -s "$RUNNER_TEMP/section.md" ]; then
+              cat "$RUNNER_TEMP/section.md"
+            else
+              echo "本版在 CHANGELOG.md 里没有对应条目（\`## [$VERSION]\`），请手动补充。"
+            fi
+            echo ""
+            echo "---"
+            echo ""
+            echo "> App 内的「检查更新 → 立即更新」会读取上面的 SHA-256 校验安装包。"
+            echo "> 请连同 \`${{ steps.artifact.outputs.sum_file }}\` 一起发布，不要只发 APK。"
+          } > release-notes.md
+          echo "--- 生成的 Release 正文 ---"
+          cat release-notes.md
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          draft: true
+          # tag 里带连字符（v1.2.0-beta.1）按预发布处理：GitHub 的 releases/latest
+          # 会自动跳过预发布，App 端也就不会把 beta 当成正式版推给所有人
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body_path: release-notes.md
+          files: |
+            ${{ steps.artifact.outputs.path }}
+            ${{ steps.artifact.outputs.sum_file }}

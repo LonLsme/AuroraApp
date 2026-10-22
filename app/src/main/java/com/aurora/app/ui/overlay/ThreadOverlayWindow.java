@@ -45,12 +45,12 @@ public final class ThreadOverlayWindow extends OverlayWindow {
         LinearLayout col = new LinearLayout(context);
         col.setOrientation(LinearLayout.VERTICAL);
         valueView = new TextView(context);
-        valueView.setTextColor(OverlayWindowStyle.COLOR_ACCENT_DARK);
+        valueView.setTextColor(OverlayWindowStyle.MONITOR_TEXT);
         valueView.setTextSize(20);
         valueView.setTypeface(Typeface.DEFAULT_BOLD);
         valueView.setText("--");
         col.addView(valueView);
-        col.addView(OverlayWindowStyle.createDarkTitleView(context, "线程"));
+        col.addView(OverlayWindowStyle.createMonitorTitleView(context, "线程"));
         return col;
     }
 
@@ -58,17 +58,17 @@ public final class ThreadOverlayWindow extends OverlayWindow {
     protected View buildExpandedView() {
         LinearLayout col = new LinearLayout(context);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.addView(OverlayWindowStyle.createDarkTitleView(context, "线程"));
+        col.addView(OverlayWindowStyle.createMonitorTitleView(context, "线程"));
 
-        totalRow = OverlayWindowStyle.createDarkBodyView(context);
+        totalRow = OverlayWindowStyle.createMonitorBodyView(context);
         totalRow.setText("--");
         totalRow.setTextSize(14);
         totalRow.setTypeface(Typeface.DEFAULT_BOLD);
         col.addView(totalRow);
 
-        col.addView(OverlayWindowStyle.createDarkTitleView(context, "线程数 TOP"));
+        col.addView(OverlayWindowStyle.createMonitorTitleView(context, "线程数 TOP"));
         for (int i = 0; i < TOP_COUNT; i++) {
-            TextView row = OverlayWindowStyle.createDarkBodyView(context);
+            TextView row = OverlayWindowStyle.createMonitorBodyView(context);
             row.setText("--");
             row.setTypeface(Typeface.MONOSPACE);
             row.setTextSize(11);

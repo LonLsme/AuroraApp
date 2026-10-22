@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「刷写分区」页（竖屏，独立 Activity，无顶栏，Miuix 风格）。
+
+  版式（自上而下，顺序固定）：
+    · 顶部区域：左上角返回箭头 + 右上角设备状态下拉（胶囊，点开是 10 个槽位）
+    · 大标题「刷写分区」（加粗大字）
+    · 第一行：保存日志 / 终止
+    · 第二行：获取设备槽位 / 选择镜像 (.img)
+    · 第三行：切换AB分区 / 刷入 boot
+    · 第四行：刷入 dtbo / 刷入 recovery
+    · 小标题「自定义分区刷入」+ 分区名输入框（占位「分区名」）+ 刷入
+    · 小标题「输出」+ 日志输出区（初始文案「选择操作」）
+
+  文案全部取自既有工具的字符串资源：
+    fb_get_slot「获取设备槽位」/ fb_select_img「选择镜像 (.img)」/ fb_switch_ab「切换AB分区」
+    fb_flash_boot「刷入 boot」/ fb_flash_dtbo「刷入 dtbo」/ fb_flash_recovery「刷入 recovery」
+    fb_custom_partition「自定义分区刷入」/ fb_partition_name「分区名」/ fb_placeholder「选择操作」
+  按钮的行列与顺序也按参考页 {@code s80.java}（同一行两个按钮、之后是自定义分区一整行）。
+
+  外层是 NestedScrollView 且 overScrollMode="always"：内容不满一屏时也保留上下回弹。
+  日志区刻意用 wrap_content + minHeight（不用 weight 占满）—— 这样日志变长时页面会跟着变高，
+  外层才真的滚得动；若用 weight 撑满一屏则滚动范围恒为 0，只剩回弹没有滚动。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollPartition"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:overScrollMode="always"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/ios_screen_edge"
+        android:paddingTop="6dp"
+        android:paddingBottom="20dp">
+
+        <!-- ───────── 顶部区域：返回箭头 + 设备状态下拉 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnFlashBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="-10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="返回"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/ios_text_primary" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!--
+              下拉胶囊：整体可点（点开弹 10 个槽位列表），文字由页面按探测结果刷新。
+              id 仍叫 tvFlashDeviceState —— 基类据此绑定设备状态文字。
+            -->
+            <LinearLayout
+                android:id="@+id/btnPartitionDevicePill"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_flash_device_pill"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="7dp">
+
+                <TextView
+                    android:id="@+id/tvFlashDeviceState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxWidth="170dp"
+                    android:singleLine="true"
+                    android:text="未连接设备"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="13sp"
+                    tools:text="Fastboot 已连接 · 45850c2f" />
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="展开设备状态"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_chevron_down"
+                    android:tint="@color/ios_text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ───────── 大标题 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="刷写分区"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashSaveLog"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="保存日志" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashStop"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="终止" />
+        </LinearLayout>
+
+        <!-- ───────── 第二行：获取设备槽位 / 选择镜像 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/miuix_button_gap"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPartitionGetSlot"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="获取设备槽位" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPartitionPickImage"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="选择镜像 (.img)" />
+        </LinearLayout>
+
+        <!-- ───────── 第三行：切换AB分区 / 刷入 boot ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/miuix_button_gap"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPartitionSwitchSlot"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="切换AB分区" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPartitionFlashBoot"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="刷入 boot" />
+        </LinearLayout>
+
+        <!-- ───────── 第四行：刷入 dtbo / 刷入 recovery ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/miuix_button_gap"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPartitionFlashDtbo"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="刷入 dtbo" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPartitionFlashRecovery"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="刷入 recovery" />
+        </LinearLayout>
+
+        <!-- ───────── 小标题：自定义分区刷入 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="4dp"
+            android:text="自定义分区刷入"
+            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+        <!-- 一行：分区名输入框 + 刷入 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/etPartitionName"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:background="@drawable/bg_flash_input"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:hint="分区名"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:maxLines="1"
+                android:paddingHorizontal="14dp"
+                android:singleLine="true"
+                android:textColor="@color/ios_text_primary"
+                android:textColorHint="@color/ios_text_secondary"
+                android:textSize="13sp"
+                tools:text="init_boot" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPartitionFlashCustom"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:paddingHorizontal="20dp"
+                android:text="刷入" />
+        </LinearLayout>
+
+        <!-- ───────── 小标题：输出 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="4dp"
+            android:text="输出"
+            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+        <!--
+          日志区随内容增长、起步 240dp；由外层 NestedScrollView 负责滚动，
+          所以页面里不给它设 ScrollingMovementMethod（否则手势被它吃掉，外层就不再回弹）。
+        -->
+        <TextView
+            android:id="@+id/tvFlashConsole"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_console"
+            android:fontFamily="monospace"
+            android:minHeight="@dimen/miuix_console_height"
+            android:padding="14dp"
+            android:text="选择操作"
+            android:textColor="@color/ios_text_secondary"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「免root激活」页的列表项：一张卡片 = 一个可激活的目标。
+
+  卡片样式沿用刷机页那套（16dp 圆角、零阴影、?attr/auroraCard）。
+  唯一多出来的是 1dp 描边 —— 与 Widget.Aurora.Miuix.Button 同一个理由：
+  AMOLED 色彩模式下 auroraCard 被覆盖成纯黑，正好等于页面背景色，
+  没有描边时卡片边界会完全消失（既有卡片还没补，属于已知技术债）。
+  描边用的是不在覆盖层改写范围内的 @color/ios_separator，三种模式下都稳定可辨。
+-->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/cardActivateTarget"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/miuix_button_gap"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardBackgroundColor="?attr/auroraCard"
+    app:cardCornerRadius="@dimen/miuix_card_corner"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/ios_separator"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="14dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvActivateTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="@color/ios_text_primary"
+                android:textSize="16sp"
+                tools:text="Shizuku" />
+
+            <TextView
+                android:id="@+id/tvActivateDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:textColor="@color/ios_text_secondary"
+                android:textSize="13sp"
+                tools:text="免 root 启动 Shizuku 服务" />
+        </LinearLayout>
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_chevron_right"
+            android:tint="@color/ios_text_secondary" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -15,4 +15,38 @@
     <dimen name="floating_nav_card_corner">32dp</dimen>
     <dimen name="floating_nav_item_width">76dp</dimen>
     <dimen name="floating_nav_item_height">56dp</dimen>
+    <!-- 刷机页：7 张功能卡片统一高度与等间距（「统一宽高」由这两条保证） -->
+    <dimen name="flash_card_height">76dp</dimen>
+    <dimen name="flash_card_gap">12dp</dimen>
+
+    <!-- 刷机子页面（Miuix 风格）：设备重启 / 刷入 KernelSU / 欧加真线刷 -->
+    <dimen name="miuix_card_corner">16dp</dimen>
+    <dimen name="miuix_button_corner">16dp</dimen>
+    <dimen name="miuix_button_height">48dp</dimen>
+    <!-- 按钮行间距（同一板块内两行之间） -->
+    <dimen name="miuix_button_gap">10dp</dimen>
+    <!-- 底部输出框高度。整页可滚动，这个高度是「内容区之外固定留出的一块」 -->
+    <dimen name="miuix_console_height">240dp</dimen>
+
+    <!--
+      设置页（Miuix preference 范式，参数逐条取自 compose-miuix-ui/miuix 源码）：
+        CardDefaults.CornerRadius          = 16.dp  → 复用上面的 miuix_card_corner
+        SmallTitleDefaults.InsideMargin    = PaddingValues(28.dp, 8.dp)
+        BasicComponentDefaults.InsideMargin= PaddingValues(16.dp)
+        BasicComponent 的 heightIn(min)    = 56.dp
+      卡片水平外边距 12dp 来自示例的 Modifier.padding(12.dp)。
+    -->
+    <dimen name="miuix_pref_card_margin">12dp</dimen>
+    <dimen name="miuix_group_title_inset">28dp</dimen>
+    <dimen name="miuix_group_title_gap">8dp</dimen>
+    <dimen name="miuix_pref_row_min_height">56dp</dimen>
+    <dimen name="miuix_pref_row_padding">16dp</dimen>
+
+    <!--
+      「应用工具」三页（应用卸载冻结 / 免root激活 / 应用安装）：设备侧应用列表高度。
+      给的是固定高度而不是 wrap_content —— 目标机上装几百个应用是常事，
+      让列表随内容撑开会把整页拉到极长、而且每项都要测量。固定高度后列表自己在框内滚动，
+      滚到边界再把手势交给外层（NestedScrollView），弹性与滚动都不丢。
+    -->
+    <dimen name="device_app_list_height">240dp</dimen>
 </resources>

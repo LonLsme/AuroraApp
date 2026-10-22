@@ -9,7 +9,7 @@
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/ios_background_elevated"
+        android:background="?attr/auroraBackgroundElevated"
         android:fitsSystemWindows="true"
         app:elevation="0dp">
 
@@ -44,7 +44,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/ios_card"
+                app:cardBackgroundColor="?attr/auroraCard"
                 app:cardCornerRadius="@dimen/ios_card_corner"
                 app:cardElevation="0dp"
                 app:strokeWidth="0dp">
@@ -78,7 +78,7 @@
                         android:text="切换模式"
                         android:textAllCaps="false"
                         android:textColor="@color/ios_text_primary"
-                        app:backgroundTint="@color/ios_background_elevated"
+                        app:backgroundTint="?attr/auroraBackgroundElevated"
                         app:cornerRadius="14dp"
                         app:strokeColor="@color/ios_separator"
                         app:strokeWidth="1dp" />
@@ -89,7 +89,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/ios_section_gap"
-                app:cardBackgroundColor="@color/ios_card"
+                app:cardBackgroundColor="?attr/auroraCard"
                 app:cardCornerRadius="@dimen/ios_card_corner"
                 app:cardElevation="0dp"
                 app:strokeWidth="0dp">
@@ -147,7 +147,7 @@
                         android:text="保存开机自动切换设置"
                         android:textAllCaps="false"
                         android:textColor="@color/ios_text_primary"
-                        app:backgroundTint="@color/ios_background_elevated"
+                        app:backgroundTint="?attr/auroraBackgroundElevated"
                         app:cornerRadius="14dp"
                         app:strokeColor="@color/ios_separator"
                         app:strokeWidth="1dp" />

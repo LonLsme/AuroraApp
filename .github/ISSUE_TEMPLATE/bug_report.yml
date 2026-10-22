@@ -1,0 +1,128 @@
+name: Bug 报告
+description: 功能异常、闪退、界面错乱
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。Aurora 大量功能依赖 Root / 刷机通道 / 厂商 ROM 差异，
+        **缺少设备和系统信息的问题基本无法定位**，请尽量填全。
+
+        提交前请先搜一下已有 issue，避免重复。
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Aurora 版本
+      description: 设置 → 关于 → 版本信息里能看到（版本名称 + 版本码）
+      placeholder: "1.1.0 (2)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-source
+    attributes:
+      label: 安装来源
+      options:
+        - 自行编译（./gradlew assembleDebug / assembleRelease）
+        - 官方发布页下载的 APK
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: 设备型号
+      placeholder: "例如：Xiaomi 15 / SM-S9280 / PJZ110"
+    validations:
+      required: true
+
+  - type: input
+    id: rom
+    attributes:
+      label: 系统版本
+      description: 设置页「设备概览」里的 Android 版本 + 系统版本，或「ROM 名称 + 版本号」
+      placeholder: "例如：Android 16 / HyperOS 3.0.2.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: root
+    attributes:
+      label: Root 方案
+      description: 无 Root 时部分功能本就不生效，请如实选择
+      options:
+        - KernelSU
+        - KernelSU Next
+        - APatch
+        - Magisk
+        - 无 Root
+        - 不确定
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 出问题的模块
+      options:
+        - 设备页（概览 / CPU 仪表盘）
+        - 刷机页（线刷 / QDL / KernelSU / Sideload / 执行命令）
+        - 玩机页（插件 / SELinux / 分区 / 模块 / 应用管理 / 屏幕）
+        - 监视悬浮窗
+        - 帧率记录
+        - 主题与外观
+        - 关于 / 设置
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 越具体越好，一步一步写
+      placeholder: |
+        1. 进入「刷机」页
+        2. 选择「高通 QDL」
+        3. 点「识别分区表」
+        4. 输出区出现 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 截图
+      description: |
+        闪退请附 `adb logcat -b crash -d` 的输出；刷机相关问题请附页面输出区的完整内容。
+        截图请覆盖你出问题时的那个界面。
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 确认
+      options:
+        - label: 我已搜索过已有 issue，没有找到相同问题
+          required: true
+        - label: 我使用的是最新版本，或已确认该问题在最新版本仍存在
+          required: true

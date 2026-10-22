@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「最近命令」里的一行。
+  一行就是一条历史命令：等宽字体、最多两行、超出省略；点一下回填输入框，长按删除。
+  行与行之间不放 Divider —— 靠最小高与内边距分隔（Miuix 卡片内不放分割线的惯例）。
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/tvExecHistoryItem"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:ellipsize="end"
+    android:focusable="true"
+    android:fontFamily="monospace"
+    android:gravity="center_vertical"
+    android:maxLines="2"
+    android:minHeight="48dp"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="10dp"
+    android:textColor="@color/ios_text_primary"
+    android:textSize="12sp"
+    tools:text="shell pm list packages" />

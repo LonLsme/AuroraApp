@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 顶部引脚 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M9,4 h1.6 v2.5 h-1.6 z M11.2,4 h1.6 v2.5 h-1.6 z M13.4,4 h1.6 v2.5 h-1.6 z" />
+    <!-- 底部引脚 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M9,17.5 h1.6 v2.5 h-1.6 z M11.2,17.5 h1.6 v2.5 h-1.6 z M13.4,17.5 h1.6 v2.5 h-1.6 z" />
+    <!-- 左侧引脚 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M4,9 h2.5 v1.6 h-2.5 z M4,11.2 h2.5 v1.6 h-2.5 z M4,13.4 h2.5 v1.6 h-2.5 z" />
+    <!-- 右侧引脚 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M17.5,9 h2.5 v1.6 h-2.5 z M17.5,11.2 h2.5 v1.6 h-2.5 z M17.5,13.4 h2.5 v1.6 h-2.5 z" />
+    <!-- 芯片主体 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M8,6.5 h8 a1.5,1.5 0 0 1 1.5,1.5 v8 a1.5,1.5 0 0 1 -1.5,1.5 h-8 a1.5,1.5 0 0 1 -1.5,-1.5 v-8 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    <!-- 内核 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9.8,9.8 h4.4 v4.4 h-4.4 z" />
+</vector>

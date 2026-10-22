@@ -14,6 +14,8 @@
     <color name="ios_background_elevated">#FFFFFF</color>
     <color name="ios_text_primary">#000000</color>
     <color name="ios_text_secondary">#6C6C70</color>
+    <!-- 设置页行项图标底色（浅色为浅灰、深色见 values-night） -->
+    <color name="ios_fill_tertiary">#F2F2F7</color>
     <color name="ios_glass_surface">#B3FFFFFF</color>
     <color name="ios_glass_stroke">#33FFFFFF</color>
     <!-- stitch_fluent / Tailwind (code.html) -->
@@ -81,4 +83,25 @@
     <color name="aurora_warning">#FFB300</color>
     <color name="aurora_background">#09090B</color>
     <color name="aurora_surface">#14000000</color>
+
+    <!--
+      自绘 drawable 用色：原先直接硬编码在 drawable/*.xml 里，深色模式无法适配。
+      抽出为资源后，drawable 改为引用（@color/xxx），values-night 自动接管。
+    -->
+    <color name="nav_sheet_bg">#F0F3E5F5</color>
+    <color name="nav_glass_a">#52FFFFFF</color>
+    <color name="nav_glass_b">#3CFFFFFF</color>
+    <color name="nav_glass_c">#30FFFFFF</color>
+    <color name="nav_glass_stroke">#99D5DCE6</color>
+    <color name="nav_glass_highlight">#66FFFFFF</color>
+    <color name="nav_item_active_bg">#E8D4F8E7</color>
+    <color name="switch_track_on">#3370FF</color>
+    <color name="switch_track_off">#E5E5EA</color>
+    <color name="switch_track_stroke">#33000000</color>
+    <color name="dialog_stroke">#1A000000</color>
+
+    <!--
+      强调色不再用固定色值列表：16 个种子色 × 9 种调色板风格的覆盖层由
+      AuroraPalette 生成（res/values/aurora_accent_overlays.xml 与 values-night/ 同名文件）。
+    -->
 </resources>

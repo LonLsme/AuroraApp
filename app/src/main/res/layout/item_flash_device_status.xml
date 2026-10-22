@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「设备状态」下拉弹窗里的一行：上方主名称，下方小字状态。
+
+  本布局由 FlashPage 用 inflate 复制 10 份，行与行之间只差文字内容；
+  因为同一个布局里的 id 会重复出现，FlashPage 只持 inflate 返回值对应的
+  View 引用，绝不对外层容器做 findViewById（否则只能拿到第一行）。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="10dp">
+
+    <TextView
+        android:id="@+id/tvSlotName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="@color/ios_text_primary"
+        android:textSize="14sp"
+        tools:text="ADB设备" />
+
+    <TextView
+        android:id="@+id/tvSlotStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textColor="@color/ios_text_secondary"
+        android:textSize="12sp"
+        tools:text="未连接设备" />
+</LinearLayout>

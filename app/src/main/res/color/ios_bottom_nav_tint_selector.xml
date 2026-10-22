@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:color="#4A148C" android:state_checked="true"/>
-    <item android:color="#757575"/>
+    <!-- 选中态跟随全局强调色（?attr/auroraAccent），未选中用次级文字色（均带夜版） -->
+    <item android:color="?attr/auroraAccent" android:state_checked="true"/>
+    <item android:color="@color/ios_text_secondary"/>
 </selector>

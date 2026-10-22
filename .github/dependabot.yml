@@ -1,0 +1,50 @@
+# 依赖自动巡检。
+#
+# 只在「有新版」时开 PR，不自动合并 —— 这个项目手工回归的成本远高于升级成本：
+# Material3 主题、ViewPager2 行为、Compose 编译器版本之间都有隐性耦合，盲升必踩。
+#
+# 分组的意义：一次升级把同一套东西（AndroidX、Kotlin、Compose）一起动，
+# 否则会收到七八个互相冲突的 PR，光分辨先后顺序就够麻烦。
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: monthly
+      day: '1'
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+      kotlin-and-compose:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "androidx.compose*"
+          - "androidx.activity:activity-compose"
+      network:
+        patterns:
+          - "com.squareup.okhttp3*"
+          - "com.squareup.okio*"
+    ignore:
+      # AGP 的大版本升级会牵动 compileSdk 语法（本项目用的是 AGP 9 的
+      # compileSdk { version = release(36) { minorApiLevel = 1 } } 写法），
+      # 必须人工跟进，不能让机器人推 PR。
+      - dependency-name: "com.android.tools.build:gradle"
+        update-types:
+          - "version-update:semver-major"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      day: '1'
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "chore(ci)"

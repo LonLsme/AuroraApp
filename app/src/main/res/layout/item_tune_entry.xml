@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「调节」页的单个调节项卡片：前置图标 + 标题/副标题 + 尾部箭头。
+
+  遗留资源：原「调节」页并入玩机页、其绑定的 TunePage 已于 2026-10-12 删除，
+  本布局当前无任何引用。保留以备后续新增调节项复用。
+-->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="10dp"
+    app:cardBackgroundColor="?attr/auroraCard"
+    app:cardCornerRadius="@dimen/ios_card_corner"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp">
+
+    <LinearLayout
+        android:id="@+id/layoutTuneEntry"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="@dimen/ios_card_padding"
+        android:paddingVertical="14dp">
+
+        <ImageView
+            android:id="@+id/ivTuneEntryIcon"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:background="@drawable/bg_icon_tile"
+            android:contentDescription="@null"
+            android:padding="8dp"
+            android:src="@drawable/ic_cpu_control"
+            android:tint="?attr/auroraAccent" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvTuneEntryTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="@color/ios_text_primary"
+                android:textSize="15sp"
+                tools:text="CPU 控制" />
+
+            <TextView
+                android:id="@+id/tvTuneEntrySubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="@style/Widget.IOS.Caption"
+                android:textColor="@color/ios_text_secondary"
+                tools:text="集群频率 · 调速器" />
+        </LinearLayout>
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="10dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_chevron_right"
+            android:tint="@color/ios_text_secondary" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -255,7 +255,9 @@ public class PartitionManagerActivity extends AppCompatActivity {
     private void highlightSelectedPartitionButton() {
         int selectedBg = getColor(R.color.purple_200);
         int selectedText = getColor(R.color.black);
-        int defaultBg = getColor(R.color.ios_background_elevated);
+        // 默认底色走主题属性（而非 @color/），这样 AMOLED 纯黑模式能一并生效
+        int defaultBg = com.google.android.material.color.MaterialColors.getColor(
+                layoutPartitionButtons, R.attr.auroraBackgroundElevated);
         int defaultText = getColor(R.color.ios_text_primary);
         int stroke = getColor(R.color.ios_separator);
 

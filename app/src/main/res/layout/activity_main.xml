@@ -8,11 +8,17 @@
     android:background="@color/ios_background_grouped"
     tools:context="com.aurora.app.ui.main.MainActivity">
 
+    <!--
+      顶栏背景刻意与页面容器（根布局的 ios_background_grouped）用同一个颜色：
+      原来是 ?attr/auroraBackgroundElevated（浅色下纯白、深色下 #1C1C1E），
+      比页面底色亮一档，视觉上会多出一条“色带”。改成与页面同色后，
+      顶栏与内容连成一体，仅靠下方 0.5dp 分隔线与 elevation 阴影划界。
+    -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/ios_background_elevated"
+        android:background="@color/ios_background_grouped"
         android:elevation="8dp"
         android:translationZ="8dp"
         app:elevation="8dp">
@@ -21,7 +27,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="@color/ios_background_elevated"
+            android:background="@color/ios_background_grouped"
             app:menu="@menu/toolbar_menu"
             app:popupTheme="@style/ThemeOverlay.Aurora.ToolbarPopup"
             app:title="Aurora"
@@ -35,6 +41,14 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- 页面容器：ViewPager2 支持左右滑动切换 4 个页面，页面 View 由 MainActivity 运行时装载 -->
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/mainPager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:overScrollMode="never"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
     <View
         android:id="@+id/overflowMenuScrim"
         android:layout_width="match_parent"
@@ -45,128 +59,36 @@
         android:focusable="true"
         android:visibility="gone" />
 
+    <!--
+      「刷机」页（tab 1）：
+      手机给手机刷机 —— 设备检测 / 重启 / Fastboot 线刷 / Sideload 卡刷 / 终端输出。
+      实际内容在 layout/page_flash.xml，由本 NestedScrollView include。
+
+      历史：本位置原为「调节」页（更早是「安全」页）。2026-10-10 导航栏改版后，
+      「调节」并入玩机页（CPU 控制沿用玩机页入口、屏幕作为新格子，
+      性能状态总览卡迁至玩机页 Root 卡下方），tab 1 让给「刷机」。
+
+      id 仍叫 contentHome：MainActivity.setupTabPager() 按 id 收集 4 个页面 View，
+      改名会牵动那一处索引，收益为零。
+    -->
+    <!--
+      2026-10-11：底栏四个导航页统一开启上下弹性（overScrollMode="always"）。
+      NestedScrollView 默认取 ifContentScrolls，内容不满一屏时拖到底没有任何反馈，
+      与刷机子页的手感不一致。fillViewport 一并打开：让内容至少撑满视口，
+      拉伸回弹时整块内容一起动，不会出现「下方露出一截空白背景」。
+      本页内容（page_flash 的 7 张卡）在 1440x3200@560dpi 下不足一屏，正是需要 always 的场景。
+    -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/contentHome"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:overScrollMode="never"
+        android:fillViewport="true"
+        android:overScrollMode="always"
         android:paddingBottom="88dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="@dimen/ios_screen_edge"
-            android:paddingTop="8dp"
-            android:paddingBottom="28dp">
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardEnvironmentSummary"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/ios_section_gap"
-                app:cardBackgroundColor="@color/ios_glass_surface"
-                app:cardCornerRadius="@dimen/ios_card_corner"
-                app:cardElevation="0dp"
-                app:strokeColor="@color/ios_glass_stroke"
-                app:strokeWidth="1dp"
-                app:cardUseCompatPadding="false"
-                app:cardPreventCornerOverlap="true">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="25dp">
-
-                    <!-- 状态图标 -->
-                    <ImageView
-                        android:id="@+id/ivEnvironmentIcon"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:layout_marginEnd="16dp"
-                        android:src="@drawable/ic_safe" />
-
-                    <!-- 状态文字 -->
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/tvEnvironmentSummary"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="设备安全"
-                            android:textColor="@color/ios_semantic_positive"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvEnvironmentDetail"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="未检测到安全风险"
-                            android:textColor="@color/ios_text_secondary"
-                            android:textSize="14sp" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardRootInfo"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/ios_card"
-                app:cardCornerRadius="@dimen/ios_card_corner"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp">
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="@dimen/ios_card_padding">
-                    <TextView
-                        android:id="@+id/tvRiskApps"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
-                        android:textAppearance="@style/Widget.IOS.Body"
-                        tools:text="风险应用: 加载中..." />
-                    <LinearLayout
-                        android:id="@+id/layoutRootDetails"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical" />
-                    <LinearLayout
-                        android:id="@+id/layoutAdvancedDetails"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical" />
-                    <TextView
-                        android:id="@+id/tvBootloader"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="@dimen/ios_row_spacing"
-                        android:textAppearance="@style/Widget.IOS.Body"
-                        tools:text="Bootloader锁: 加载中..." />
-                    <TextView
-                        android:id="@+id/tvUsbDebug"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textAppearance="@style/Widget.IOS.Body"
-                        tools:text="USB调试: 加载中..." />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-        </LinearLayout>
+        <include layout="@layout/page_flash" />
     </androidx.core.widget.NestedScrollView>
 
     <!-- “设备”导航：使用 DeviceFragment 加载 fragment_device.xml -->
@@ -177,24 +99,33 @@
         android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
+        <!-- 不在此声明 android:name：本容器所在的 contentDevice 会被 setupTabPager()
+             从 CoordinatorLayout 摘出、交给 ViewPager2 托管。若用 android:name 静态声明，
+             Activity 重建时 FragmentManager 只能靠「容器 id + findViewById」定位容器，
+             而此时 ViewPager2 尚未布局、容器不在视图树中，定位失败会导致整页空白。
+             改由 MainActivity.installPageFragments() 在容器可达后再添加。 -->
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/device_fragment_container"
-            android:name="com.aurora.app.ui.device.DeviceFragment"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
     </FrameLayout>
 
+    <!--
+      「玩机」页（tab 2）与「设置」页（tab 3）。
+      2026-10-11：这两页的顶栏已整行收起（见 MainActivity.updateToolbarForTab），
+      原先写在 include 上的 layout_marginTop 已删除 —— 它其实从未生效：
+      setupTabPager() 会把页面 View 的 LayoutParams 整体替换成 MATCH_PARENT，
+      CoordinatorLayout 时期的 margin 早已丢失；且顶栏收起后也不需要顶部留白。
+    -->
     <include
         android:id="@+id/fragmentExplorePlaceholder"
         layout="@layout/fragment_explore_placeholder"
-        android:layout_marginTop="?attr/actionBarSize"
         android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
     <include
         android:id="@+id/fragmentSettingsPlaceholder"
         layout="@layout/fragment_settings_placeholder"
-        android:layout_marginTop="?attr/actionBarSize"
         android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
     </include>

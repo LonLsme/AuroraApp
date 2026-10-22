@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="@dimen/ios_screen_edge"
     android:layout_marginBottom="8dp"
-    app:cardBackgroundColor="@color/ios_card"
+    app:cardBackgroundColor="?attr/auroraCard"
     app:cardCornerRadius="@dimen/ios_card_corner"
     app:cardElevation="0dp"
     app:strokeColor="@color/ios_separator"
