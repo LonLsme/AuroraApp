@@ -170,6 +170,16 @@ tag 里带连字符（如 `v1.2.0-beta.1`）会被自动标为预发布，不会
 > 不配也能跑通，只是产物未签名、无法直接安装。
 > 配了则构建后会多跑一步 `apksigner verify`，keystore 配错当次构建就红，不必等用户装上才发现。
 
+**没配 secret 时的手动发版**：本地 `assembleRelease` 出签名包后，用
+[`scripts/publish_release.py`](scripts/publish_release.py) 发布 —— 它和 `release.yml`
+用同一套正文模板与产物命名，先自查「摘要 = 实际文件」再上传，不发半成品。
+
+```bash
+GH_TOKEN=ghp_xxx python scripts/publish_release.py v1.2.0
+```
+
+细节见 [`docs/subsystems/UPDATE.md`](docs/subsystems/UPDATE.md) 的「签名密钥」与「手动发版」两节。
+
 ### 常见问题
 
 | 现象 | 原因与解法 |
