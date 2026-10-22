@@ -10,6 +10,14 @@
 
 ## [Unreleased]
 
+下一个版本要做的改动放这里。发布时把本段整段改名为 `## [x.y.z] - YYYY-MM-DD`。
+
+---
+
+## [1.1.0] - 2026-10-22
+
+首个**公开发布**的版本。
+
 ### 新增
 
 - **应用内自动更新**：设置页「检查更新」现在走完整链路 —— 检查（GitHub Releases API，
@@ -55,10 +63,10 @@
 
 ---
 
-## [1.1.0] - 2026-08-28
+## [1.0.0] - 2026-08-28
 
-首个以 **Aurora** 名义发布的版本，在 [violet_Box（紫罗兰Box）](https://github.com/Smart-Paocai/violet_Box)
-（GPL-3.0）基础上二次开发。
+第一个以 **Aurora** 名义构建的里程碑版本（内部版本，未公开发布），在
+[violet_Box（紫罗兰Box）](https://github.com/Smart-Paocai/violet_Box)（GPL-3.0）基础上二次开发。
 
 ### 新增
 
