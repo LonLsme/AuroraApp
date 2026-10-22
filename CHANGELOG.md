@@ -35,7 +35,8 @@
   （用户输入本身即命令行，管道、引号、重定向均可使用）；不设命令白名单，改为每条必过确认框并
   完整展示拼装后的命令原文。附 12 条命令历史（点回填 / 长按删除）。
 - **关于页重构**：设置页的「关于」收成单行入口，新关于页分「版本信息 / 开源 / 鸣谢 / 作者」四段，
-  版本字段全部取自 `BuildConfig`，不再手写。
+  版本字段全部取自 `BuildConfig`，不再手写。「开源」段首行是本项目 GitHub 仓库，地址由
+  `gradle.properties` 的 `aurora.updateRepo` 拼出，与检查更新共用同一份配置。
 - **核心扩展模块改名**：`violet_box_module` → `aurora_box_module`，持久化配置目录同步迁移，
   安装时自动搬运旧配置并清理旧模块目录。
 
@@ -60,6 +61,9 @@
 
 - 进程列表行数减少时，残留行显示为 `--` 占位。
 - 「关于」页在 `NoActionBar` 主题下既无标题也无返回键 —— 改为自绘顶栏。
+- 删除 `res/drawable/about_avatar.png`：它实际是 JPEG 却用了 `.png` 扩展名，且无任何引用。
+  `assembleDebug` 能过，`assembleRelease` 的 AAPT crunch 直接报 `file failed to compile`，
+  等于 release 包打不出来。
 
 ---
 

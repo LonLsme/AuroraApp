@@ -126,6 +126,65 @@ Intent 除了 `FLAG_GRANT_READ_URI_PERMISSION` 还要 `setClipData`：只加 fla
 
 ---
 
+## 签名密钥
+
+自动更新靠「签名一致」判断继承关系，**换钥等于换应用**：用户装了 1.1.0，之后所有版本
+必须用同一把钥签，否则 `ApkVerifier` 会判定签名不符并提示「需先卸载」（丢设置）。
+所以这把钥要当资产对待，不是一次性产物。
+
+| 项 | 值 |
+| --- | --- |
+| 本机路径 | `C:/Users/<user>/.aurora-signing/aurora-release.jks`（**项目目录之外**） |
+| 配置 | 根目录 `keystore.properties`（已被 `.gitignore` 排除） |
+| 参数 | RSA 4096、有效期 10950 天（30 年）、`alias=aurora`、DN `CN=Aurora` |
+| 入库状态 | **绝不入库**，`*.jks` / `*.keystore` / `keystore.properties` 三条规则都在 `.gitignore` 里 |
+
+`app/build.gradle.kts` 在**没有** `keystore.properties` 时跳过签名配置，`assembleDebug`
+照常可跑 —— 这也是「克隆下来就能编」的前提。
+
+### 同步到 GitHub Actions
+
+`release.yml` 里的签名步骤读四个 secret。生成 base64 的方式：
+
+```bash
+base64 -w0 ~/.aurora-signing/aurora-release.jks | pbcopy   # macOS
+base64 -w0 /c/Users/<user>/.aurora-signing/aurora-release.jks   # Git Bash，结果贴进仓库 secret
+```
+
+| Secret | 值 |
+| --- | --- |
+| `SIGNING_KEYSTORE_BASE64` | 上面那条命令的输出（单行，无换行） |
+| `SIGNING_STORE_PASSWORD` | `keystore.properties` 的 `storePassword` |
+| `SIGNING_KEY_ALIAS` | `aurora` |
+| `SIGNING_KEY_PASSWORD` | `keystore.properties` 的 `keyPassword` |
+
+**没配也能跑通 CI，但产物未签名、用户装不上** —— 这种包发出去比不发更糟，
+所以宁可先用手动发版（下一节）过渡。
+
+## 手动发版（不走 CI）
+
+`scripts/publish_release.py` 是 `release.yml` 的离线等价物：同样的正文模板、同样的
+`Aurora-<tag>.apk` 命名、同样产出 `.apk.sha256` 侧车，只是改在本地执行。
+
+```bash
+# 1. 出包（需要 keystore.properties 在位）
+./gradlew :app:assembleRelease
+
+# 2. 改名 + 算摘要
+mkdir -p build/release-artifacts
+cp app/build/outputs/apk/release/app-release.apk build/release-artifacts/Aurora-v1.1.0.apk
+cd build/release-artifacts && sha256sum Aurora-v1.1.0.apk > Aurora-v1.1.0.apk.sha256 && cd ../..
+
+# 3. 发布（token 只走环境变量）
+GH_TOKEN=ghp_xxx python scripts/publish_release.py v1.1.0
+```
+
+脚本会先自查「侧车摘要 = 实际文件摘要」，不一致直接退出；`CHANGELOG.md` 里抽不到
+对应版本段落也拒绝发布 —— 不发半成品。
+
+> 这个脚本**不会**触发 `release.yml`：GitHub 通过 API 建 release 时顺带创建的 tag
+> 不算一次 push 事件。想走 CI 就在本地 `git tag` 后 `git push --tags`。
+
 ## GitHub Actions 发版
 
 `release.yml` 由 `v*` tag 触发，关键步骤：
@@ -133,7 +192,7 @@ Intent 除了 `FLAG_GRANT_READ_URI_PERMISSION` 还要 `setClipData`：只加 fla
 | 步骤 | 作用 | 不做会怎样 |
 | --- | --- | --- |
 | **Verify tag matches versionName** | tag `v1.2.0` 必须等于 `versionName` | 包里写 1.1.0、Release 标 v1.2.0 → 用户永远「已是最新」 |
-| Run unit tests | 46 个用例 | 算法写错没人挡 |
+| Run unit tests | 63 个用例 | 算法写错没人挡 |
 | Build release APK | `assembleRelease` | — |
 | Rename + digest | `Aurora-v1.2.0.apk` + `.apk.sha256` | 多个 tag 的资产全叫 `app-release.apk`，摘要也没处算 |
 | Verify APK signature | `apksigner verify --print-certs` | keystore 配错要到用户手机上才发现 |
