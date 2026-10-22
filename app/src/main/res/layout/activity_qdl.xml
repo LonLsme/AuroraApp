@@ -191,7 +191,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:ellipsize="middle"
                             android:maxLines="1"
                             android:text="未选择" />
@@ -236,7 +236,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="ufs" />
                     </LinearLayout>
 
@@ -279,7 +279,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="未开启" />
                     </LinearLayout>
 
@@ -324,7 +324,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:ellipsize="middle"
                             android:maxLines="1"
                             android:text="未选择" />
@@ -371,7 +371,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:ellipsize="middle"
                             android:maxLines="1"
                             android:text="未选择" />
@@ -411,7 +411,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="开启后执行空跑模拟，不连接设备、不真实刷写（追加 --dry-run 参数）" />
                     </LinearLayout>
 
@@ -481,7 +481,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:ellipsize="middle"
                             android:maxLines="2"
                             android:text="读取各 LUN 的 GPT 表" />
@@ -526,7 +526,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="未读取" />
                     </LinearLayout>
 

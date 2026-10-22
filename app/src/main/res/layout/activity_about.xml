@@ -301,7 +301,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="github.com/LonLsme/AuroraApp" />
                     </LinearLayout>
 
@@ -343,7 +343,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="violet_Box（紫罗兰Box）· 本项目在它的基础上二次开发" />
                     </LinearLayout>
 
@@ -385,7 +385,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="GPL-3.0 · 允许修改与再分发，须保留署名并以同协议开源" />
                     </LinearLayout>
 
@@ -453,7 +453,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="主题能力与 Miuix 组件范式的参考" />
                     </LinearLayout>
 
@@ -491,7 +491,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="监视悬浮窗的视觉与系统数据采集思路参考" />
                     </LinearLayout>
                 </LinearLayout>
@@ -521,7 +521,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="设置页与刷机子页的尺寸、字号、卡片范式来源" />
                     </LinearLayout>
                 </LinearLayout>
@@ -642,7 +642,7 @@
                             style="@style/Widget.Aurora.Miuix.PrefSummary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
+                            android:layout_marginTop="4dp"
                             android:text="36398056279" />
                     </LinearLayout>
                     <ImageView
