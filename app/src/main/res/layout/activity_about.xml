@@ -9,7 +9,7 @@
     · 分组「版本信息」：版本名称 / 版本码 / 包名 / 构建类型（全部不可点，尾部直接显示值）
     · 分组「开源」：GitHub 仓库（本项目）/ 上游项目（violet_Box 紫罗兰Box）/ 开源协议
     · 分组「鸣谢」：KernelSU / 星野Scene / Miuix
-    · 分组「作者」：哔哩哔哩 / 酷安 / GitHub / 抖音
+    · 分组「作者」：酷安 / GitHub / 抖音（抖音行带号码副标题 —— 抖音号拼不进主页 URL）
     · 底部居中 GPL-3.0 声明
 
   为什么这些内容从设置页搬进来：设置页原先把这三行摊在一张卡上，既占高度又不完整
@@ -552,35 +552,6 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <!-- 哔哩哔哩 -->
-                <LinearLayout
-                    android:id="@+id/rowAboutBilibili"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="@dimen/miuix_pref_row_min_height"
-                    android:orientation="horizontal"
-                    android:padding="@dimen/miuix_pref_row_padding">
-
-                    <TextView
-                        style="@style/Widget.Aurora.Miuix.PrefTitle"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="哔哩哔哩" />
-
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:layout_marginStart="8dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
-                </LinearLayout>
-
                 <!-- 酷安 -->
                 <LinearLayout
                     android:id="@+id/rowAboutCoolapk"
@@ -652,13 +623,28 @@
                     android:orientation="horizontal"
                     android:padding="@dimen/miuix_pref_row_padding">
 
-                    <TextView
-                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                    <!-- 抖音号本身不是可直连的地址（网页版主页路径要 sec_uid），
+                         所以把号码摆出来让人看得见、也搜得到；点击走按号搜索。 -->
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="抖音" />
+                        android:orientation="vertical">
 
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="抖音" />
+
+                        <TextView
+                            android:id="@+id/tvAboutDouyin"
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="36398056279" />
+                    </LinearLayout>
                     <ImageView
                         android:layout_width="20dp"
                         android:layout_height="20dp"
@@ -678,7 +664,7 @@
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:lineSpacingMultiplier="1.2"
-            android:text="基于 violet_Box（紫罗兰Box）二次开发&#10;遵循 GNU General Public License v3.0"
+            android:text="基于 violet_Box（紫罗兰Box，© Smart-Paocai）二次开发&#10;遵循 GNU General Public License v3.0"
             android:textColor="@color/ios_text_secondary"
             android:textSize="12sp" />
 

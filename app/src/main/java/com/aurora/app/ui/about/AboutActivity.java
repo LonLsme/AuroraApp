@@ -23,7 +23,7 @@ import com.aurora.app.ui.theme.ThemeManager;
  *       {@link BuildConfig}，不写死，避免与 {@code app/build.gradle.kts} 脱节；</li>
  *   <li><b>开源</b> —— 本项目 GitHub 仓库、上游项目 violet_Box（紫罗兰Box）与 GPL-3.0 协议；</li>
  *   <li><b>鸣谢</b> —— KernelSU / 星野Scene / Miuix 三个参考来源；</li>
- *   <li><b>作者</b> —— 四个公开平台的入口。</li>
+ *   <li><b>作者</b> —— 作者本人的三个公开账号入口（酷安 / GitHub / 抖音）。</li>
  * </ul>
  *
  * <p>顶栏是自绘的（{@code btnAboutBack}）：全局主题 {@code Base.Theme.Aurora} 继承
@@ -45,11 +45,17 @@ public class AboutActivity extends AppCompatActivity {
     private static final String URL_UPSTREAM = "https://github.com/Smart-Paocai/violet_Box";
     private static final String URL_LICENSE = "https://www.gnu.org/licenses/gpl-3.0.html";
     private static final String URL_KERNEL_SU = "https://github.com/tiann/KernelSU";
-    private static final String URL_BILIBILI = "https://space.bilibili.com/601533208";
-    private static final String URL_COOLAPK = "https://www.coolapk.com/u/33872028";
-    private static final String URL_GITHUB = "https://github.com/Smart-Paocai";
-    private static final String URL_DOUYIN =
-            "https://www.douyin.com/user/MS4wLjABAAAAPV71g_7n4JA3-HniyfV2_AjLoK_nwJe_0dtaBA-KZZVJjrkHqId2xmdzhxtfJ3ta";
+
+    // ── 作者本人的三个账号（LonLsme）──
+    // 上游作者 Smart-Paocai 的署名不在这张卡里，而是留在「开源 → 上游项目」
+    // 与底部声明（© Smart-Paocai）—— GPL-3.0 要求保留原始版权声明，
+    // 项目换人维护不等于把原作者抹掉。
+    private static final String URL_COOLAPK = "https://www.coolapk.com/u/26622080";
+    private static final String URL_GITHUB = "https://github.com/LonLsme";
+    /** 抖音号。网页版主页路径要 sec_uid（MS4wLjAB…），抖音号拼不进去。 */
+    private static final String DOUYIN_ID = "36398056279";
+    /** 抖音号唯一能保证打开就是人的地址：按号搜索，type=user 直接落到用户 tab。 */
+    private static final String URL_DOUYIN = "https://www.douyin.com/search/" + DOUYIN_ID + "?type=user";
 
     /** 字号缩放：让本页也跟随全局字号（createConfigurationContext，不触发 relaunch 循环）。 */
     @Override
@@ -109,10 +115,11 @@ public class AboutActivity extends AppCompatActivity {
         click(R.id.rowAboutUpstream, URL_UPSTREAM, "无法打开上游项目页面");
         click(R.id.rowAboutLicense, URL_LICENSE, "无法打开协议页面");
         click(R.id.rowAboutKernelSu, URL_KERNEL_SU, "无法打开 KernelSU 页面");
-        click(R.id.rowAboutBilibili, URL_BILIBILI, "无法打开哔哩哔哩链接");
         click(R.id.rowAboutCoolapk, URL_COOLAPK, "无法打开酷安链接");
         click(R.id.rowAboutGithub, URL_GITHUB, "无法打开 GitHub 链接");
         click(R.id.rowAboutDouyin, URL_DOUYIN, "无法打开抖音链接");
+        // 抖音号在布局里是写死的兜底值，这里用常量覆盖一次，改号时只改常量不会漏
+        setText(R.id.tvAboutDouyin, DOUYIN_ID);
     }
 
     private void click(int viewId, String url, String failMessage) {
