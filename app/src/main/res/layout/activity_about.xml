@@ -7,7 +7,7 @@
     · 顶部大标题「关于」
     · 头部卡：应用图标 + 名称 + 版本 + 一句话定位
     · 分组「版本信息」：版本名称 / 版本码 / 包名 / 构建类型（全部不可点，尾部直接显示值）
-    · 分组「开源」：开源协议 / 上游项目（violet_Box 紫罗兰Box）
+    · 分组「开源」：GitHub 仓库（本项目）/ 上游项目（violet_Box 紫罗兰Box）/ 开源协议
     · 分组「鸣谢」：KernelSU / 星野Scene / Miuix
     · 分组「作者」：哔哩哔哩 / 酷安 / GitHub / 抖音
     · 底部居中 GPL-3.0 声明
@@ -270,6 +270,49 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
+
+                <!-- 本项目仓库：放第一位 —— 用户在关于页最想找到的就是「去哪儿看源码 / 反馈问题」 -->
+                <LinearLayout
+                    android:id="@+id/rowAboutRepo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="GitHub 仓库" />
+
+                        <TextView
+                            android:id="@+id/tvAboutRepo"
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="github.com/LonLsme/AuroraApp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
 
                 <!-- 上游项目：本项目的基础 -->
                 <LinearLayout
