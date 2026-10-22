@@ -14,6 +14,19 @@
 
 ---
 
+## [1.1.2] - 2026-10-22
+
+### 修复
+
+- **设置页「标题 + 摘要」两行文字挤在一起**。根因是 Android 15 起
+  `includeFontPadding` 默认值改为 false（本项目 targetSdk 36），中文字形的
+  上下留白被裁到边界，降部顶到下一行升部。已给 `PrefTitle` / `PrefSummary` /
+  `GroupTitle` 显式恢复 `includeFontPadding=true`，并把 19 处摘要的
+  `layout_marginTop` 由 2dp 抬到 4dp（dp 不随字号缩放，字号调大后 2dp 会越来越窄）。
+  设置页、关于页、QDL 页同一范式一并修正。
+
+---
+
 ## [1.1.1] - 2026-10-22
 
 ### 变更
