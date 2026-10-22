@@ -24,7 +24,39 @@ permissions:
   contents: write
 
 jobs:
+  # 开场先问一句「这个 tag 是不是已经有已发布的 Release」。
+  #
+  # 为什么需要：手动发版走 `scripts/publish_release.py`（本地已签名的包），脚本会用
+  # API 建 Release；GitHub 建 Release 时会顺带创建 tag，并为这个「迟到的 tag」补发一次
+  # push 事件 —— 于是本 workflow 照样被触发。如果不拦，CI 会用**未签名**的包去覆盖
+  # 刚发好的已签名资产，还把 Release 状态改回 draft（releases/latest 随即倒退）。
+  # 正常 `git tag && git push --tags` 发版时这里查不到 Release，照常往下走。
+  guard:
+    runs-on: ubuntu-24.04
+    outputs:
+      published: ${{ steps.probe.outputs.published }}
+    steps:
+      - name: Probe existing release
+        id: probe
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          CODE=$(curl -s -o "$RUNNER_TEMP/rel.json" -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${GITHUB_REF_NAME}")
+          echo "GET /releases/tags/${GITHUB_REF_NAME} -> HTTP $CODE"
+          if [ "$CODE" = "200" ] && grep -qE '"draft":[[:space:]]*false' "$RUNNER_TEMP/rel.json"; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${GITHUB_REF_NAME} 已有已发布的 Release，跳过 CI 出包（避免未签名包覆盖）"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
   release:
+    needs: guard
+    if: needs.guard.outputs.published != 'true'
     # 钉 24.04：ubuntu-latest 已于 2026-10-19 起迁往 Ubuntu 26，预装 SDK 组件版本可能变。
     runs-on: ubuntu-24.04
     steps:
