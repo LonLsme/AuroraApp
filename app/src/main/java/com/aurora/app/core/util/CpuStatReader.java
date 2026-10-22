@@ -1,13 +1,16 @@
 package com.aurora.app.core.util;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * 从 /proc/stat 解析聚合 cpu 行与各 cpuN 行，用于计算占用率。
+ *
+ * <p><b>权限说明</b>：Android 12 起 SELinux 把 {@code /proc/stat} 从 untrusted_app
+ * 的可读集合中剔除（普通 {@code FileReader} 直接 EACCES），因此这里统一经
+ * {@link NodeReader} 读取——普通读可用时走普通读，被拒时自动 root cat 兜底。
+ * 设备未 root 时读不到，占用率会持续为 0，属平台限制而非逻辑错误。
  */
 public final class CpuStatReader {
 
@@ -56,13 +59,21 @@ public final class CpuStatReader {
     }
 
     public static ProcCpuSnapshot readProcCpuSnapshot() {
-        try (BufferedReader br = new BufferedReader(new FileReader("/proc/stat"))) {
-            ArrayList<String> lines = new ArrayList<>();
-            String line;
+        try {
+            // Android 12 起 SELinux 拒绝 untrusted_app 读 /proc/stat（EACCES），
+            // 必须经 NodeReader 的 root 兜底才能拿到；设备未 root 时返回空 → 上层显示 0%。
+            java.util.List<String> raw = NodeReader.readAllLines("/proc/stat", true);
+            if (raw.isEmpty()) {
+                return null;
+            }
+            ArrayList<String> lines = new ArrayList<>(raw.size());
             int cap = 0;
-            while ((line = br.readLine()) != null && cap < 768) {
+            for (String r : raw) {
+                if (cap >= 768) {
+                    break;
+                }
                 cap++;
-                String t = trimBom(line.trim());
+                String t = trimBom(r.trim());
                 if (!t.isEmpty()) {
                     lines.add(t);
                 }

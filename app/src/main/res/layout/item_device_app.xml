@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「应用卸载冻结」页列表项：勾选框 + 目标机上的包名。
+
+  整行可点即切换勾选 —— 勾选框自身设成不可点/不可聚焦，否则它会把点击吃掉，
+  用户点行空白处没反应、点小方框才有效，热区会变得很难受。
+  包名用 ellipsize="middle"：长包名（com.google.android.apps.xxx.yyy）断了头尾都还认得出，
+  只截尾的话前缀全一样，一屏全是 com.google.android...
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="48dp"
+    android:orientation="horizontal"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="6dp">
+
+    <CheckBox
+        android:id="@+id/cbDeviceApp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="?attr/auroraAccent"
+        android:clickable="false"
+        android:focusable="false" />
+
+    <TextView
+        android:id="@+id/tvDeviceAppPackage"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:layout_weight="1"
+        android:ellipsize="middle"
+        android:singleLine="true"
+        android:textColor="@color/ios_text_primary"
+        android:textSize="13sp"
+        tools:text="com.tencent.mm" />
+</LinearLayout>

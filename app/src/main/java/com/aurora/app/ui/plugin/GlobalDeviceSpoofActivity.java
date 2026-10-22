@@ -28,12 +28,16 @@ public class GlobalDeviceSpoofActivity extends AppCompatActivity {
     private static final String MODULE_ID = "Device_Guise";
     private static final String MODULE_PROP_PRIMARY = "/data/adb/modules/" + MODULE_ID + "/system.prop";
     private static final String MODULE_PROP_UPDATE = "/data/adb/modules_update/" + MODULE_ID + "/system.prop";
-    private static final String MODULE_PROP_FALLBACK = "/data/adb/violet_global_device_spoof/system.prop";
+    private static final String MODULE_PROP_FALLBACK = "/data/adb/aurora_global_device_spoof/system.prop";
     private static final String PERSIST_SCRIPT_DIR = "/data/adb/service.d";
-    private static final String PERSIST_SCRIPT_PATH = PERSIST_SCRIPT_DIR + "/99-violet-global-device-spoof.sh";
+    private static final String PERSIST_SCRIPT_PATH = PERSIST_SCRIPT_DIR + "/99-aurora-global-device-spoof.sh";
     private static final String PERSIST_POSTFS_DIR = "/data/adb/post-fs-data.d";
-    private static final String PERSIST_POSTFS_PATH = PERSIST_POSTFS_DIR + "/99-violet-global-device-spoof.sh";
-    private static final String PERSIST_MODULE_ID = "violet_global_device_spoof";
+    private static final String PERSIST_POSTFS_PATH = PERSIST_POSTFS_DIR + "/99-aurora-global-device-spoof.sh";
+    private static final String PERSIST_MODULE_ID = "aurora_global_device_spoof";
+    /** 改名前的旧模块 id 与开机脚本名：只在应用时清理，不再写入。 */
+    private static final String LEGACY_PERSIST_MODULE_ID = "violet_global_device_spoof";
+    private static final String LEGACY_SCRIPT_PATH = PERSIST_SCRIPT_DIR + "/99-violet-global-device-spoof.sh";
+    private static final String LEGACY_POSTFS_PATH = PERSIST_POSTFS_DIR + "/99-violet-global-device-spoof.sh";
     private static final String PERSIST_MODULE_DIR = "/data/adb/modules/" + PERSIST_MODULE_ID;
     private static final String PERSIST_MODULE_PROP = PERSIST_MODULE_DIR + "/module.prop";
     private static final String PERSIST_SYSTEM_PROP = PERSIST_MODULE_DIR + "/system.prop";
@@ -273,6 +277,10 @@ public class GlobalDeviceSpoofActivity extends AppCompatActivity {
         }
         sb.append("chmod 0755 \"$SCRIPT_PATH\"; ");
         sb.append("if [ -d \"$POSTFS_DIR\" ]; then cp -f \"$SCRIPT_PATH\" \"$POSTFS_PATH\"; chmod 0755 \"$POSTFS_PATH\"; fi; ");
+        // 改名迁移：清掉旧 id 的模块目录与旧开机脚本，避免新旧两份在同一开机阶段重复注入
+        sb.append("rm -f \"").append(LEGACY_SCRIPT_PATH).append("\" \"").append(LEGACY_POSTFS_PATH).append("\"; ");
+        sb.append("rm -rf /data/adb/modules/").append(LEGACY_PERSIST_MODULE_ID)
+                .append(" /data/adb/modules_update/").append(LEGACY_PERSIST_MODULE_ID).append("; ");
 
         ShellExecResult result = runShellViaSuDetailed(sb.toString(), 9000);
         lastApplyError = result.summary;

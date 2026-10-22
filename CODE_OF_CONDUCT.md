@@ -59,9 +59,14 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-x@violettool.top.
+reported to the project maintainer via GitHub — open an issue, or contact
+[@LonLsme](https://github.com/LonLsme) directly if the report contains
+details that should not be public.
 All complaints will be reviewed and investigated promptly and fairly.
+
+> 说明：本文件沿用上游 violet_Box 引入的 Contributor Covenant 模板。
+> 上游模板里的邮箱属于上游项目，本仓库不使用邮箱接收举报 ——
+> **请通过 GitHub issue 或私信 [@LonLsme](https://github.com/LonLsme) 反馈**。
 
 All community leaders are obligated to respect the privacy and security of the
 reporter of any incident.

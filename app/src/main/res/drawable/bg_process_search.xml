@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 进程管理页搜索框背景：浅色圆角胶囊，与 iOS 卡片风格统一 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/auroraFill" />
+    <corners android:radius="18dp" />
+</shape>

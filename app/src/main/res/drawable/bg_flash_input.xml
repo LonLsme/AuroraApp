@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 输入框 / 图标按钮的共用底：卡片色 + 圆角（和页面灰底拉开层次）。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/auroraCard" />
+    <corners android:radius="12dp" />
+</shape>

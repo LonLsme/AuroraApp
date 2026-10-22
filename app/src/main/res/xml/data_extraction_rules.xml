@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+  Android 12+ 的备份 / 换机迁移规则。
+  排除清单与 backup_rules.xml 完全一致，两处必须同步改 —— 少改一处，
+  在对应系统版本上就会出现「工具链认为已解压、实际没有」这类只在换机后复现的问题。
+
+  cloud-backup     上传到用户的 Google / 厂商云备份
+  device-transfer  两台设备之间的直连迁移（换机时）
+
+  两者都要排除：直连迁移同样会把「本机路径 / 本机状态」带过去。
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="aurora_flash_toolchain.xml" />
+        <exclude domain="sharedpref" path="aurora_exec_command.xml" />
+        <exclude domain="sharedpref" path="aurora_update.xml" />
+        <exclude domain="sharedpref" path="aurora_mi_flash.xml" />
+        <exclude domain="sharedpref" path="aurora_oplus_flash.xml" />
+        <exclude domain="sharedpref" path="aurora_sideload.xml" />
+        <exclude domain="sharedpref" path="aurora_detection_logs.xml" />
+        <exclude domain="sharedpref" path="device_id_modify.xml" />
+        <exclude domain="sharedpref" path="global_device_spoof.xml" />
+        <exclude domain="sharedpref" path="font_library_backup.xml" />
+        <exclude domain="external" path="." />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="aurora_flash_toolchain.xml" />
+        <exclude domain="sharedpref" path="aurora_exec_command.xml" />
+        <exclude domain="sharedpref" path="aurora_update.xml" />
+        <exclude domain="sharedpref" path="aurora_mi_flash.xml" />
+        <exclude domain="sharedpref" path="aurora_oplus_flash.xml" />
+        <exclude domain="sharedpref" path="aurora_sideload.xml" />
+        <exclude domain="sharedpref" path="aurora_detection_logs.xml" />
+        <exclude domain="sharedpref" path="device_id_modify.xml" />
+        <exclude domain="sharedpref" path="global_device_spoof.xml" />
+        <exclude domain="sharedpref" path="font_library_backup.xml" />
+        <exclude domain="external" path="." />
     </device-transfer>
-    -->
 </data-extraction-rules>

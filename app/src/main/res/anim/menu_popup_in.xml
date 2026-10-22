@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  顶栏菜单弹出的进入动画：淡入 + 从右上角轻微放大。
+
+  对齐 KernelSU 的 Material3 DropdownMenuPopup / Miuix OverlayListPopup 的过渡观感
+  （KernelSU 用的是库内置的 M3 过渡，没有可直接照抄的 xml，这里按同样的
+  时长量级与「从锚点角落放大」的位移方向复刻）。
+
+  挂载方式：ThemeOverlay.Aurora.ToolbarPopup 的 android:popupAnimationStyle
+  → Animation.Aurora.PopupMenu → 本文件。
+  pivotX=100% / pivotY=0% 即右上角，与按钮所在位置一致。
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_slow_in">
+
+    <alpha
+        android:duration="160"
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0" />
+
+    <scale
+        android:duration="200"
+        android:fromXScale="0.88"
+        android:fromYScale="0.88"
+        android:pivotX="100%"
+        android:pivotY="0%"
+        android:toXScale="1.0"
+        android:toYScale="1.0" />
+</set>

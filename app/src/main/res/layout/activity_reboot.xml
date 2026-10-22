@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「设备重启」页（竖屏，独立 Activity，无顶栏，Miuix 风格）。
+
+  版式（自上而下，顺序固定）：
+    · 左上角返回箭头 + 右上角设备状态文字
+    · 顶部大标题「设备重启」
+    · 第一行：保存日志 / 终止
+    · 板块 1「ADB 重启」：两行两列（系统·Recovery / Fastboot·FastbootD）+ 整行 9008
+    · 板块 2「Fastboot 重启」：两行两列（系统·Fastboot / Recovery·FastbootD）
+    · 底部输出区，初始文案「选择重启模式」
+
+  两个板块的按钮分组与顺序取自参考实现（ChenAxic）{@code le1.java} 的两个数组：
+    a = {adb reboot | adb reboot recovery | adb reboot bootloader | adb reboot fastboot | adb reboot edl}
+    b = {fastboot reboot | fastboot reboot-bootloader | fastboot reboot recovery | fastboot reboot fastboot}
+  注意 Fastboot 组只有 4 项 —— 9008 只能从 ADB 触发，所以它只在板块 1 里。
+
+  整页用 NestedScrollView 承载：内容不满一屏时也保留上下边缘的拉伸回弹
+  （overScrollMode=always 是前提，默认的 ifContentScrolls 在不可滚时不会有任何反馈）。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollReboot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:overScrollMode="always"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/ios_screen_edge"
+        android:paddingTop="6dp"
+        android:paddingBottom="20dp">
+
+        <!-- ───────── 头部：返回箭头 + 右上角设备状态 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnFlashBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="-10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="返回"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/ios_text_primary" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/tvFlashDeviceState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxWidth="180dp"
+                android:singleLine="true"
+                android:text="未连接设备"
+                android:textColor="@color/ios_text_secondary"
+                android:textSize="13sp"
+                tools:text="Fastboot 已连接 · 45850c2f" />
+        </LinearLayout>
+
+        <!-- ───────── 大标题 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="设备重启"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp" />
+
+        <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashSaveLog"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="保存日志" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashStop"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="终止" />
+        </LinearLayout>
+
+        <!-- ───────── 板块 1：ADB 重启 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="4dp"
+            android:text="ADB 重启"
+            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRebootAdbSystem"
+                        style="@style/Widget.Aurora.Miuix.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/miuix_button_height"
+                        android:layout_weight="1"
+                        android:text="系统" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRebootAdbRecovery"
+                        style="@style/Widget.Aurora.Miuix.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/miuix_button_height"
+                        android:layout_marginStart="@dimen/miuix_button_gap"
+                        android:layout_weight="1"
+                        android:text="Recovery" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/miuix_button_gap"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRebootAdbFastboot"
+                        style="@style/Widget.Aurora.Miuix.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/miuix_button_height"
+                        android:layout_weight="1"
+                        android:text="Fastboot" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRebootAdbFastbootd"
+                        style="@style/Widget.Aurora.Miuix.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/miuix_button_height"
+                        android:layout_marginStart="@dimen/miuix_button_gap"
+                        android:layout_weight="1"
+                        android:text="FastbootD" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRebootAdbEdl"
+                    style="@style/Widget.Aurora.Miuix.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/miuix_button_height"
+                    android:layout_marginTop="@dimen/miuix_button_gap"
+                    android:text="9008" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ───────── 板块 2：Fastboot 重启 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="4dp"
+            android:text="Fastboot 重启"
+            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRebootFbSystem"
+                        style="@style/Widget.Aurora.Miuix.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/miuix_button_height"
+                        android:layout_weight="1"
+                        android:text="系统" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRebootFbFastboot"
+                        style="@style/Widget.Aurora.Miuix.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/miuix_button_height"
+                        android:layout_marginStart="@dimen/miuix_button_gap"
+                        android:layout_weight="1"
+                        android:text="Fastboot" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/miuix_button_gap"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRebootFbRecovery"
+                        style="@style/Widget.Aurora.Miuix.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/miuix_button_height"
+                        android:layout_weight="1"
+                        android:text="Recovery" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRebootFbFastbootd"
+                        style="@style/Widget.Aurora.Miuix.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/miuix_button_height"
+                        android:layout_marginStart="@dimen/miuix_button_gap"
+                        android:layout_weight="1"
+                        android:text="FastbootD" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ───────── 输出区 ───────── -->
+        <TextView
+            android:id="@+id/tvFlashConsole"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/miuix_console_height"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_console"
+            android:fontFamily="monospace"
+            android:padding="14dp"
+            android:scrollbars="vertical"
+            android:text="选择重启模式"
+            android:textColor="@color/ios_text_secondary"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

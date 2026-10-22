@@ -1,137 +1,643 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  关于页（独立 Activity，无系统顶栏，Miuix preference 范式，与设置页同一套参数）。
+
+  版式（自上而下，顺序固定）：
+    · 左上角返回箭头
+    · 顶部大标题「关于」
+    · 头部卡：应用图标 + 名称 + 版本 + 一句话定位
+    · 分组「版本信息」：版本名称 / 版本码 / 包名 / 构建类型（全部不可点，尾部直接显示值）
+    · 分组「开源」：开源协议 / 上游项目（violet_Box 紫罗兰Box）
+    · 分组「鸣谢」：KernelSU / 星野Scene / Miuix
+    · 分组「作者」：哔哩哔哩 / 酷安 / GitHub / 抖音
+    · 底部居中 GPL-3.0 声明
+
+  为什么这些内容从设置页搬进来：设置页原先把这三行摊在一张卡上，既占高度又不完整
+  （没有作者入口、没有上游项目说明）。收成一个入口后，设置页只留一行，细节集中到本页。
+
+  卡片全部带 1dp @color/ios_separator 描边：AMOLED 纯黑模式下 ?attr/auroraCard 被覆盖成
+  纯黑、与页面背景同色，没有描边时整张卡会与背景糊成一片（项目内新组件统一如此处理）。
+-->
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/ios_background_grouped"
     android:clipToPadding="false"
-    android:overScrollMode="never">
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:overScrollMode="always"
+    android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingHorizontal="@dimen/ios_screen_edge"
-        android:paddingTop="16dp"
-        android:paddingBottom="24dp">
+        android:paddingHorizontal="@dimen/miuix_pref_card_margin"
+        android:paddingTop="6dp"
+        android:paddingBottom="32dp">
 
+        <!-- ───────── 头部：返回箭头 ───────── -->
+        <ImageButton
+            android:id="@+id/btnAboutBack"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="-10dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="返回"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_arrow_back"
+            android:tint="@color/ios_text_primary" />
+
+        <!-- 大标题（与设置页同级：30sp medium） -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="关于"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp" />
+
+        <!-- ===================== 头部卡：图标 + 名称 + 版本 ===================== -->
         <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/ios_card"
-            app:cardCornerRadius="@dimen/ios_card_corner"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/ios_glass_stroke"
+            android:layout_marginBottom="12dp"
+            app:strokeColor="@color/ios_separator"
             app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
                 android:gravity="center_horizontal"
-                android:padding="@dimen/ios_card_padding">
+                android:orientation="vertical"
+                android:paddingTop="24dp"
+                android:paddingBottom="20dp">
 
                 <ImageView
-                    android:layout_width="96dp"
-                    android:layout_height="96dp"
-                    android:background="@drawable/bg_avatar_circle"
-                    android:clipToOutline="true"
-                    android:contentDescription="作者头像"
-                    android:outlineProvider="background"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/about_avatar" />
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:contentDescription="@null"
+                    android:src="@mipmap/ic_launcher" />
 
                 <TextView
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Aurora"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="22sp" />
+
+                <TextView
+                    android:id="@+id/tvAboutVersion"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="sans-serif"
+                    android:text="--"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="本项目在 violet_Box（紫罗兰Box）（GPL-3.0）基础上二次开发"
-                    android:textAppearance="@style/Widget.IOS.Body"
-                    android:textColor="@color/ios_text_secondary" />
+                    android:text="面向 Root 用户的 Android 玩机工具箱"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
+        <!-- ===================== 版本信息 ===================== -->
+        <TextView
+            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/miuix_group_title_inset"
+            android:paddingTop="@dimen/miuix_group_title_gap"
+            android:paddingEnd="@dimen/miuix_group_title_inset"
+            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:text="版本信息" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:strokeColor="@color/ios_separator"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 版本名称 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:gravity="center"
-                    android:orientation="horizontal">
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
 
-                    <ImageView
-                        android:id="@+id/iconAboutLink1"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginHorizontal="12dp"
-                        android:contentDescription="平台图标1"
-                        android:src="@drawable/ic_about_logo_1" />
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="版本名称" />
 
-                    <ImageView
-                        android:id="@+id/iconAboutLink2"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginHorizontal="12dp"
-                        android:contentDescription="平台图标2"
-                        android:src="@drawable/ic_about_logo_2" />
+                    <TextView
+                        android:id="@+id/tvAboutVersionName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:fontFamily="sans-serif"
+                        android:text="--"
+                        android:textColor="@color/ios_text_secondary"
+                        android:textSize="14sp" />
+                </LinearLayout>
 
-                    <ImageView
-                        android:id="@+id/iconAboutLink3"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginHorizontal="12dp"
-                        android:contentDescription="平台图标3"
-                        android:src="@drawable/ic_github_logo" />
+                <!-- 版本码 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
 
-                    <ImageView
-                        android:id="@+id/iconAboutLink4"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginHorizontal="12dp"
-                        android:contentDescription="平台图标4"
-                        android:src="@drawable/ic_about_logo_4" />
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="版本码" />
+
+                    <TextView
+                        android:id="@+id/tvAboutVersionCode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:fontFamily="sans-serif"
+                        android:text="--"
+                        android:textColor="@color/ios_text_secondary"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <!-- 包名 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="包名" />
+
+                    <TextView
+                        android:id="@+id/tvAboutPackageName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:fontFamily="sans-serif"
+                        android:text="--"
+                        android:textColor="@color/ios_text_secondary"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <!-- 构建类型 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="构建类型" />
+
+                    <TextView
+                        android:id="@+id/tvAboutBuildType"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:fontFamily="sans-serif"
+                        android:text="--"
+                        android:textColor="@color/ios_text_secondary"
+                        android:textSize="14sp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.card.MaterialCardView
+        <!-- ===================== 开源 ===================== -->
+        <TextView
+            style="@style/Widget.Aurora.Miuix.GroupTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardBackgroundColor="@color/ios_card"
-            app:cardCornerRadius="@dimen/ios_card_corner"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/ios_glass_stroke"
+            android:paddingStart="@dimen/miuix_group_title_inset"
+            android:paddingTop="@dimen/miuix_group_title_gap"
+            android:paddingEnd="@dimen/miuix_group_title_inset"
+            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:text="开源" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:strokeColor="@color/ios_separator"
             app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/ios_card_padding">
+                android:orientation="vertical">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <!-- 上游项目：本项目的基础 -->
+                <LinearLayout
+                    android:id="@+id/rowAboutUpstream"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="当前版本"
-                    android:textAppearance="@style/Widget.IOS.SubsectionTitle"
-                    android:textColor="@color/ios_text_primary" />
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
 
-                <TextView
-                    android:id="@+id/tvAboutCurrentVersion"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="1.0.0"
-                    android:textAppearance="@style/Widget.IOS.Body"
-                    android:textColor="@color/ios_text_secondary" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="上游项目" />
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="violet_Box（紫罗兰Box）· 本项目在它的基础上二次开发" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 开源协议 -->
+                <LinearLayout
+                    android:id="@+id/rowAboutLicense"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="更新日期：2026.04.24"
-                    android:textAppearance="@style/Widget.IOS.Body"
-                    android:textColor="@color/ios_text_secondary" />
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="开源协议" />
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="GPL-3.0 · 允许修改与再分发，须保留署名并以同协议开源" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- ===================== 鸣谢 ===================== -->
+        <TextView
+            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/miuix_group_title_inset"
+            android:paddingTop="@dimen/miuix_group_title_gap"
+            android:paddingEnd="@dimen/miuix_group_title_inset"
+            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:text="鸣谢" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:strokeColor="@color/ios_separator"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- KernelSU：主题能力与 Miuix 组件范式的参考 -->
+                <LinearLayout
+                    android:id="@+id/rowAboutKernelSu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="KernelSU" />
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="主题能力与 Miuix 组件范式的参考" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 星野Scene：监视悬浮窗的视觉与采集思路参考（无公开仓库链接，故不可点） -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="星野Scene" />
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="监视悬浮窗的视觉与系统数据采集思路参考" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Miuix：设置页 / 刷机页的设计范式来源 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Miuix" />
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="设置页与刷机子页的尺寸、字号、卡片范式来源" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ===================== 作者 ===================== -->
+        <TextView
+            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/miuix_group_title_inset"
+            android:paddingTop="@dimen/miuix_group_title_gap"
+            android:paddingEnd="@dimen/miuix_group_title_inset"
+            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:text="作者" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:strokeColor="@color/ios_separator"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 哔哩哔哩 -->
+                <LinearLayout
+                    android:id="@+id/rowAboutBilibili"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="哔哩哔哩" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 酷安 -->
+                <LinearLayout
+                    android:id="@+id/rowAboutCoolapk"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="酷安" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- GitHub -->
+                <LinearLayout
+                    android:id="@+id/rowAboutGithub"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="GitHub" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 抖音 -->
+                <LinearLayout
+                    android:id="@+id/rowAboutDouyin"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="抖音" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 底部声明 -->
+        <TextView
+            android:id="@+id/tvAboutCopyright"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.2"
+            android:text="基于 violet_Box（紫罗兰Box）二次开发&#10;遵循 GNU General Public License v3.0"
+            android:textColor="@color/ios_text_secondary"
+            android:textSize="12sp" />
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

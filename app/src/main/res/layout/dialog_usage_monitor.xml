@@ -25,7 +25,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:layout_marginBottom="10dp"
-        android:text="实时监控系统负载、进程、线程、温度与帧率，开关状态自动保存。"
+        android:text="CPU/GPU/电池/内存 圆环监控、进程、线程、温度与帧率，开关状态自动保存。"
         android:textAppearance="@style/Widget.IOS.Body"
         android:textColor="@color/ios_text_secondary"
         android:textSize="13sp"
@@ -56,7 +56,7 @@
                     android:layout_marginEnd="14dp"
                     android:importantForAccessibility="no"
                     app:srcCompat="@drawable/ic_ms_data_usage"
-                    app:tint="@color/ios_accent" />
+                    app:tint="?attr/auroraAccent" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -67,7 +67,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="负载监视器"
+                        android:text="系统监视器"
                         android:textColor="@color/ios_text_primary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -76,7 +76,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="实时监控 CPU 负载与使用率"
+                        android:text="CPU · GPU · 电池 · 内存 四环监控"
                         android:textColor="@color/ios_text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -109,7 +109,7 @@
                     android:layout_marginEnd="14dp"
                     android:importantForAccessibility="no"
                     app:srcCompat="@drawable/ic_ms_apps"
-                    app:tint="@color/ios_accent" />
+                    app:tint="?attr/auroraAccent" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -162,7 +162,7 @@
                     android:layout_marginEnd="14dp"
                     android:importantForAccessibility="no"
                     app:srcCompat="@drawable/ic_monitor_threads"
-                    app:tint="@color/ios_accent" />
+                    app:tint="?attr/auroraAccent" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -215,7 +215,7 @@
                     android:layout_marginEnd="14dp"
                     android:importantForAccessibility="no"
                     app:srcCompat="@drawable/ic_ms_bolt"
-                    app:tint="@color/ios_accent" />
+                    app:tint="?attr/auroraAccent" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -235,7 +235,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="悬浮窗迷你显示核心指标"
+                        android:text="单行显示 CPU/GPU 频率 · FPS · 电池温度"
                         android:textColor="@color/ios_text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -268,7 +268,7 @@
                     android:layout_marginEnd="14dp"
                     android:importantForAccessibility="no"
                     app:srcCompat="@drawable/ic_monitor_fps"
-                    app:tint="@color/ios_accent" />
+                    app:tint="?attr/auroraAccent" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -321,7 +321,7 @@
                     android:layout_marginEnd="14dp"
                     android:importantForAccessibility="no"
                     app:srcCompat="@drawable/ic_monitor_temperature"
-                    app:tint="@color/ios_accent" />
+                    app:tint="?attr/auroraAccent" />
 
                 <LinearLayout
                     android:layout_width="0dp"

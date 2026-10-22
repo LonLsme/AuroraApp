@@ -97,8 +97,8 @@ public final class OverlayWindowManager {
     /** 工厂：根据类型创建对应窗口实现。 */
     private OverlayWindow createWindow(Context context, MonitorType type) {
         switch (type) {
-            case LOAD:
-                return new LoadOverlayWindow(context);
+            case SYSTEM:
+                return new SystemOverlayWindow(context);
             case PROCESS:
                 return new ProcessOverlayWindow(context);
             case THREAD:

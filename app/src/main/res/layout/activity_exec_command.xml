@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「执行命令」页（竖屏，独立 Activity，无顶栏，Miuix 风格）。
+
+  版式（自上而下，顺序固定）：
+    · 左上角返回箭头 + 右上角设备状态文字
+    · 顶部大标题「执行命令」
+    · 第一行：保存日志 / 终止
+    · 板块 1「命令」：通道单选（ADB / Fastboot / Shell）+ 命令输入框 + 执行 / 清空
+    · 板块 2「最近命令」：点一条回填输入框，长按删除；没有历史时整块隐藏
+    · 底部输出区，初始文案「输入命令后点击执行」
+
+  通道决定前缀，用户在输入框里写的只是参数部分：
+    ADB      → adb -s <序列号> <输入>
+    Fastboot → fastboot -s <序列号> <输入>
+    Shell    → adb -s <序列号> shell <输入>
+
+  整页用 NestedScrollView 承载，贴边回弹与其它刷机子页一致。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollExecCommand"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:overScrollMode="always"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/ios_screen_edge"
+        android:paddingTop="6dp"
+        android:paddingBottom="20dp">
+
+        <!-- ───────── 头部：返回箭头 + 右上角设备状态 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnFlashBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="-10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="返回"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/ios_text_primary" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/tvFlashDeviceState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxWidth="180dp"
+                android:singleLine="true"
+                android:text="未连接设备"
+                android:textColor="@color/ios_text_secondary"
+                android:textSize="13sp"
+                tools:text="ADB 已连接 · 45850c2f" />
+        </LinearLayout>
+
+        <!-- ───────── 大标题 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="执行命令"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp" />
+
+        <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashSaveLog"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="保存日志" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashStop"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="终止" />
+        </LinearLayout>
+
+        <!-- ───────── 板块 1：命令 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:text="命令"
+            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <RadioGroup
+                    android:id="@+id/rgExecChannel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <RadioButton
+                        android:id="@+id/rbExecAdb"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:checked="true"
+                        android:text="ADB"
+                        android:textSize="14sp" />
+
+                    <RadioButton
+                        android:id="@+id/rbExecFastboot"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Fastboot"
+                        android:textSize="14sp" />
+
+                    <RadioButton
+                        android:id="@+id/rbExecShell"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Shell"
+                        android:textSize="14sp" />
+                </RadioGroup>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    app:boxBackgroundMode="filled"
+                    app:boxCornerRadiusBottomEnd="10dp"
+                    app:boxCornerRadiusBottomStart="10dp"
+                    app:boxCornerRadiusTopEnd="10dp"
+                    app:boxCornerRadiusTopStart="10dp"
+                    app:boxStrokeColor="@color/ios_separator">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etExecCommand"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:hint="输入命令"
+                        android:imeOptions="actionGo"
+                        android:inputType="textNoSuggestions"
+                        android:maxLines="1"
+                        android:textColor="@color/explore_slate_800"
+                        android:textSize="13sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnExecRun"
+                        style="@style/Widget.Aurora.Miuix.Button.Primary"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/miuix_button_height"
+                        android:layout_weight="1"
+                        android:text="执行" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnExecClear"
+                        style="@style/Widget.Aurora.Miuix.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/miuix_button_height"
+                        android:layout_marginStart="@dimen/miuix_button_gap"
+                        android:layout_weight="1"
+                        android:text="清空" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ───────── 板块 2：最近命令（无历史时整块隐藏） ───────── -->
+        <LinearLayout
+            android:id="@+id/layoutExecHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="8dp"
+                android:text="最近命令"
+                android:textAppearance="@style/Widget.IOS.SectionLabel" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Aurora.Miuix.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:id="@+id/listExecHistory"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingVertical="4dp" />
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- ───────── 输出区 ───────── -->
+        <TextView
+            android:id="@+id/tvFlashConsole"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/miuix_console_height"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_console"
+            android:fontFamily="monospace"
+            android:padding="14dp"
+            android:scrollbars="vertical"
+            android:text="输入命令后点击执行"
+            android:textColor="@color/ios_text_secondary"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

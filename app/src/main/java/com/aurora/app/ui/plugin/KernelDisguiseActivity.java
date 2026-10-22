@@ -25,7 +25,11 @@ import java.util.regex.Pattern;
 
 public class KernelDisguiseActivity extends AppCompatActivity {
 
-    private static final String SUSFS_CONFIG_PRIMARY = "/data/adb/violet_kernel_spoof/config.sh";
+    /** 模块改名后的持久化配置路径（模块 customize.sh 与之保持一致）。 */
+    private static final String SUSFS_CONFIG_DIR = "/data/adb/aurora_kernel_spoof";
+    private static final String SUSFS_CONFIG_PRIMARY = SUSFS_CONFIG_DIR + "/config.sh";
+    /** 改名前的旧路径：只用于读取与一次性迁移，不再写入。 */
+    private static final String SUSFS_CONFIG_PREVIOUS = "/data/adb/violet_kernel_spoof/config.sh";
     private static final String SUSFS_CONFIG_LEGACY = "/data/adb/susfs4ksu/config.sh";
     private static final String SUSFS_BIN = "/data/adb/ksu/bin/ksu_susfs";
     private static final Pattern CONFIG_LINE_PATTERN = Pattern.compile("^\\s*([a-zA-Z0-9_]+)\\s*=\\s*(.*)\\s*$");
@@ -151,8 +155,11 @@ public class KernelDisguiseActivity extends AppCompatActivity {
         String versionEsc = singleQuoteEscape(kernelVersion);
         String buildEsc = singleQuoteEscape(kernelBuild);
         String spoofMode = getSelectedSpoofMode();
-        String cmd = "PRIMARY=\"" + SUSFS_CONFIG_PRIMARY + "\"; LEGACY=\"" + SUSFS_CONFIG_LEGACY + "\"; "
-                + "if [ -f \"$PRIMARY\" ] || [ -d /data/adb/violet_kernel_spoof ]; then CONFIG=\"$PRIMARY\"; "
+        String cmd = "PRIMARY=\"" + SUSFS_CONFIG_PRIMARY + "\"; DIR=\"" + SUSFS_CONFIG_DIR + "\"; "
+                + "PREVIOUS=\"" + SUSFS_CONFIG_PREVIOUS + "\"; LEGACY=\"" + SUSFS_CONFIG_LEGACY + "\"; "
+                // 改名迁移：新目录还没有配置、旧路径有，就先搬过来（不覆盖已有配置）
+                + "if [ -f \"$PREVIOUS\" ] && [ ! -f \"$PRIMARY\" ]; then mkdir -p \"$DIR\"; cp -af \"$PREVIOUS\" \"$PRIMARY\"; fi; "
+                + "if [ -f \"$PRIMARY\" ] || [ -d \"$DIR\" ]; then CONFIG=\"$PRIMARY\"; "
                 + "else CONFIG=\"$LEGACY\"; fi; "
                 + "KV='" + versionEsc + "'; KB='" + buildEsc + "'; "
                 + "mkdir -p \"$(dirname \"$CONFIG\")\"; "
@@ -174,8 +181,12 @@ public class KernelDisguiseActivity extends AppCompatActivity {
     }
 
     private String resolveConfigPathForRead() {
-        if (isFileExistsViaSu(SUSFS_CONFIG_PRIMARY) || isDirectoryExistsViaSu("/data/adb/violet_kernel_spoof")) {
+        if (isFileExistsViaSu(SUSFS_CONFIG_PRIMARY) || isDirectoryExistsViaSu(SUSFS_CONFIG_DIR)) {
             return SUSFS_CONFIG_PRIMARY;
+        }
+        // 尚未迁移的旧路径：先按旧路径读，写回时再迁到新目录
+        if (isFileExistsViaSu(SUSFS_CONFIG_PREVIOUS)) {
+            return SUSFS_CONFIG_PREVIOUS;
         }
         return SUSFS_CONFIG_LEGACY;
     }

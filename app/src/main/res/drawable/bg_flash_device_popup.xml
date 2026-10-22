@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  刷机页右上角「设备状态」下拉弹窗的背景：白色圆角矩形。
+
+  颜色走 ?attr/auroraBackgroundElevated（浅色 = 纯白），不硬编码 hex ——
+  与 bg_dialog_rounded 同一套视觉语言（同一描边色、圆角略小一档）。
+  PopupWindow 不会把子 View 裁到圆角内，所以列表行自身必须是透明背景。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/auroraBackgroundElevated" />
+    <corners android:radius="16dp" />
+    <stroke
+        android:width="1dp"
+        android:color="@color/dialog_stroke" />
+</shape>

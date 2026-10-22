@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「刷入 KernelSU」页（竖屏，独立 Activity，无顶栏，Miuix 风格）。
+
+  版式（自上而下，顺序固定）：
+    · 左上角返回箭头 + 右上角设备状态文字
+    · 顶部大标题「刷入KernelSU」
+    · 第一行：保存日志 / 终止
+    · 小字：管理器版本（由 libksud 的版本命令读出）
+    · 三个整行按钮：选择 init_boot.img/boot.img → 请选择内核版本 → 开始修补
+    · 底部输出区，初始文案「选择操作」
+
+  三个按钮的文案取自参考实现（ChenAxic）的字符串资源：
+    ksu_select_img = 选择 init_boot.img/boot.img
+    ksu_kmi_title  = 请选择内核版本
+    ksu_patch      = 开始修补
+  后两个按钮在选中之后会变成「已选: xxx」（common_selected 的形态），
+  这是页面唯一的状态回显 —— 与「页面只放控件 + 实时状态」的约定一致。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollKernelSu"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:overScrollMode="always"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/ios_screen_edge"
+        android:paddingTop="6dp"
+        android:paddingBottom="20dp">
+
+        <!-- ───────── 头部：返回箭头 + 右上角设备状态 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnFlashBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="-10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="返回"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/ios_text_primary" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/tvFlashDeviceState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxWidth="180dp"
+                android:singleLine="true"
+                android:text="未连接设备"
+                android:textColor="@color/ios_text_secondary"
+                android:textSize="13sp"
+                tools:text="Fastboot 已连接 · 45850c2f" />
+        </LinearLayout>
+
+        <!-- ───────── 大标题 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="刷入KernelSU"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp" />
+
+        <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashSaveLog"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="保存日志" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashStop"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="终止" />
+        </LinearLayout>
+
+        <!-- ───────── 小字：管理器版本 ───────── -->
+        <TextView
+            android:id="@+id/tvKsuVersion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:layout_marginStart="4dp"
+            android:text="libksud 检测中…"
+            android:textAppearance="@style/Widget.IOS.Caption"
+            tools:text="管理器版本 3.3.0 (uapi: 2)" />
+
+        <!-- ───────── 三个整行按钮 ───────── -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnKsuPickImage"
+            style="@style/Widget.Aurora.Miuix.Button"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/miuix_button_height"
+            android:layout_marginTop="12dp"
+            android:text="选择 init_boot.img/boot.img" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnKsuPickKmi"
+            style="@style/Widget.Aurora.Miuix.Button"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/miuix_button_height"
+            android:layout_marginTop="@dimen/miuix_button_gap"
+            android:text="请选择内核版本" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnKsuPatch"
+            style="@style/Widget.Aurora.Miuix.Button"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/miuix_button_height"
+            android:layout_marginTop="@dimen/miuix_button_gap"
+            android:text="开始修补" />
+
+        <!-- ───────── 输出区 ───────── -->
+        <TextView
+            android:id="@+id/tvFlashConsole"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/miuix_console_height"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_console"
+            android:fontFamily="monospace"
+            android:padding="14dp"
+            android:scrollbars="vertical"
+            android:text="选择操作"
+            android:textColor="@color/ios_text_secondary"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

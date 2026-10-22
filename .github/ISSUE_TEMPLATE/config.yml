@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用问题 / 讨论
+    url: https://github.com/LonLsme/AuroraApp/discussions
+    about: 不确定是不是 bug、想讨论用法，请到 Discussions 提问，不要开 issue
+  - name: 安全漏洞
+    url: https://github.com/LonLsme/AuroraApp/security/advisories/new
+    about: 涉及提权、命令注入、任意文件写入的问题请走私密渠道，不要公开 issue

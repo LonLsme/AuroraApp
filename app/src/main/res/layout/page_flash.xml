@@ -1,0 +1,818 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「刷机」页（底栏 tab 1）内容。
+  由 activity_main.xml 的 contentHome（NestedScrollView）include 进来，
+  再被 MainActivity.setupTabPager() 交给 ViewPager2 托管。
+
+  版式（2026-10-10 定稿）：
+  · 本页自带头部 —— 左「刷机」标题，右上角是设备状态下拉入口
+    （MainActivity.updateToolbarForTab() 在 tab1 把顶栏整行隐藏，见那里的说明）；
+  · 主体是 11 张等宽等高卡片，单列、等间距、顺序固定，不可随意调换：
+    前 8 张是「刷写设备本身」——小米线刷 / 欧加真线刷 / 刷入KernelSU / 高通QDL /
+    刷写分区 / 设备重启 / ADB Sideload 卡刷 / 执行命令；
+    之后用「应用工具」分组标题隔开，跟 3 张「操作设备上的应用」——
+    应用卸载冻结 / 免root激活 / 应用安装；
+  · 每张卡片内部三段：左侧图标块、中间名称与副标题、最右侧箭头。
+
+  页面只放「控件 + 实时状态」：不做机制说明卡片（项目约定）。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="@dimen/ios_screen_edge"
+    android:paddingTop="12dp"
+    android:paddingBottom="28dp">
+
+    <!-- ───────── 头部：标题 + 右上角设备下拉 ───────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:text="刷机"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp" />
+
+        <LinearLayout
+            android:id="@+id/btnFlashDevices"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_flash_device_pill"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/tvFlashDeviceSummary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxWidth="170dp"
+                android:singleLine="true"
+                android:text="未连接设备"
+                android:textColor="@color/ios_text_secondary"
+                android:textSize="13sp"
+                tools:text="ADB 已连接 · 45850c2f" />
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_down"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ───────── 1. 小米线刷 ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardFlashMi"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_ms_cable"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="小米线刷"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="小米 · 红米固件包线刷"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ───────── 2. 欧加真线刷 ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardFlashOplus"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_ms_developer_board"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="欧加真线刷"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="OPPO · 一加 · realme 固件线刷"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ───────── 3. 刷入 KernelSU ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardFlashKernelSu"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_ms_verified_user"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="刷入KernelSU"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="刷写 init_boot / boot 获取 Root"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ───────── 4. 高通 QDL ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardFlashQdl"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_ms_build"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="高通QDL"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="9008 EDL 深刷模式"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ───────── 5. 刷写分区 ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardFlashPartition"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_ms_partition_manager"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="刷写分区"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="单分区 Fastboot 刷写"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ───────── 6. 设备重启 ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardFlashReboot"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_ms_restart_alt"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="设备重启"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="重启到系统 / Recovery / Bootloader"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ───────── 7. ADB Sideload 卡刷 ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardFlashSideload"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_payload"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="ADB Sideload 卡刷"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="Recovery 下刷入 OTA 包"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ───────── 8. 执行命令 ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardFlashExec"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_terminal"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="执行命令"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="自定义 ADB / Fastboot 命令"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!--
+      ───────── 分组标题：应用工具 ─────────
+      下面 3 张卡操作的是「连着的那台设备」上的应用（卸载冻结 / 免 root 激活 / 应用安装），
+      和上面 7 张「刷写设备本身」的卡不是一类事，单起一个分组标题分开。
+      分组标题沿用 Miuix 的 SmallTitle 范式（14sp Bold + 次级色），见 Widget.Aurora.Miuix.GroupTitle。
+    -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_marginTop="22dp"
+        android:layout_marginBottom="6dp"
+        android:text="应用工具"
+        android:textAppearance="@style/Widget.Aurora.Miuix.GroupTitle" />
+
+    <!-- ───────── 8. 应用卸载冻结 ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardAppUninstall"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_ms_apps"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="应用卸载冻结"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="批量卸载 · 冻结设备上的应用"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ───────── 9. 免root激活 ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardAppActivate"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_ms_security"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="免root激活"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="Shizuku · 小黑屋 · 冰箱"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ───────── 10. 应用安装 ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardAppInstall"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_ms_extension"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="应用安装"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="选择安装包 · 支持批量安装"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!--
+      输出不落在这一页上：每张卡片跑命令时各自弹一个「执行输出」对话框
+      （ui/flash/FlashRunDialog + dialog_flash_output.xml）。
+      页面本身只剩「头部 + 11 张卡片」，一次操作对应一段输出。
+    -->
+</LinearLayout>

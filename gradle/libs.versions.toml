@@ -2,6 +2,8 @@
 agp = "9.1.1"
 kotlin = "2.3.10"
 junit = "4.13.2"
+# 单测里需要一个真实的 org.json 实现：android.jar 里那份是桩，调用会抛 "not mocked"
+json = "20231013"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 appcompat = "1.6.1"
@@ -11,12 +13,19 @@ activityCompose = "1.12.4"
 composeBom = "2026.02.01"
 constraintlayout = "2.1.4"
 recyclerview = "1.3.2"
+viewpager2 = "1.0.0"
 backdrop = "1.0.6"
 capsule = "2.1.3"
 kotlinxCoroutines = "1.8.1"
+rootbeer = "0.1.0"
+okhttp = "4.12.0"
+commonsCompress = "1.27.1"
+xz = "1.10"
+commonsIo = "2.18.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+json = { group = "org.json", name = "json", version.ref = "json" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
@@ -25,6 +34,7 @@ activity = { group = "androidx.activity", name = "activity", version.ref = "acti
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
+viewpager2 = { group = "androidx.viewpager2", name = "viewpager2", version.ref = "viewpager2" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
 compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
@@ -33,8 +43,15 @@ compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
 capsule = { group = "io.github.kyant0", name = "capsule", version.ref = "capsule" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+# Root 检测
+rootbeer = { group = "com.scottyab", name = "rootbeer-lib", version.ref = "rootbeer" }
+# OTA 云提取
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+# 刷机包解析：payload.bin / 7z / xz；commons-io 是 commons-compress 的运行期依赖补充
+commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }
+xz = { group = "org.tukaani", name = "xz", version.ref = "xz" }
+commons-io = { group = "commons-io", name = "commons-io", version.ref = "commonsIo" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-

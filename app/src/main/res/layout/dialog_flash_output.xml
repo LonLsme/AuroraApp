@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「执行输出」对话框内容：大面积半透明输出框。
+
+  刷机页底部原来常驻一个终端区，现改为每次操作弹自己的输出框 ——
+  输出落在卡片自己的流程里，页面本身只剩 7 张卡片 + 右上角设备下拉。
+
+  高度写死 260dp 而不是 wrap_content：命令还在跑的时候文本是逐行长出来的，
+  wrap_content 会让对话框一边执行一边抽动。
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/tvRunLog"
+    android:layout_width="match_parent"
+    android:layout_height="260dp"
+    android:background="@drawable/bg_console"
+    android:fontFamily="monospace"
+    android:padding="12dp"
+    android:scrollbars="vertical"
+    android:textColor="@color/ios_text_secondary"
+    android:textIsSelectable="true"
+    android:textSize="11sp"
+    tools:text="$ fastboot flash boot '/storage/emulated/0/Android/data/com.aurora.app/files/flash/boot.img'&#10;Sending 'boot' (65536 KB) OKAY [  1.732s]&#10;Writing 'boot' OKAY [  0.352s]&#10;Finished. Total time: 2.084s" />

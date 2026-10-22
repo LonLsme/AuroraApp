@@ -6,7 +6,10 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
+import android.os.Build;
 import android.os.IBinder;
+import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
@@ -38,6 +41,7 @@ public class MonitorOverlayService extends Service {
     /** 命令参数：MonitorType.name()。 */
     public static final String EXTRA_TYPE = "overlay_type";
 
+    private static final String TAG = "MonitorOverlayService";
     private static final String CHANNEL_ID = "aurora_overlay";
     private static final int NOTIFICATION_ID = 1001;
 
@@ -101,10 +105,19 @@ public class MonitorOverlayService extends Service {
                     break;
             }
         }
-        // 还有窗口在运行 → 保持前台服务；全部关闭 → 停止服务
-        if (manager.runningCount() > 0) {
-            startForeground(NOTIFICATION_ID, buildNotification(manager.runningCount()));
-        } else {
+        int runningCount = manager.runningCount();
+        // 还有窗口在运行 → 保持前台服务；全部关闭 → 停止服务。
+        //
+        // 注意两个系统契约，缺一个都会导致进程被杀：
+        // 1. 本服务由 startForegroundService() 启动，Android 8+ 要求在超时前调用
+        //    startForeground()，否则抛 RemoteServiceException（API 31+ 为
+        //    ForegroundServiceDidNotStartInTimeException）。因此即便本次命令的结果
+        //    是「无窗口、立即停止」，也必须先挂上一次通知，再走收尾流程。
+        // 2. Manifest 声明了 foregroundServiceType="specialUse"，targetSdk 34+ 必须
+        //    使用带 type 的 startForeground 重载，否则抛 MissingForegroundServiceTypeException。
+        //    两件事统一由 startForegroundCompat() 处理。
+        startForegroundCompat(buildNotification(runningCount));
+        if (runningCount <= 0) {
             stopForeground(STOP_FOREGROUND_REMOVE);
             stopSelf();
         }
@@ -151,11 +164,44 @@ public class MonitorOverlayService extends Service {
         nm.createNotificationChannel(channel);
     }
 
+    /**
+     * 启动前台服务，兼容 Android 14（API 34）的前台服务类型校验。
+     *
+     * <p>API 34 起，若 Manifest 为服务声明了 {@code android:foregroundServiceType}，
+     * 就必须调用带 type 的 {@code startForeground} 重载；沿用旧的二参重载会抛
+     * {@code MissingForegroundServiceTypeException}。本服务声明的是 {@code specialUse}，
+     * 与 Manifest 中的 {@code PROPERTY_SPECIAL_USE_FGS_SUBTYPE} 配套。
+     *
+     * <p>{@link ServiceInfo#FOREGROUND_SERVICE_TYPE_SPECIAL_USE} 是编译期常量，
+     * 会被内联到调用处，因此在低于 API 34 的设备上不会因为缺字段而崩溃。
+     */
+    private void startForegroundCompat(Notification notification) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                        NOTIFICATION_ID,
+                        notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+        } catch (Exception e) {
+            // 个别 ROM 定制了前台服务校验，失败时不能让主流程崩溃：
+            // 降级为普通启动，窗口本身已由 OverlayWindowManager 挂出。
+            Log.e(TAG, "startForeground failed, fallback to non-foreground", e);
+        }
+    }
+
     /** 构建前台服务通知：显示当前运行的窗口数量。 */
     private Notification buildNotification(int count) {
+        // count 为 0 表示本次命令执行后已无窗口，服务即将停止，
+        // 这则通知只用于满足 startForegroundService 的调用契约，随即会被移除。
+        String contentText = count > 0
+                ? count + " 个监视窗口运行中"
+                : "正在停止监视窗口";
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("使用监视器")
-                .setContentText(count + " 个监视窗口运行中")
+                .setContentText(contentText)
                 .setSmallIcon(R.drawable.ic_monitor_speed)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_MIN)

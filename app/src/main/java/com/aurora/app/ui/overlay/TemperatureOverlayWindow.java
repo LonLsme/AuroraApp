@@ -45,7 +45,7 @@ public final class TemperatureOverlayWindow extends OverlayWindow {
     protected View buildCollapsedView() {
         LinearLayout col = new LinearLayout(context);
         col.setOrientation(LinearLayout.VERTICAL);
-        foldRow = OverlayWindowStyle.createDarkBodyView(context);
+        foldRow = OverlayWindowStyle.createMonitorBodyView(context);
         foldRow.setText("电池 -- · CPU --");
         col.addView(foldRow);
         return col;
@@ -55,22 +55,22 @@ public final class TemperatureOverlayWindow extends OverlayWindow {
     protected View buildExpandedView() {
         LinearLayout col = new LinearLayout(context);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.addView(OverlayWindowStyle.createDarkTitleView(context, "温度"));
+        col.addView(OverlayWindowStyle.createMonitorTitleView(context, "温度"));
 
-        batteryRow = OverlayWindowStyle.createDarkBodyView(context);
+        batteryRow = OverlayWindowStyle.createMonitorBodyView(context);
         batteryRow.setTextSize(14);
         batteryRow.setTypeface(Typeface.DEFAULT_BOLD);
         batteryRow.setText("电池 --");
         col.addView(batteryRow);
 
-        cpuRow = OverlayWindowStyle.createDarkBodyView(context);
+        cpuRow = OverlayWindowStyle.createMonitorBodyView(context);
         cpuRow.setText("CPU --");
         col.addView(cpuRow);
 
-        col.addView(OverlayWindowStyle.createDarkTitleView(context, "热区"));
+        col.addView(OverlayWindowStyle.createMonitorTitleView(context, "热区"));
         zoneRows.clear();
         for (int i = 0; i < ZONES_LIMIT; i++) {
-            TextView row = OverlayWindowStyle.createDarkBodyView(context);
+            TextView row = OverlayWindowStyle.createMonitorBodyView(context);
             row.setText("--");
             row.setTextSize(10);
             col.addView(row);

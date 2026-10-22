@@ -12,7 +12,7 @@
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/ios_background_elevated"
+        android:background="?attr/auroraBackgroundElevated"
         android:elevation="8dp"
         android:translationZ="8dp"
         app:elevation="8dp">
@@ -21,7 +21,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="@color/ios_background_elevated"
+            android:background="?attr/auroraBackgroundElevated"
             app:menu="@menu/toolbar_menu"
             app:popupTheme="@style/ThemeOverlay.Aurora.ToolbarPopup"
             app:title="Aurora"
@@ -124,7 +124,7 @@
                 android:id="@+id/cardRootInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/ios_card"
+                app:cardBackgroundColor="?attr/auroraCard"
                 app:cardCornerRadius="@dimen/ios_card_corner"
                 app:cardElevation="0dp"
                 app:strokeWidth="0dp">
@@ -177,9 +177,11 @@
         android:visibility="gone"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
+        <!-- 注意：本文件目前零引用，是 activity_main.xml 的旧版副本（页面仍靠 visibility 切换、
+             未接入 ViewPager2）。保留仅为回溯参考，若将来启用，请同样不要用 android:name
+             静态声明 —— 该容器会被 ViewPager2 托管，重建时按 id 定位不到会整页空白。 -->
         <androidx.fragment.app.FragmentContainerView
             android:id="@+id/device_fragment_container"
-            android:name="com.aurora.app.ui.device.DeviceFragment"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
     </FrameLayout>

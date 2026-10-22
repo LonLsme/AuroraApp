@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「欧加真线刷」页（竖屏，独立 Activity，无顶栏）。
+
+  版式（自上而下，顺序固定）：
+    · 左上角返回箭头 + 大标题「欧加真线刷」
+    · 第一行：保存日志 / 终止（左右两个按钮）
+    · 第二行：镜像目录路径输入框 + 右侧文件夹选择按钮
+    · 第三行：整行「修复Super分区」
+    · 第四行：并排「常规线刷」「纯FastbootD」
+    · 下方：大面积半透明输出框，占满剩余高度
+
+  页面只放「控件 + 实时状态」：不做机制说明卡片（项目约定）。输出框的初始文案是
+  唯一一句引导，且它就在输出框里、不占额外版面。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <!-- ───────── 头部：返回箭头 + 大标题 ───────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="@dimen/ios_screen_edge"
+        android:paddingBottom="6dp">
+
+        <ImageButton
+            android:id="@+id/btnOplusBack"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="返回"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_arrow_back"
+            android:tint="@color/ios_text_primary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:text="欧加真线刷"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp" />
+    </LinearLayout>
+
+    <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="@dimen/ios_screen_edge">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOplusSaveLog"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="保存日志"
+            android:textAllCaps="false"
+            android:textColor="@color/ios_text_primary"
+            app:cornerRadius="14dp"
+            app:strokeColor="@color/ios_separator" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOplusStop"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="终止"
+            android:textAllCaps="false"
+            android:textColor="@color/ios_text_primary"
+            app:cornerRadius="14dp"
+            app:strokeColor="@color/ios_separator" />
+    </LinearLayout>
+
+    <!-- ───────── 第二行：镜像目录路径 + 文件夹选择 ───────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="@dimen/ios_screen_edge">
+
+        <EditText
+            android:id="@+id/etOplusDir"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_flash_input"
+            android:fontFamily="sans-serif"
+            android:hint="镜像目录路径"
+            android:importantForAutofill="no"
+            android:inputType="textUri"
+            android:maxLines="1"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="13dp"
+            android:singleLine="true"
+            android:textColor="@color/ios_text_primary"
+            android:textColorHint="@color/ios_text_secondary"
+            android:textSize="13sp"
+            tools:text="/storage/emulated/0/Download/oplus_images" />
+
+        <ImageButton
+            android:id="@+id/btnOplusPickDir"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/bg_flash_input"
+            android:contentDescription="选择镜像目录"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_folder_open"
+            android:tint="?attr/auroraAccent" />
+    </LinearLayout>
+
+    <!-- ───────── 第三行：修复 Super 分区（整行） ───────── -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnOplusFixSuper"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/ios_screen_edge"
+        android:layout_marginTop="10dp"
+        android:text="修复Super分区"
+        android:textAllCaps="false"
+        android:textColor="@color/ios_text_primary"
+        app:cornerRadius="14dp"
+        app:strokeColor="@color/ios_separator" />
+
+    <!-- ───────── 第四行：常规线刷 / 纯FastbootD ───────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="@dimen/ios_screen_edge">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOplusNormalFlash"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="常规线刷"
+            android:textAllCaps="false"
+            android:textColor="?attr/colorOnPrimary"
+            app:cornerRadius="14dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOplusPureFastbootd"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="纯FastbootD"
+            android:textAllCaps="false"
+            android:textColor="?attr/colorOnPrimary"
+            app:cornerRadius="14dp" />
+    </LinearLayout>
+
+    <!-- ───────── 输出框（占满剩余高度） ───────── -->
+    <!--
+      用 TextView 自身滚动（ScrollingMovementMethod + 固定高度 weight=1），
+      不套 ScrollView：外层已是可伸缩的 LinearLayout，嵌一层只会让手势归属变得难判断。
+    -->
+    <TextView
+        android:id="@+id/tvOplusLog"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginHorizontal="@dimen/ios_screen_edge"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="16dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_console"
+        android:fontFamily="monospace"
+        android:padding="14dp"
+        android:scrollbars="vertical"
+        android:text="选择镜像目录后点击下方模式开始刷写"
+        android:textColor="@color/ios_text_secondary"
+        android:textIsSelectable="true"
+        android:textSize="11sp" />
+</LinearLayout>

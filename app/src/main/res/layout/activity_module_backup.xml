@@ -31,7 +31,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/ios_card"
+            android:background="?attr/auroraCard"
             android:padding="16dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">

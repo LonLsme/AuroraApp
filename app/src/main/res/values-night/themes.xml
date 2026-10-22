@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.Aurora" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/ios_accent</item>
-        <item name="colorOnPrimary">@color/black</item>
-        <item name="colorSurface">@color/ios_card</item>
+        <item name="colorPrimary">?attr/auroraAccent</item>
+        <item name="colorOnPrimary">?attr/auroraOnAccent</item>
+        <item name="auroraAccent">@color/ios_accent</item>
+        <item name="auroraOnAccent">@color/black</item>
+        <item name="auroraCard">@color/ios_card</item>
+        <item name="auroraBackgroundElevated">@color/ios_background_elevated</item>
+        <item name="auroraFill">@color/ios_fill_tertiary</item>
+        <item name="colorSurface">?attr/auroraCard</item>
         <item name="android:colorBackground">@color/ios_background_grouped</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@color/ios_background_grouped</item>
@@ -12,4 +17,16 @@
     </style>
 
     <style name="Theme.Aurora" parent="Base.Theme.Aurora" />
+
+    <!-- AMOLED 纯黑覆盖层：深色本身已把背景压到纯黑，这里把卡片/工具栏也压平 -->
+    <style name="ThemeOverlay.Aurora.Amoled" parent="">
+        <item name="auroraCard">#FF000000</item>
+        <item name="auroraBackgroundElevated">#FF000000</item>
+        <item name="auroraFill">#FF0D0D0D</item>
+        <item name="colorSurface">#FF000000</item>
+        <item name="colorSurfaceContainer">#FF000000</item>
+        <item name="colorSurfaceContainerHigh">#FF0D0D0D</item>
+        <item name="colorSurfaceContainerHighest">#FF121212</item>
+        <item name="android:colorBackground">#FF000000</item>
+    </style>
 </resources>

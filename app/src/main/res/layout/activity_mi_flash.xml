@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「小米线刷」页（竖屏，独立 Activity，无顶栏，Miuix 风格）。
+
+  版式（自上而下，顺序固定）：
+    · 顶部区域：左上角返回箭头 + 右上角设备状态下拉（胶囊，点开是 10 个槽位）
+    · 大标题「小米线刷」（加粗大字）
+    · 第一行：保存日志 / 终止（左右两个浅灰圆角按钮）
+    · 第二行：目录路径输入框（占位「目录路径」）+ 并排「浏览」「扫描」
+    · 下方：大片日志输出区
+
+  外层是 NestedScrollView 且 overScrollMode="always"：内容不满一屏时也保留上下回弹。
+  日志区刻意用 wrap_content + minHeight（不用 weight 占满）—— 这样日志变长时页面会跟着变高，
+  外层才真的滚得动；若用 weight 撑满一屏则滚动范围恒为 0，只剩回弹没有滚动。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollMiFlash"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:overScrollMode="always"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/ios_screen_edge"
+        android:paddingTop="6dp"
+        android:paddingBottom="20dp">
+
+        <!-- ───────── 顶部区域：返回箭头 + 设备状态下拉 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnFlashBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="-10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="返回"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/ios_text_primary" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!--
+              下拉胶囊：整体可点（点开弹 10 个槽位列表），文字由页面按探测结果刷新。
+              id 仍叫 tvFlashDeviceState —— 基类据此绑定设备状态文字。
+            -->
+            <LinearLayout
+                android:id="@+id/btnMiDevicePill"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_flash_device_pill"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="7dp">
+
+                <TextView
+                    android:id="@+id/tvFlashDeviceState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxWidth="170dp"
+                    android:singleLine="true"
+                    android:text="未连接设备"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="13sp"
+                    tools:text="Fastboot 已连接 · 45850c2f" />
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="展开设备状态"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_chevron_down"
+                    android:tint="@color/ios_text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ───────── 大标题 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="小米线刷"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashSaveLog"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="保存日志" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashStop"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="终止" />
+        </LinearLayout>
+
+        <!-- ───────── 第二行：目录路径 + 浏览 + 扫描 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/miuix_button_gap"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/etMiDir"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:background="@drawable/bg_flash_input"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:hint="目录路径"
+                android:importantForAutofill="no"
+                android:inputType="textUri"
+                android:maxLines="1"
+                android:paddingHorizontal="14dp"
+                android:singleLine="true"
+                android:textColor="@color/ios_text_primary"
+                android:textColorHint="@color/ios_text_secondary"
+                android:textSize="13sp"
+                tools:text="/storage/emulated/0/Download/mi_rom" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMiBrowse"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="8dp"
+                android:paddingHorizontal="16dp"
+                android:text="浏览" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMiScan"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="8dp"
+                android:paddingHorizontal="16dp"
+                android:text="扫描" />
+        </LinearLayout>
+
+        <!-- ───────── 日志输出区 ───────── -->
+        <!--
+          高度随内容增长、起步 240dp；由外层 NestedScrollView 负责滚动，
+          所以页面里不给它设 ScrollingMovementMethod（否则手势被它吃掉，外层就不再回弹）。
+        -->
+        <TextView
+            android:id="@+id/tvFlashConsole"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_console"
+            android:fontFamily="monospace"
+            android:minHeight="@dimen/miuix_console_height"
+            android:padding="14dp"
+            android:textColor="@color/ios_text_secondary"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

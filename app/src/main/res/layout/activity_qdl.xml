@@ -1,0 +1,656 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「高通 QDL 深刷」页（竖屏，独立 Activity，无顶栏，Miuix 风格）。
+
+  作用：用内置的 qdl 可执行文件，通过 USB 对连着的那台 9008 EDL 设备做
+  「识别分区表」与「A/B 槽位切换」。命令模板在 QdlCommands（逐条取自参考实现）。
+
+  版式（自上而下，顺序固定）：
+    · 顶部区域：左上角返回箭头 + 右上角设备状态下拉
+    · 大标题「高通 QDL 深刷」
+    · 保存日志 / 终止
+    · 小标题「引导与参数」+ 卡片（选引导文件 / 存储类型 / 欧加授权方式 / 模拟刷写）
+    · 小标题「分区表与槽位」+ 卡片（识别分区表 / 识别启动槽位 / 切换至A / 切换至B / 复位设备）
+    · 小标题「输出」+ 输出区
+
+  页面只放「控件 + 实时状态」：热拔插警告、各档位的前置条件、复位到底意味着什么，
+  全部写在点击后的确认框里（项目约定），不做成卡片摆在页面上。
+
+  外层 NestedScrollView 开 overScrollMode="always"：内容不满一屏时也保留上下回弹。
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollQdl"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ios_background_grouped"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:overScrollMode="always"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/ios_screen_edge"
+        android:paddingTop="6dp"
+        android:paddingBottom="20dp">
+
+        <!-- ───────── 顶部区域：返回箭头 + 设备状态下拉 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnFlashBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="-10dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="返回"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/ios_text_primary" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                android:id="@+id/btnQdlDevicePill"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_flash_device_pill"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="7dp">
+
+                <TextView
+                    android:id="@+id/tvFlashDeviceState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxWidth="170dp"
+                    android:singleLine="true"
+                    android:text="未连接设备"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="13sp"
+                    tools:text="高通 QDLoader（9008 深刷）" />
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="展开设备状态"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_chevron_down"
+                    android:tint="@color/ios_text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ───────── 大标题 ───────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="高通 QDL 深刷"
+            android:textColor="@color/ios_text_primary"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashSaveLog"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_weight="1"
+                android:text="保存日志" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFlashStop"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/miuix_button_height"
+                android:layout_marginStart="@dimen/miuix_button_gap"
+                android:layout_weight="1"
+                android:text="终止" />
+        </LinearLayout>
+
+        <!-- ───────── 小标题：引导与参数 ───────── -->
+        <TextView
+            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="12dp"
+            android:paddingTop="@dimen/miuix_group_title_gap"
+            android:paddingEnd="12dp"
+            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:text="引导与参数" />
+
+        <!--
+          1dp 描边与 Widget.Aurora.Miuix.Button 同一个理由：AMOLED 色彩模式下
+          auroraCard 被覆盖成纯黑，正好等于页面背景色，没有描边时卡片边界会完全消失。
+          描边用的是不在覆盖层改写范围内的 @color/ios_separator。
+        -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:strokeColor="@color/ios_separator"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 行：选择引导文件（标题即状态回显，摘要显示文件名与体积） -->
+                <LinearLayout
+                    android:id="@+id/btnQdlPickProg"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="选择引导文件" />
+
+                        <TextView
+                            android:id="@+id/tvQdlProgSummary"
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="middle"
+                            android:maxLines="1"
+                            android:text="未选择" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="12dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 行：存储类型（点击弹单选，选项就是 storage 参数的合法取值） -->
+                <LinearLayout
+                    android:id="@+id/btnQdlStorage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="存储类型" />
+
+                        <TextView
+                            android:id="@+id/tvQdlStorageSummary"
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="ufs" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="12dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 行：欧加授权方式（未开启 / Token 鉴权 / VIP 授权） -->
+                <LinearLayout
+                    android:id="@+id/btnQdlAuth"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="欧加授权方式" />
+
+                        <TextView
+                            android:id="@+id/tvQdlAuthSummary"
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="未开启" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="12dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 行：VIP 档专用 —— 签名文件（选中「VIP 授权」后才出现） -->
+                <LinearLayout
+                    android:id="@+id/btnQdlPickSign"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="选择 Sign*（签名文件）" />
+
+                        <TextView
+                            android:id="@+id/tvQdlSignSummary"
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="middle"
+                            android:maxLines="1"
+                            android:text="未选择" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="12dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 行：VIP 档专用 —— 摘要文件 -->
+                <LinearLayout
+                    android:id="@+id/btnQdlPickDigest"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="选择 Digest*（摘要文件）" />
+
+                        <TextView
+                            android:id="@+id/tvQdlDigestSummary"
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="middle"
+                            android:maxLines="1"
+                            android:text="未选择" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="12dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 行：模拟刷写（追加 dry-run 开关，不连设备） -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="模拟刷写" />
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="开启后执行空跑模拟，不连接设备、不真实刷写（追加 --dry-run 参数）" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.SwitchCompat
+                        android:id="@+id/swQdlDryRun"
+                        style="@style/Widget.Aurora.Switch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:minHeight="28dp"
+                        android:padding="0dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ───────── 小标题：分区表与槽位 ───────── -->
+        <TextView
+            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="12dp"
+            android:paddingTop="@dimen/miuix_group_title_gap"
+            android:paddingEnd="12dp"
+            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:text="分区表与槽位" />
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.Aurora.Miuix.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:strokeColor="@color/ios_separator"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- 行：识别分区表（rgpt，产物落 QdlCommands.OUTPUT_DIR） -->
+                <LinearLayout
+                    android:id="@+id/btnQdlRgpt"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="识别分区表" />
+
+                        <TextView
+                            android:id="@+id/tvQdlRgptSummary"
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:ellipsize="middle"
+                            android:maxLines="2"
+                            android:text="读取各 LUN 的 GPT 表" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="12dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 行：识别设备启动槽位（get_slot） -->
+                <LinearLayout
+                    android:id="@+id/btnQdlDetectSlot"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Widget.Aurora.Miuix.PrefTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="识别设备启动槽位" />
+
+                        <TextView
+                            android:id="@+id/tvQdlSlotSummary"
+                            style="@style/Widget.Aurora.Miuix.PrefSummary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="未读取" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="12dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 行：切换至A -->
+                <LinearLayout
+                    android:id="@+id/btnQdlSwitchA"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="切换至A" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 行：切换至B -->
+                <LinearLayout
+                    android:id="@+id/btnQdlSwitchB"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="切换至B" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+
+                <!-- 行：复位设备（让设备退出 9008 重新启动） -->
+                <LinearLayout
+                    android:id="@+id/btnQdlReset"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="@dimen/miuix_pref_row_min_height"
+                    android:orientation="horizontal"
+                    android:padding="@dimen/miuix_pref_row_padding">
+
+                    <TextView
+                        style="@style/Widget.Aurora.Miuix.PrefTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="复位设备" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/ios_text_secondary" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ───────── 小标题：输出 ───────── -->
+        <TextView
+            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="12dp"
+            android:paddingTop="@dimen/miuix_group_title_gap"
+            android:paddingEnd="12dp"
+            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:text="输出" />
+
+        <!--
+          输出区随内容增高、由外层滚动（不给它 ScrollingMovementMethod，
+          否则竖向手势被它吃掉，页面就不再回弹）。
+        -->
+        <TextView
+            android:id="@+id/tvFlashConsole"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_console"
+            android:fontFamily="monospace"
+            android:minHeight="@dimen/miuix_console_height"
+            android:padding="14dp"
+            android:text="选择引导文件后点击「识别分区表」"
+            android:textColor="@color/ios_text_secondary"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

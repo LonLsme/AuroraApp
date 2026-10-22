@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  顶栏图标按钮的「按住」高亮底。
+
+  对齐 KernelSU Miuix 版 IconButton 的 holdDownState：菜单展开期间按钮保持按下态
+  （图标缩小 + 底色高亮），菜单关闭后回弹。这里只提供那个圆形高亮底，
+  透明度由 MainActivity.animateQuickRebootHold() 用 ValueAnimator 驱动。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="?attr/auroraFill" />
+</shape>

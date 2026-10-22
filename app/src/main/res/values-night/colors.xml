@@ -5,6 +5,7 @@
     <color name="ios_card">#1C1C1E</color>
     <color name="ios_text_primary">#F2F2F7</color>
     <color name="ios_text_secondary">#8E8E93</color>
+    <color name="ios_fill_tertiary">#2C2C2E</color>
     <color name="ios_separator">#38383A</color>
     <color name="ios_accent">#00E676</color>
     <color name="ios_semantic_positive">#00E676</color>
@@ -34,4 +35,66 @@
     <color name="aurora_accent">#7C4DFF</color>
     <color name="aurora_danger">#FF5252</color>
     <color name="aurora_warning">#FFB300</color>
+
+    <!--
+      ===== 深色适配补齐 =====
+      以下色值原先**只有浅色定义、夜版缺失**，深色模式下背景仍是浅色/白色，
+      而其中的文字已切换为夜版的 ios_text_primary(#F2F2F7 近白) →
+      白底白字，控件「隐身」。补齐后深色下背景同步变暗。
+    -->
+    <color name="ios_background">#000000</color>
+    <color name="ios_glass_surface">#B31C1C1E</color>
+    <color name="ios_glass_stroke">#26FFFFFF</color>
+
+    <!-- Fluent 色板（设备页 / CPU 核心环 / 模块管理等） -->
+    <color name="fluent_background">#0F1014</color>
+    <color name="fluent_glass_card">#1B1C20</color>
+    <color name="fluent_card_stroke">#2A2C33</color>
+    <color name="fluent_cell_stroke">#2A2C33</color>
+    <color name="fluent_surface_container_low">#232428</color>
+    <color name="fluent_surface_container">#2C2E34</color>
+    <color name="fluent_on_surface">#E6E7EB</color>
+    <color name="fluent_on_surface_variant">#9EA1A8</color>
+    <color name="fluent_primary">#00E676</color>
+    <color name="fluent_secondary">#7FD3FF</color>
+    <color name="fluent_primary_container">#12321F</color>
+    <color name="fluent_android_green">#3DDC84</color>
+    <color name="fluent_root_badge_bg">#80145A32</color>
+    <color name="fluent_root_badge_text">#6EE7A0</color>
+    <color name="fluent_orange">#FB923C</color>
+    <color name="fluent_green_600">#4ADE80</color>
+
+    <!-- 底部悬浮导航 -->
+    <color name="nav_floating_surface">#CC1C1C1E</color>
+    <color name="nav_floating_stroke">#26FFFFFF</color>
+    <color name="nav_item_text">#E5E7EB</color>
+    <color name="nav_item_accent">#00E676</color>
+
+    <!-- 玩机页（explore）色块：浅底 → 深底、深字 → 亮字 -->
+    <color name="explore_slate_50">#12141A</color>
+    <color name="explore_emerald_100">#10331F</color>
+    <color name="explore_emerald_600">#6EE7B7</color>
+    <color name="explore_blue_100">#10243D</color>
+    <color name="explore_blue_600">#93C5FD</color>
+    <color name="explore_purple_100">#241238</color>
+    <color name="explore_purple_600">#C4B5FD</color>
+    <color name="explore_amber_100">#3A2A08</color>
+    <color name="explore_amber_600">#FCD34D</color>
+    <color name="explore_rose_100">#3A1220</color>
+    <color name="explore_rose_600">#FDA4AF</color>
+    <color name="explore_cyan_100">#0B2E33</color>
+    <color name="explore_cyan_600">#67E8F9</color>
+
+    <!-- 自绘 drawable 用色（原为 drawable 内硬编码，无法随主题切换） -->
+    <color name="nav_sheet_bg">#F01C1C1E</color>
+    <color name="nav_glass_a">#661C1C1E</color>
+    <color name="nav_glass_b">#4D1C1C1E</color>
+    <color name="nav_glass_c">#331C1C1E</color>
+    <color name="nav_glass_stroke">#3394A3B8</color>
+    <color name="nav_glass_highlight">#26FFFFFF</color>
+    <color name="nav_item_active_bg">#E81B3A2A</color>
+    <color name="switch_track_on">#4A8CFF</color>
+    <color name="switch_track_off">#39393D</color>
+    <color name="switch_track_stroke">#33FFFFFF</color>
+    <color name="dialog_stroke">#1FFFFFFF</color>
 </resources>

@@ -1,13 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+  Android 11 及以下的备份规则（allowBackup=true 时的全量备份 / adb backup）。
+
+  默认全部备份 —— 主题、监视器、字号这些偏好在换机时恢复是好事。
+  下面排除的都是「换台机器就没意义，或者会把状态搞坏」的项：
+
+    aurora_flash_toolchain  工具链解压版本号。恢复到新机后 App 会认为
+                            filesDir/flash_tools/ 已经解压好，而实际文件并不存在，
+                            表现为「刷机工具找不到 adb」，要重装 App 才好。
+                            这条是排除清单里最要紧的一个。
+    aurora_exec_command     自定义命令历史，可能含设备序列号。
+    device_id_modify        设备标识修改记录，属于敏感信息。
+    global_device_spoof     伪装机型的取值，换了机器就是错的。
+    aurora_mi_flash 等      上一次选的固件目录 / 文件，路径在新机上必然失效。
+    font_library_backup     字体备份，体积大，备份它会拖累整个备份流程。
+    aurora_update           上次检查更新的时间戳，只对当前设备有意义。
+
+  注意：API 31+ 走 data_extraction_rules.xml，两份必须同步改。
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="sharedpref" path="aurora_flash_toolchain.xml" />
+    <exclude domain="sharedpref" path="aurora_exec_command.xml" />
+    <exclude domain="sharedpref" path="aurora_update.xml" />
+    <exclude domain="sharedpref" path="aurora_mi_flash.xml" />
+    <exclude domain="sharedpref" path="aurora_oplus_flash.xml" />
+    <exclude domain="sharedpref" path="aurora_sideload.xml" />
+    <exclude domain="sharedpref" path="aurora_detection_logs.xml" />
+    <exclude domain="sharedpref" path="device_id_modify.xml" />
+    <exclude domain="sharedpref" path="global_device_spoof.xml" />
+    <exclude domain="sharedpref" path="font_library_backup.xml" />
+    <!-- 缓存目录本来就不该进备份，显式排除以免极少数 ROM 把它算进去 -->
+    <exclude domain="external" path="." />
 </full-backup-content>
