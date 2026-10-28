@@ -62,6 +62,7 @@ public final class UpdateDialog {
         TextView tvVersions = view.findViewById(R.id.tvUpdateVersions);
         TextView tvMessage = view.findViewById(R.id.tvUpdateMessage);
         TextView tvBody = view.findViewById(R.id.tvUpdateBody);
+        View svBody = view.findViewById(R.id.svUpdateBody);
         com.google.android.material.button.MaterialButton btnLater =
                 view.findViewById(R.id.btnUpdateLater);
         com.google.android.material.button.MaterialButton btnNow =
@@ -122,6 +123,12 @@ public final class UpdateDialog {
                 openUrl = UpdateChecker.releasesPageUrl();
                 break;
         }
+
+        // 中间滚动区：状态说明与更新日志任一有内容才显示，都空时整块收起（不留 12dp 空当）。
+        // 按钮在滚动区之外，正文再长也不会把它挤走。
+        boolean hasBody = tvMessage.getVisibility() == View.VISIBLE
+                || tvBody.getVisibility() == View.VISIBLE;
+        svBody.setVisibility(hasBody ? View.VISIBLE : View.GONE);
 
         AlertDialog dialog = new AlertDialog.Builder(context)
                 .setView(view)

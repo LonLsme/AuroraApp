@@ -30,11 +30,14 @@ import com.aurora.app.R;
  */
 public class MaxHeightScrollView extends ScrollView {
 
-    /** 未指定 {@code app:auroraMaxHeight} 时，上限占屏幕高度的比例。 */
+    /** 未指定任何上限时，上限占屏幕高度的比例。 */
     private static final float DEFAULT_HEIGHT_FRACTION = 0.82f;
 
-    /** XML 给的上限（像素）；0 表示未指定，回落到屏高比例。 */
+    /** XML 给的固定上限（像素）；0 表示未指定。 */
     private int explicitMaxHeight;
+
+    /** XML 给的屏高比例；0 表示未指定。 */
+    private float explicitFraction;
 
     public MaxHeightScrollView(Context context) {
         this(context, null);
@@ -52,6 +55,8 @@ public class MaxHeightScrollView extends ScrollView {
             try {
                 explicitMaxHeight = a.getDimensionPixelSize(
                         R.styleable.MaxHeightScrollView_auroraMaxHeight, 0);
+                explicitFraction = a.getFloat(
+                        R.styleable.MaxHeightScrollView_auroraMaxHeightFraction, 0f);
             } finally {
                 a.recycle();
             }
@@ -63,10 +68,14 @@ public class MaxHeightScrollView extends ScrollView {
         final int mode = MeasureSpec.getMode(heightMeasureSpec);
         final int size = MeasureSpec.getSize(heightMeasureSpec);
         if (mode != MeasureSpec.UNSPECIFIED) {
-            final int limit = explicitMaxHeight > 0
-                    ? explicitMaxHeight
-                    : Math.round(getResources().getDisplayMetrics().heightPixels
-                            * DEFAULT_HEIGHT_FRACTION);
+            final int screenHeight = getResources().getDisplayMetrics().heightPixels;
+            final int limit;
+            if (explicitMaxHeight > 0) {
+                limit = explicitMaxHeight;
+            } else {
+                float fraction = explicitFraction > 0f ? explicitFraction : DEFAULT_HEIGHT_FRACTION;
+                limit = Math.round(screenHeight * fraction);
+            }
             if (size > limit) {
                 // 收窄成 AT_MOST：内容低于上限时仍是自适应高度，达到上限才截断
                 heightMeasureSpec = MeasureSpec.makeMeasureSpec(limit, MeasureSpec.AT_MOST);

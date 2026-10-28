@@ -19,8 +19,11 @@
         </attr>
     </declare-styleable>
 
-    <!-- 限高滚动容器的上限。不写则按屏高的默认比例（见 MaxHeightScrollView）。 -->
+    <!-- 限高滚动容器的上限。两种给法，二选一；都不写则按屏高的默认比例
+         （见 MaxHeightScrollView）。dimension 适合「上下还有固定内容」的场合，
+         fraction 适合「只想占多少屏高」的场合。 -->
     <declare-styleable name="MaxHeightScrollView">
         <attr name="auroraMaxHeight" format="dimension" />
+        <attr name="auroraMaxHeightFraction" format="float" />
     </declare-styleable>
 </resources>

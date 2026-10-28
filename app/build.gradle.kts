@@ -42,8 +42,8 @@ android {
         targetSdk = 36
 
         // 发版时这两项必须同时改，并与 CHANGELOG.md 的版本标题一致
-        versionCode = 6
-        versionName = "1.1.4"
+        versionCode = 7
+        versionName = "1.1.5"
 
         // 检查更新指向的仓库（owner/repo），值来自 gradle.properties。
         // 抽成 BuildConfig 而不是写死在 Java 里：Fork / 改仓库名时只改 gradle.properties 一行，
