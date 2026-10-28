@@ -169,20 +169,24 @@ jobs:
 
       # 正文由 CHANGELOG 自动生成：手贴容易漏版本、也容易把上一版的内容贴进来。
       # 找不到对应版本时留一句提示，不阻断发布。
+      # 标题用「更新内容」而不是「变更」：CHANGELOG 段自带 `### 变更`，
+      # 顶成两层同名标题看着像排版事故。
       - name: Compose release notes
         id: notes
         run: |
           set -e
           TAG="${GITHUB_REF_NAME}"
           VERSION="${TAG#v}"
+          SIZE=$(stat -c %s "${{ steps.artifact.outputs.path }}")
+          SIZE_MB=$(awk -v s="$SIZE" 'BEGIN { printf "%.1f", s / 1048576 }')
           {
             echo "## 安装包"
             echo ""
-            echo "- \`${{ steps.artifact.outputs.path }}\`"
+            echo "- \`${{ steps.artifact.outputs.path }}\`（${SIZE_MB} MB）"
             # 这一行的格式被 App 的 UpdateChecker.extractSha256 依赖，改格式会让自动更新退化成手动下载
             echo "- SHA-256：\`${{ steps.artifact.outputs.sha256 }}\`"
             echo ""
-            echo "## 变更"
+            echo "## 更新内容"
             echo ""
             awk -v ver="$VERSION" '
               $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
@@ -190,7 +194,8 @@ jobs:
               flag { print }
             ' CHANGELOG.md > "$RUNNER_TEMP/section.md" || true
             if [ -s "$RUNNER_TEMP/section.md" ]; then
-              cat "$RUNNER_TEMP/section.md"
+              # 去掉段尾的空行与 `---` 分隔线：模板自己还会再补一条
+              perl -0777 -pe 's/(?:\n[ \t]*-{3,}[ \t]*)+\s*\z//' "$RUNNER_TEMP/section.md"
             else
               echo "本版在 CHANGELOG.md 里没有对应条目（\`## [$VERSION]\`），请手动补充。"
             fi

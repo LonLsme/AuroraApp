@@ -4,112 +4,117 @@
   两种形态共用同一套控件，由代码决定显隐：
     · 发现新版本 —— 显示版本对比 + 更新日志 + [稍后] [前往下载]
     · 无更新 / 检查失败 —— 只显示一行说明，[稍后] 变 [知道了]
-  更新日志区给固定高度上限并允许滚动：Release 里的 body 长短完全不可控，
-  不设上限时一条长日志会把对话框撑到整屏、按钮被顶出屏幕。
+
+  ★ 整张卡片套在 MaxHeightScrollView 里，而不是让正文自己滚：
+  Release 的 body 长短完全不可控（失败原因的说明也可能有多段），
+  任何一个 TextView 变高都可能把底部按钮推出屏幕。外层统一限高 + 滚动，
+  头部、正文、按钮就永远不会超出可见区域。
+  注意别写成 ScrollView 的 android:maxHeight —— 那是 ImageView 的属性，
+  ScrollView 不认，写了等于没写（本文件的历史踩坑）。
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.aurora.app.ui.widget.MaxHeightScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/bg_dialog_rounded"
-    android:orientation="vertical"
-    android:padding="20dp">
+    android:clipToOutline="true"
+    android:overScrollMode="always"
+    android:scrollbarStyle="insideOverlay"
+    android:scrollbars="vertical">
 
-    <!-- 头部：图标 + 标题 + 版本对比 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:padding="20dp">
 
-        <ImageView
-            android:id="@+id/ivUpdateIcon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_update"
-            android:tint="?attr/auroraAccent" />
-
+        <!-- 头部：图标 + 标题 + 版本对比 -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/tvUpdateTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-medium"
-                android:text="发现新版本"
-                android:textColor="@color/ios_text_primary"
-                android:textSize="17sp" />
+            <ImageView
+                android:id="@+id/ivUpdateIcon"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_update"
+                android:tint="?attr/auroraAccent" />
 
-            <TextView
-                android:id="@+id/tvUpdateVersions"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:textColor="@color/ios_text_secondary"
-                android:textSize="13sp"
-                android:visibility="gone" />
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvUpdateTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="发现新版本"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/tvUpdateVersions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
 
-    <!-- 一句话状态：失败原因 / 已是最新，都在这里 -->
-    <TextView
-        android:id="@+id/tvUpdateMessage"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:lineSpacingExtra="3dp"
-        android:textColor="@color/ios_text_secondary"
-        android:textSize="14sp"
-        android:visibility="gone" />
+        <!-- 一句话状态：失败原因 / 已是最新，都在这里 -->
+        <TextView
+            android:id="@+id/tvUpdateMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:lineSpacingExtra="3dp"
+            android:textColor="@color/ios_text_secondary"
+            android:textSize="14sp"
+            android:visibility="gone" />
 
-    <!-- 更新日志：限高可滚 -->
-    <ScrollView
-        android:id="@+id/svUpdateBody"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:maxHeight="220dp"
-        android:overScrollMode="always"
-        android:scrollbars="none"
-        android:visibility="gone">
-
+        <!-- 更新日志：高度由外层统一限，这里只负责排版 -->
         <TextView
             android:id="@+id/tvUpdateBody"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:lineSpacingExtra="4dp"
             android:textColor="@color/ios_text_primary"
+            android:textIsSelectable="true"
             android:textSize="13sp"
-            android:textIsSelectable="true" />
-    </ScrollView>
-
-    <!-- 操作 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
-        android:gravity="end"
-        android:orientation="horizontal">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnUpdateLater"
-            style="@style/Widget.Aurora.Miuix.Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="稍后" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnUpdateNow"
-            style="@style/Widget.Aurora.Miuix.Button.Primary"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:text="前往下载"
             android:visibility="gone" />
+
+        <!-- 操作 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:gravity="end"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnUpdateLater"
+                style="@style/Widget.Aurora.Miuix.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="稍后" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnUpdateNow"
+                style="@style/Widget.Aurora.Miuix.Button.Primary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="前往下载"
+                android:visibility="gone" />
+        </LinearLayout>
     </LinearLayout>
-</LinearLayout>
+</com.aurora.app.ui.widget.MaxHeightScrollView>

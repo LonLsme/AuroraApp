@@ -8,7 +8,6 @@ import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
@@ -63,7 +62,6 @@ public final class UpdateDialog {
         TextView tvVersions = view.findViewById(R.id.tvUpdateVersions);
         TextView tvMessage = view.findViewById(R.id.tvUpdateMessage);
         TextView tvBody = view.findViewById(R.id.tvUpdateBody);
-        ScrollView svBody = view.findViewById(R.id.svUpdateBody);
         com.google.android.material.button.MaterialButton btnLater =
                 view.findViewById(R.id.btnUpdateLater);
         com.google.android.material.button.MaterialButton btnNow =
@@ -82,7 +80,7 @@ public final class UpdateDialog {
                 tvVersions.setText(local + "  →  " + (release != null ? release.tag : ""));
                 if (release != null && ReleaseNotes.hasContent(release.body)) {
                     tvBody.setText(ReleaseNotes.plain(release.body));
-                    svBody.setVisibility(View.VISIBLE);
+                    tvBody.setVisibility(View.VISIBLE);
                 } else {
                     tvMessage.setVisibility(View.VISIBLE);
                     tvMessage.setText("此版本没有提供更新说明。");
