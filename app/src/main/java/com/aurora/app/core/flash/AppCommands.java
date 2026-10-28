@@ -20,7 +20,7 @@ import java.util.Locale;
  * 由 adb 发起时<b>不需要目标机 root</b>。这也正是「免 root 冻结」类应用的工作原理。
  *
  * <h3>激活命令的出处</h3>
- * 五条激活命令取自各应用<b>自己文档里给出的</b>免 root 激活步骤，不是推测：
+ * 五条激活命令逐字照录各应用<b>自己文档里给出的</b>免 root 激活步骤，不是推测：
  * <ul>
  *   <li>Shizuku —— 官方指引的 {@code adb shell sh /storage/emulated/0/Android/data/moe.shizuku.privileged.api/start.sh}
  *       （本类用等价的 {@code /sdcard} 前缀），成功时输出 {@code shizuku_starter exit with 0}；</li>

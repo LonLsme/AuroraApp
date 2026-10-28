@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <h3>为什么必须走 root</h3>
  * 手机充当刷机主机时，adb / fastboot 要直接操作 USB 设备节点（{@code /dev/bus/usb/**}），
- * 普通应用 uid 没有访问权限。既有工具同样是
+ * 普通应用 uid 没有访问权限，只能
  * {@code ProcessBuilder("su", "-c", <env 前缀> + 命令)}。
  *
  * <h3>固定环境前缀</h3>
@@ -162,7 +162,7 @@ public final class FlashRuntime {
      * 清理 adb / fastboot 残留进程。
      *
      * <p>刷机中断、异常退出后常有 pkill 不干净的残留进程占住设备，
-     * 这是既有工具里专门有一个「清理」入口的原因（{@code n40.java}）。
+     * 这是专门留一个「清理」入口的原因。
      */
     public static void killResidualProcesses() {
         try {

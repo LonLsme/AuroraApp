@@ -31,8 +31,8 @@ import java.io.RandomAccessFile;
  * </pre>
  * 展开大小 = {@code blk_sz × total_blks}，即偏移 <b>12</b> 与 <b>16</b>。
  *
- * <h3>与既有工具的差异（刻意不照抄）</h3>
- * 既有工具 {@code oz1.java} 的 {@code a(File)} 是 {@code seek(8)} 之后连读两个 int 相乘，
+ * <h3>与既有工具的差异（刻意不沿用）</h3>
+ * 常见的简单读法是 {@code seek(8)} 之后连读两个 int 相乘，
  * 取到的是偏移 8（= {@code file_hdr_sz<<16 | chunk_hdr_sz}，标准镜像恒为 1835020）
  * 与偏移 12（{@code blk_sz}）—— 少跳过了 4 字节，属 off-by-4。
  * 它的后果不是「算大一点」而是<b>所有镜像算出同一个值</b>（因为前两个字段在所有标准

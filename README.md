@@ -303,8 +303,10 @@ Copyright (C) 2026 LonLsme         — Aurora 二次开发部分
 | HoshinoScene（星野Scene） | 监视悬浮窗的视觉与系统数据采集思路参考 |
 | vtools | 进程与监视器实现的对照参考 |
 | Miuix | 设置页与刷机子页的尺寸、字号、卡片范式来源 |
+| 社区既有刷机工具 | 刷机子系统的命令形态与步骤划分参考了同类工具的实际行为；界面与代码为本项目独立实现 |
 
 随包分发的 `assets/flash_tools.zip` 内含 adb / fastboot / magiskboot / libksud / qdl 的 aarch64 构建，
-它们各自遵循其原始许可（adb、fastboot 为 Apache-2.0，qdl 相关组件为 GPL/LGPL 系）。
+它们各自遵循其原始许可（adb、fastboot 为 Apache-2.0，qdl 相关组件为 GPL/LGPL 系），
+逐项来源与许可见 [`NOTICE`](NOTICE)。
 
 安全漏洞请走私密渠道，见 [`SECURITY.md`](SECURITY.md)。

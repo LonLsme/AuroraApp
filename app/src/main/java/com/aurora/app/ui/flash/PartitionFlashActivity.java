@@ -21,15 +21,15 @@ import java.io.File;
  * <h3>它做什么</h3>
  * 把「拿一个 .img 刷进某个分区」这件事的完整前置动作摆在一页里：
  * <ol>
- *   <li><b>获取设备槽位</b> —— 只读，跑一次 {@code fastboot getvar current-slot}；</li>
+ *   <li><b>读取当前槽位</b> —— 只读，跑一次 {@code fastboot getvar current-slot}；</li>
  *   <li><b>选择镜像</b> —— 选完拷进应用专属目录（fastboot 只认真实路径）；</li>
- *   <li><b>切换AB分区</b> —— 读当前槽位后切到对侧，非 A/B 设备直接拒绝；</li>
+ *   <li><b>切换到另一槽位</b> —— 读当前槽位后切到对侧，非 A/B 设备直接拒绝；</li>
  *   <li><b>刷入 boot / dtbo / recovery</b> —— 三个最常刷的分区，各占一个按钮；</li>
- *   <li><b>自定义分区刷入</b> —— 手输分区名 + 同一个镜像，刷到任意分区。</li>
+ *   <li><b>按分区名写入</b> —— 手输分区名 + 同一个镜像，刷到任意分区。</li>
  * </ol>
  *
  * <h3>为什么每个刷入按钮都先跑一次「分区存在性检查」</h3>
- * 见 {@link FlashCommands#fastbootFlashChecked} —— 这是既有工具的做法：
+ * 见 {@link FlashCommands#fastbootFlashChecked} —— 这是兼容性最好的做法：
  * 分区在目标机上不存在就拒绝刷入，而不是把镜像盲写进去。分区名手输（自定义那行）
  * 时这一步尤其值钱：{@code initboot} 和 {@code init_boot} 差一个下划线，
  * 盲刷的后果是刷了个寂寞还看不出为什么。
@@ -47,7 +47,7 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
     /**
      * 三个固定分区按钮对应的分区名。
      *
-     * <p>与既有工具 {@code s80.java} 里那三个 {@code o80(..., case 3/4/5)} 一一对应：
+     * <p>三个固定分区按钮分别对应：
      * {@code fastboot flash boot} / {@code fastboot flash recovery} / {@code fastboot flash dtbo}。
      */
     private static final String PARTITION_BOOT = "boot";
@@ -253,7 +253,7 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
                 "刷入", command);
     }
 
-    /** 「自定义分区刷入」那行：分区名来自输入框。 */
+    /** 「按分区名写入」那行：分区名来自输入框。 */
     private void flashCustomPartition() {
         final String partition = currentPartitionName();
         if (partition.isEmpty()) {

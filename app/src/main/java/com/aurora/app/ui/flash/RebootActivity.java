@@ -12,7 +12,6 @@ import com.aurora.app.core.flash.FlashCommands;
  * 「设备重启」页。
  *
  * <h3>两组按钮与命令的对应关系</h3>
- * 完全按既有工具（外部工具 {@code le1.java}）的两个数组摆位，不做增删：
  * <pre>
  *   ADB 重启    系统     → adb reboot
  *               Recovery → adb reboot recovery
@@ -24,7 +23,7 @@ import com.aurora.app.core.flash.FlashCommands;
  *               Recovery → fastboot reboot recovery
  *               FastbootD→ fastboot reboot fastboot
  * </pre>
- * 两个数组的项数不一样（5 比 4）—— 因为 {@code adb reboot edl} 没有 fastboot 对应物，
+ * 两组的项数不一样（5 比 4）—— 因为 {@code adb reboot edl} 没有 fastboot 对应物，
  * 所以「9008」只在 ADB 那一组里出现一次。
  *
  * <p>本页<b>不替用户判断</b>该走哪条通道：设备在 adb 下就点 ADB 组，

@@ -95,13 +95,13 @@ CI 出已签名包需要四个 secret：`SIGNING_KEYSTORE_BASE64` / `SIGNING_STO
 
 这几条是这个项目**明确要求**的做法，不是建议。
 
-### 3.1 命令与文案必须回既有工具查证
+### 3.1 命令与文案必须回工具实测查证
 
 引用某个开源项目的实现或效果之前，**先回它的源码里看真实实现**，
 确认「它在哪、由谁实现、原文是什么」，再决定怎么移植。
 
-- 文案、命令字符串一律以既有工具的**原文**为准，**不凭空写、不「顺手美化」**。
-- 如果确实需要偏离原文，**必须在代码注释里写明偏离理由**。
+- 文案、命令字符串一律以**工具实测输出**为准，**不凭空写、不「顺手美化」**。
+- 如果确实需要偏离，**必须在代码注释里写明偏离理由**。
 - 反例：曾准备给某个界面加一个「旋转动画」，回源码一看 KernelSU 根本没有这个动画 —— 差点凭空捏出来一个不存在的效果。
 
 ### 3.2 不自己跑真机验证
@@ -286,7 +286,7 @@ print('一致')
 | 想知道某个功能做没做 | 查 [`FEATURES.md`](FEATURES.md)，比翻代码快 |
 | 指标读不到 / 显示 `--` | **先看 [`subsystems/SYSTEM_DATA.md`](subsystems/SYSTEM_DATA.md)**，多数是系统权限边界而不是 bug |
 | 需要看某次改动的原因 | 项目 Obsidian 笔记的当日 `改动日志.md` |
-| 新加一个竖屏刷机子页 | 照抄 `ui/flash/QdlActivity.java` 的骨架，**别忘了 Manifest 里加 `configChanges`**（见下） |
+| 新加一个竖屏刷机子页 | 照着 `ui/flash/QdlActivity.java` 的骨架写，**别忘了 Manifest 里加 `configChanges`**（见下） |
 
 > [!warning] 刷机子页必须带 `configChanges`
 > 所有刷机子 Activity 都在 `AndroidManifest.xml` 里声明了完整的 `configChanges`

@@ -1,0 +1,40 @@
+# NOTICE —— 第三方组件与来源
+
+本仓库以 **GPL-3.0** 发布（见 [`LICENSE`](LICENSE)）：
+
+```
+Copyright (C) 2026 Smart-Paocai   — violet_Box 原始代码
+Copyright (C) 2026 LonLsme         — Aurora 二次开发部分
+```
+
+## 随包分发的二进制
+
+`app/src/main/assets/flash_tools.zip` 内含 5 个 aarch64 可执行文件。它们不是本项目的产物，
+版权与许可归各自原作者，随包**原样分发、未做修改**：
+
+| 文件 | 来源 | 许可 |
+| --- | --- | --- |
+| `bin/adb` | Android Open Source Project（platform-tools） | Apache-2.0 |
+| `bin/fastboot` | Android Open Source Project（platform-tools） | Apache-2.0 |
+| `bin/magiskboot` | Magisk（topjohnwu/Magisk） | GPL-3.0 |
+| `bin/libksud` | KernelSU（tiann/KernelSU） | GPL-2.0 |
+| `bin/qdl` | linux-msm/qdl 的定制分支 | 见下 |
+
+### 关于 `bin/qdl`
+
+包内 `qdl` 是 **linux-msm/qdl** 的一个第三方定制构建，二进制内 banner 为
+`QDL For Your Devices & LSCM(, ChenXluk)` / `qdl 2.8`，相对上游增加了
+`rgpt` / `oread` / `owrite` / `oerase` / `--oplus-token` / `--signeddigests` 等子命令与选项。
+
+本项目**不修改、不重新编译**该二进制，只是原样打包，并在运行时以 `su` 身份调用。
+其完整源码不在本仓库内，应向上游 <https://github.com/linux-msm/qdl> 及该定制分支的
+发布者索取。
+
+## 文档与设计参考
+
+见 [`README.md`](README.md) 的「许可证与致谢」一节。
+
+---
+
+> 若你是上述任一组件的权利人，并认为本仓库的分发方式不妥，
+> 请提 issue 说明，相关文件会立即下架。

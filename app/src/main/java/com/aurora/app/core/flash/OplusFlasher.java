@@ -16,19 +16,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * 欧加真（OPPO / 一加 / realme）线刷流程编排。
  *
- * <h3>流程来自既有工具，不是自创</h3>
- * 步骤划分与文案对照既有工具的字符串资源逐条还原 ——
- * 那套东西在线上跑了很久，分几步本身是踩过坑的结论：
+ * <h3>步骤划分的依据</h3>
+ * 分几步不是拍脑袋定的，是设备侧的硬约束 + 踩过坑的结论：
  * <ul>
- *   <li><b>常规线刷</b>三步：{@code oplus_step1} 在 fastboot 下刷关键镜像 →
- *       {@code oplus_step2} 重构逻辑分区 → {@code oplus_step3} 在 fastbootd 中刷剩余镜像。
+ *   <li><b>常规线刷</b>三步：第一步在 fastboot 下刷关键镜像 →
+ *       第二步重构逻辑分区 → 第三步在 fastbootd 中刷剩余镜像。
  *       关键点：{@code boot} / {@code dtbo} / {@code vbmeta} 这些<b>物理分区只有 bootloader
  *       能写</b>，{@code system} / {@code vendor} 这些<b>逻辑分区只有 fastbootd 能写</b>，
  *       所以必须分两段跑、中间重启一次模式，不可能一口气刷完。</li>
- *   <li><b>纯FastbootD</b>六步：{@code oplus_pure_step1..6} 检测设备状态 → 检测 AB 分区 →
+ *   <li><b>纯FastbootD</b>六步：检测设备状态 → 检测 AB 分区 →
  *       重构逻辑分区 → 统计任务数 → 刷写到目标槽位 → 激活目标槽位。
  *       它面向 A/B 设备的「刷到备用槽再切过去」用法，全程不出 fastbootd。</li>
- *   <li><b>修复Super分区</b>：{@code oplus_fix_*} 读 {@code super} 分区大小 →
+ *   <li><b>修复Super分区</b>：读 {@code super} 分区大小 →
  *       生成等大空镜像 → 刷入 → 完成。修复本身会清空超分区，所以文案里带一句
  *       「下一步进行线刷」。</li>
  * </ul>

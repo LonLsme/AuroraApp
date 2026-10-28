@@ -10,7 +10,7 @@ import java.util.Locale;
 /**
  * 设备连接状态探测。
  *
- * <p>对应既有工具里的 {@code le1.java}（设备检测中枢）。一次探测同时取三件事：
+ * <p>一次探测同时取三件事：
  * <ol>
  *   <li><b>ADB 在线</b>：{@code adb devices}，拿到序列号与状态（{@code device} /
  *       {@code unauthorized} / {@code offline}）；</li>
@@ -36,7 +36,7 @@ public final class FlashDevice {
     private static final String MARK_FASTBOOT = "##FASTBOOT##";
     private static final String MARK_USB = "##USB##";
 
-    /** 已知的深刷 / 特殊模式 USB ID。对照既有工具 {@code le1.java} 的 grep 目标。 */
+    /** 已知的深刷 / 特殊模式 USB ID。 */
     private static final String[][] KNOWN_USB_IDS = {
             {"05c6:9008", "高通 QDLoader（9008 深刷）"},
             {"05c6:900e", "高通 900E"},

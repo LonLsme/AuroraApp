@@ -10,7 +10,7 @@
     · 板块 2「Fastboot 重启」：两行两列（系统·Fastboot / Recovery·FastbootD）
     · 底部输出区，初始文案「选择重启模式」
 
-  两个板块的按钮分组与顺序取自既有工具{@code le1.java} 的两个数组：
+  两个板块的按钮分组与顺序：
     a = {adb reboot | adb reboot recovery | adb reboot bootloader | adb reboot fastboot | adb reboot edl}
     b = {fastboot reboot | fastboot reboot-bootloader | fastboot reboot recovery | fastboot reboot fastboot}
   注意 Fastboot 组只有 4 项 —— 9008 只能从 ADB 触发，所以它只在板块 1 里。

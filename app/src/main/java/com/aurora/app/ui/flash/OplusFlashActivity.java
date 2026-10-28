@@ -33,7 +33,7 @@ import java.io.File;
  * fastboot 要的是<b>真实文件路径</b>，SAF 给的 {@code content://} 它读不了。
  * 从系统目录选择器拿到的 tree URI 会被转成 {@code /storage/...} 形式回填；
  * 转换失败（部分 ROM 的第三方文件提供商不给 documentId）时输入框仍然可编辑，
- * 让用户自己粘贴路径 —— 既有工具里也是这么兜的。
+ * 让用户自己粘贴路径 —— 选不到时只能这么兜。
  */
 public final class OplusFlashActivity extends AppCompatActivity {
 

@@ -7,31 +7,31 @@ import java.util.Locale;
 /**
  * KernelSU 镜像修补（{@code libksud boot-patch}）。
  *
- * <h3>命令形态来自既有工具，不是自创</h3>
- * 既有工具的 {@code w2.java:case 3} 只有一条字符串：
+ * <h3>命令形态</h3>
+ * {@code libksud boot-patch} 的调用只有一条字符串：
  * <pre>
  * mkdir -p "/storage/emulated/0/Aurora/qdl" &amp;&amp; libksud boot-patch --kmi "&lt;KMI&gt;" \
  *     -b "&lt;boot.img&gt;" -o "/storage/emulated/0/Aurora/qdl" --out-name "kernelsu_patched_&lt;yyyyMMdd_HHmmss&gt;.img"
  * </pre>
- * 本类按同样顺序拼装参数顺序与名字（换掉输出目录），并把「输出文件名」的生成抽成
+ * 本类保持同样的参数顺序与名字，并把「输出文件名」的生成抽成
  * {@link #outputName(long)}，便于离线断言。
  *
  * <h3>KMI 是什么</h3>
  * {@code --kmi} 要的是<b>内核模块接口</b>标识（如 {@code android14-6.1}），不是内核版本号本身。
  * KernelSU 的 LKM 模式要求 KMI 严格匹配目标机内核，所以这一步必须由用户确认 ——
- * 选错会得到一个刷上去不生效（甚至起不来）的镜像。列表取自既有工具
- * {@code l92.java} 里那一行 {@code ug.K(...)}，7 项一字不差。
+ * 选错会得到一个刷上去不生效（甚至起不来）的镜像。列表 7 项，覆盖当前
+ * 在维护的 GKI 分支。
  *
  * <h3>为什么版本检测要经 sed</h3>
  * {@code libksud --version} 的输出形如 {@code KernelSU 3.3.0 (uapi: 2)}，
- * 既有工具把开头的非数字字符剥掉（{@code s@^[^0-9]*@@}，用 {@code @} 当分隔符，
+ * 这里把开头的非数字字符剥掉（{@code s@^[^0-9]*@@}，用 {@code @} 当分隔符，
  * 与用斜杠写的表达式等价），得到 {@code 3.3.0 (uapi: 2)}，
  * 再套进「管理器版本 %1$s」的模板 —— 界面最终就显示成「管理器版本 3.3.0 (uapi: 2)」。
  */
 public final class KernelSuPatcher {
 
     /**
-     * 可选的 KMI 版本，顺序与既有工具一致。
+     * 可选的 KMI 版本，按内核线从旧到新排列。
      *
      * <p>只在构造修补命令时使用，界面上的选择列表由它直接生成 ——
      * 单一数据源，加一项只需改这里。
@@ -134,7 +134,7 @@ public final class KernelSuPatcher {
     /**
      * 修补产物文件名：{@code kernelsu_patched_<yyyyMMdd_HHmmss>.img}。
      *
-     * <p>带时间戳是为了「一天补好几次」时不会互相覆盖 —— 既有工具也是这么做的。
+     * <p>带时间戳是为了「一天补好几次」时不会互相覆盖。
      */
     public static String outputName(long timestamp) {
         String stamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date(timestamp));

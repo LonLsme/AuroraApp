@@ -7,14 +7,12 @@
     · 顶部大标题「刷入KernelSU」
     · 第一行：保存日志 / 终止
     · 小字：管理器版本（由 libksud 的版本命令读出）
-    · 三个整行按钮：选择 init_boot.img/boot.img → 请选择内核版本 → 开始修补
+    · 三个整行按钮：选取 init_boot / boot 镜像 → 选择 KMI 版本 → 开始修补镜像
     · 底部输出区，初始文案「选择操作」
 
-  三个按钮的文案取自既有工具的字符串资源：
-    ksu_select_img = 选择 init_boot.img/boot.img
-    ksu_kmi_title  = 请选择内核版本
-    ksu_patch      = 开始修补
-  后两个按钮在选中之后会变成「已选: xxx」（common_selected 的形态），
+  三个按钮的文案：
+    选取 init_boot / boot 镜像 / 选择 KMI 版本 / 开始修补镜像
+  后两个按钮在选中之后会变成「已选: xxx」，
   这是页面唯一的状态回显 —— 与「页面只放控件 + 实时状态」的约定一致。
 -->
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
@@ -126,7 +124,7 @@
             android:layout_width="match_parent"
             android:layout_height="@dimen/miuix_button_height"
             android:layout_marginTop="12dp"
-            android:text="选择 init_boot.img/boot.img" />
+            android:text="选取 init_boot / boot 镜像" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnKsuPickKmi"
@@ -134,7 +132,7 @@
             android:layout_width="match_parent"
             android:layout_height="@dimen/miuix_button_height"
             android:layout_marginTop="@dimen/miuix_button_gap"
-            android:text="请选择内核版本" />
+            android:text="选择 KMI 版本" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnKsuPatch"
@@ -142,7 +140,7 @@
             android:layout_width="match_parent"
             android:layout_height="@dimen/miuix_button_height"
             android:layout_marginTop="@dimen/miuix_button_gap"
-            android:text="开始修补" />
+            android:text="开始修补镜像" />
 
         <!-- ───────── 输出区 ───────── -->
         <TextView

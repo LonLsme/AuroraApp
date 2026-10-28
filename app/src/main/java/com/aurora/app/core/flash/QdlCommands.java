@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  * 高通 QDL（9008 EDL 深刷）命令模板。
  *
  * <h3>这一族命令和 adb / fastboot 不是一回事</h3>
- * 既有工具没有自己写 Sahara / Firehose 协议，而是往 {@code assets} 里塞了一个
+ * 本类没有自己写 Sahara / Firehose 协议，而是往 {@code assets} 里塞了一个
  * 定制的 <b>Linux 端 {@code qdl} 命令行工具</b>（{@code aarch64.tar -> bin/qdl}，作者改过的
  * 分支，banner 是 {@code QDL For Your Devices & LSCM}）。手机解压它之后以 root 身份直接跑，
  * 由它用 libusb 占住 USB 节点去和 9008 端口通信。
@@ -24,22 +24,22 @@ import java.util.regex.Pattern;
  * {@code PATH} 后再执行。这与 {@link FlashCommands}（目标机侧通道）的形态差别很大，
  * 因此单独成类而不合并。
  *
- * <h3>命令原文出处</h3>
+ * <h3>各子命令的形态依据</h3>
  * <ul>
- *   <li>{@code rgpt} 三档 —— {@code g30.java} 的 {@code a()} 三个分支；</li>
- *   <li>{@code set_slot} —— {@code j40.java}；{@code get_slot} / {@code reset} / {@code reboot}
- *       —— {@code e40.smali}（三者共用同一段拼装，只有尾部子命令不同）；</li>
- *   <li>{@code rgpt} 与 {@code set_slot} 串成一条 shell —— {@code t40.smali}；</li>
- *   <li>批量 {@code owrite} —— {@code f5.f0()}（欧加全量包：扫镜像目录 + 跳过固定分区集）；</li>
- *   <li>单分区 {@code owrite} / {@code oread} / {@code oerase} —— {@code e.smali} / {@code t8.smali}；</li>
- *   <li>{@code --debug} / {@code --dry-run} 注入 —— {@code f5.W()} + {@code fn.i()}；</li>
- *   <li>9008 端口探测 —— {@code x8.java} / {@code le1.java}：{@code lsusb | grep '05c6:9008'}；</li>
- *   <li>残留清理 —— {@code n40.java}。</li>
+ *   <li>{@code rgpt} 三档 —— 按 {@code --oplus-token} / {@code --signeddigests} 的有无分档；</li>
+ *   <li>{@code set_slot} / {@code get_slot} / {@code reset} / {@code reboot}
+ *       —— 共用同一段拼装，只有尾部子命令不同；</li>
+ *   <li>{@code rgpt} 与 {@code set_slot} 串成一条 shell —— 中间要读分区表，分两条发会有闸门窗口；</li>
+ *   <li>批量 {@code owrite} —— 扫镜像目录 + 跳过固定分区集 + 先写 super；</li>
+ *   <li>单分区 {@code owrite} / {@code oread} / {@code oerase} —— 按分区名寻址；</li>
+ *   <li>{@code --debug} / {@code --dry-run} 注入 —— 负向先行断言避免重复插入；</li>
+ *   <li>9008 端口探测 —— {@code lsusb | grep '05c6:9008'}；</li>
+ *   <li>残留清理 —— {@code pkill adb / fastboot / qdl}。</li>
  * </ul>
  *
  * <p>选项名与合法取值都对着 {@code bin/qdl} 的字符串表核对过，不是照着用法说明猜的：
  * {@code -s/--storage} 只认 {@code emmc|nand|nvme|spinor|ufs}，{@code --oplus-token} 可带可选
- * {@code PROJID}（既有工具不传），{@code -R/--skip-reset}、{@code -n/--dry-run}、
+ * {@code PROJID}（本项目不传），{@code -R/--skip-reset}、{@code -n/--dry-run}、
  * {@code -d/--debug}、{@code -u/--out-chunk-size} 均为工具自带选项。
  *
  * <p>本类只生成字符串，不执行 —— 执行统一走 {@link FlashRuntime}。
@@ -55,7 +55,7 @@ public final class QdlCommands {
     /**
      * {@code rgpt} 的分区表输出目录。
      *
-     * <p>既有工具里这个路径是硬编码常量（不是 {@code filesDir}）：{@code rgpt} 会把各 LUN 的 GPT
+     * <p>这个路径是硬编码常量（不是 {@code filesDir}）：{@code rgpt} 会把各 LUN 的 GPT
      * 导成 {@code gpt_main*.bin} 连同 {@code partitions.txt} 落在这里，之后的 {@code owrite} /
      * {@code set_slot} 都依赖这批中间产物 —— {@code qdl} 找不到时自己的报错原文是
      * 「{@code Cannot open %s. Please run 'rgpt' first.}」。
@@ -69,24 +69,24 @@ public final class QdlCommands {
      * {@code rgpt} 用的分片大小。
      *
      * <p>只有欧加授权两档（VIP / Token）才带 {@code --out-chunk-size=16384}，
-     * 默认档不带 —— 这是既有工具的实际形态，不是漏写。
+     * 默认档不带 —— 这是工具的既有形态，不是漏写。
      */
     public static final int DEFAULT_CHUNK_SIZE = 16384;
 
     /** 9008 EDL 端口的 USB 标识（{@code qdl} 二进制里也是按 {@code 05c6:%04x} 拼的）。 */
     public static final String EDL_USB_ID = "05c6:9008";
 
-    /** 设备状态显示用的通道名，与既有工具 {@code le1.E(context, "9008/EDL")} 同字面量。 */
+    /** 设备状态显示用的通道名，与页面标题同字面量。 */
     public static final String EDL_CHANNEL = "9008/EDL";
 
     /**
-     * 热拔插警告文案（既有工具字符串资源 {@code qdl_hotplug_warning}）。
+     * 热插拔警告文案。
      *
      * <p>不是吓唬人：{@code qdl} 二进制里的报错原文是
      * 「{@code physically replug into 9008 (bus reset can't revive a wedged Qualcomm PBL)}」——
      * PBL 卡死时软复位救不回来，只能把线拔了重插。
      */
-    public static final String HOTPLUG_WARNING = "⚠️9008不支持热拔插，连上设备后不得断开，并且确保USB连接稳定";
+    public static final String HOTPLUG_WARNING = "⚠️EDL 模式不支持热插拔，连接后请勿断开数据线，并确保 USB 连接稳定";
 
     /** 高通设备最多 6 个 LUN（0..5），{@code qdl} 的报错原文是 {@code Reading GPT tables from all LUNs (0-5)}。 */
     public static final int LUN_COUNT = 6;
@@ -94,7 +94,7 @@ public final class QdlCommands {
     /**
      * 批量写入时<b>跳过</b>的分区。
      *
-     * <p>取自既有工具 {@code f5.f0()} 的 {@code vt1.X(...)}：动态分区（走 super）、
+     * <p>跳过分区集的取法：动态分区（走 super）、
      * {@code super} 本体与 {@code xbl} 都不在这个循环里刷 —— 它们要么由单独的
      * {@code owrite super} 处理，要么根本不该由用户态镜像覆盖。
      * 另有「{@code my_} 开头的定制分区」同样跳过。
@@ -129,8 +129,8 @@ public final class QdlCommands {
     /**
      * 欧加（OPPO / 一加 / realme）授权档位。
      *
-     * <p>与既有工具 {@code f5.q(o11)} 的返回值一一对应：{@code 0 / 1 / 2}。
-     * 界面上的文案见 {@code qdl_oplus_auth_off} / {@code _vip} / {@code _token}。
+     * <p>三档位与授权参数的对应关系：{@code 0 / 1 / 2}。
+     * 界面上的文案由授权档位开关给出。
      */
     public enum OplusAuth {
         /** 未开启：命令不带任何授权参数。 */
@@ -152,7 +152,7 @@ public final class QdlCommands {
     /**
      * {@code qdl <...> rgpt <输出目录>} —— 读取各 LUN 的 GPT 表，导出到 {@link #OUTPUT_DIR}。
      *
-     * <p>三个阶段里的第一阶段（{@code qdl_step1_gpt}「[1/3] 读取GPT分区表...」）。
+     * <p>三个阶段里的第一阶段（「[1/3] 读取GPT分区表...」）。
      * 之后写入 / 切槽位都依赖它的产物，所以任何批量操作之前都必须先跑通这一条。
      *
      * @param storage  存储类型
@@ -183,12 +183,11 @@ public final class QdlCommands {
     }
 
     /**
-     * 授权后缀，沿用既有工具的 {@code f5.S(o11)}：
-     * {@code return q(o11Var) == 2 ? " --oplus-token" : "";}。
+     * 授权后缀：只有 Token 档才带 {@code --oplus-token}，其余档位返回空串。
      *
      * <p><b>注意 VIP 档在这里返回空串</b> —— 因为 {@code --signeddigests} 只在 {@code rgpt}
      * 那一条命令里出现，{@code set_slot} / {@code get_slot} / {@code reset} 这些子命令
-     * 既有工具<b>不</b>带任何授权参数。这是它的实际行为，照搬而不是「顺手补全」。
+     * {@code qdl} 的实际行为如此，照搬而不是「顺手补全」。
      */
     private static String authSuffix(OplusAuth auth) {
         return auth == OplusAuth.TOKEN ? " --oplus-token" : "";
@@ -211,8 +210,8 @@ public final class QdlCommands {
     /**
      * {@code qdl <...> get_slot} —— 读当前活跃槽位。
      *
-     * <p>输出要靠 {@link #parseActiveSlot(String)} 解析；解析失败时既有工具给出的文案是
-     * {@code qdl_slot_fail}「无法获取活跃槽位（qdl get_slot 解析失败）」。
+     * <p>输出要靠 {@link #parseActiveSlot(String)} 解析；解析失败时的提示文案是
+     * 「无法获取活跃槽位（qdl get_slot 解析失败）」。
      */
     public static String getSlot(StorageType storage, String progPath, OplusAuth auth) {
         return subcommand(storage, progPath, auth, "get_slot");
@@ -221,8 +220,8 @@ public final class QdlCommands {
     /**
      * {@code qdl <...> reset} —— 复位设备（让它从 9008 重新启动）。
      *
-     * <p>这条命令本身也带 {@code --skip-reset}，看着别扭但确实是既有工具原文
-     * （{@code e40.smali} 里三条子命令共用同一段拼装）。{@code -R} 的语义是「刷写完成后
+     * <p>这条命令本身也带 {@code --skip-reset}，看着别扭但确实是子命令共用同一段拼装的结果。
+     * {@code -R} 的语义是「刷写完成后
      * 不要自动发 reset」，与这里主动发 {@code reset} 子命令不冲突。
      */
     public static String reset(StorageType storage, String progPath, OplusAuth auth) {
@@ -237,7 +236,7 @@ public final class QdlCommands {
     /**
      * 所有子命令共用的前缀：{@code qdl --storage=X[ --oplus-token] --skip-reset '<prog>'}。
      *
-     * <p>形态与 {@code j40.java} / {@code e40.smali} / {@code f5.f0()} 逐字一致。
+     * <p>形态与 {@code set_slot} / 子命令 / 批量刷写三处拼装一致。
      * {@code --skip-reset} 的位置在引导文件<b>之前</b>，不要挪动；引导文件必须转义。
      *
      * <p>单独抽出来是因为后面有一串「往同一条命令尾巴上追加多个子操作」的场景
@@ -257,7 +256,7 @@ public final class QdlCommands {
     /**
      * {@code rgpt} 与 {@code set_slot} 合成<b>一条</b> shell，中间用 {@code &&} 连接。
      *
-     * <p>形式取自 {@code t40.smali}：{@code <rgpt 命令> && qdl --storage=X ... set_slot '<a|b>'}。
+     * <p>形式：{@code <rgpt 命令> && qdl --storage=X ... set_slot '<a|b>'}。
      *
      * <p>为什么不拆两条发：{@link FlashRuntime} 是单任务闸门，命令跑完的收尾里会顺手刷新
      * 设备状态（那也要占闸门），紧接着再发第二条有被拒的窗口。合成一条之后整个动作是原子的，
@@ -275,7 +274,7 @@ public final class QdlCommands {
      * {@code owrite <分区> '<镜像>'} —— 按<b>分区名</b>写入一个镜像。
      *
      * <p>{@code qdl} 有两条寻址路线：{@code (read|write|erase) <address>}（按 LUN + 扇区地址）
-     * 与 {@code (oread|owrite|oerase) <name> <Path>}（按分区名）。既有工具用后者 ——
+     * 与 {@code (oread|owrite|oerase) <name> <Path>}（按分区名）。本项目固定用后者 ——
      * 它靠 {@code rgpt} 导出的 GPT 表把分区名解析成地址，这正是「必须先跑 rgpt」的原因。
      *
      * <p>路径用单引号包死：镜像文件名里带空格、括号是常态，且这是 root 权限下的命令注入面。
@@ -288,9 +287,8 @@ public final class QdlCommands {
     /**
      * {@code oread <分区> '<输出路径>'} —— 把设备上一个分区读出来存成镜像。
      *
-     * <p>输出路径固定为 {@code <OUTPUT_DIR>/<分区名>.img}，与既有工具 {@code t8.smali}
-     * 里 read 分支的拼装完全一致（它是把常量 {@code "/storage/emulated/0/Aurora/qdl/"}、
-     * 分区名、{@code ".img"} 三段拼起来再过转义）。
+     * <p>输出路径固定为 {@code <OUTPUT_DIR>/<分区名>.img}：
+     * 常量前缀、分区名、{@code ".img"} 三段拼起来后统一过转义。
      *
      * @param partition 目标分区名（读出来的文件名也用它）
      */
@@ -302,7 +300,7 @@ public final class QdlCommands {
     /**
      * {@code oerase <分区>} —— 按分区名擦除。
      *
-     * <p>既有工具给这条操作配了强警告（{@code qdl_part_erase_warn}）：
+     * <p>这条操作配有强警告：
      * 「此操作不可撤销；若包含系统关键分区（如 xbl、persist、super 等），设备可能无法开机。」
      */
     public static String oerase(StorageType storage, String progPath, OplusAuth auth, String partition) {
@@ -312,7 +310,7 @@ public final class QdlCommands {
     /**
      * 批量提取：把勾选的多个分区一次读出来。
      *
-     * <p>拼接形式取自 {@code g30.java} 的 {@code extract} 分支，有两点与别处不同：
+     * <p>拼接形式（{@code extract} 分支）有两点与别处不同：
      * <ol>
      *   <li>前面多一句 {@code mkdir -p '<输出目录>'} —— 提取是往目录里写文件，
      *       目录不存在时 {@code qdl} 自己不会建；</li>
@@ -350,7 +348,7 @@ public final class QdlCommands {
     /**
      * 批量写入（按勾选的分区 + 各自选定的镜像）。
      *
-     * <p>形式取自 {@code g30.java} 的 {@code write} 分支：{@code qdl --storage=X ... --skip-reset
+     * <p>形式（{@code write} 分支）：{@code qdl --storage=X ... --skip-reset
      * '<prog>' } 后面跟一串 {@code owrite '<分区>' '<镜像>'}。
      *
      * <p>不在这里做「哪些该跳过」的判断 —— 调用方勾了什么就写什么，这是「单分区写入」的语义；
@@ -374,7 +372,7 @@ public final class QdlCommands {
     /**
      * 全量写入：扫镜像目录，逐条 {@code owrite}，并按固定规则跳过一部分分区。
      *
-     * <p>按同样顺序拼装既有工具 {@code f5.f0()}：
+     * <p>固定按以下顺序拼装：
      * <ol>
      *   <li>先写 super：{@code owrite super '<super镜像>'}；</li>
      *   <li>再遍历镜像目录里的 {@code *.img}（按文件名排序，保证命令可复现），
@@ -423,7 +421,7 @@ public final class QdlCommands {
     /**
      * 从 {@code partitions.txt} 的内容里解析出「A/B 成对」的分区基名集合。
      *
-     * <p>算法照抄 {@code f5.f0()}：每行按 {@code ,} 取第一个字段、trim、转小写；
+     * <p>算法：每行按 {@code ,} 取第一个字段、trim、转小写；
      * 分别收集以 {@code _a} 结尾与以 {@code _b} 结尾的，各自去掉后缀得到基名，
      * 两集合的<b>交集</b>就是「确实成对」的分区。
      *
@@ -462,16 +460,16 @@ public final class QdlCommands {
     /**
      * 往命令里的每个 {@code qdl} 后面插 {@code --debug} / {@code --dry-run}。
      *
-     * <p>算法沿用既有工具 {@code f5.W()}：用负向先行断言避免重复插入 ——
+     * <p>算法：用负向先行断言避免重复插入 ——
      * 正则 {@code \bqdl\b(?!\s+--debug|\s+--dry-run)} 只匹配「后面还没跟这两个开关」的 {@code qdl}。
      * 两个开关的组合对应三个替换文本：{@code qdl --debug --dry-run} / {@code qdl --debug} /
-     * {@code qdl --dry-run}（{@code fn.i()} 的 13 / 14 / 15 分支）。
+     * {@code qdl --dry-run}。
      *
      * <p>合成命令里可能有<b>两个</b> {@code qdl}（{@code rgpt && set_slot}），
-     * 替换是全局的，两个都会被加上 —— 与既有工具一致。
+     * 替换是全局的，两个都会被加上 —— 与工具行为一致。
      *
      * <p>开关语义（{@code --dry-run} 是空跑：不连设备、不真实刷写）来自
-     * {@code qdl_dry_run_summary}：官方选项说明是 {@code -n, --dry-run / Dry run execution,
+     * 官方选项说明：{@code -n, --dry-run / Dry run execution,
      * no device reading or flashing}。所以这也是唯一能在<b>不接设备</b>的情况下验证命令拼装的手段。
      */
     public static String applyDebugFlags(String command, boolean debug, boolean dryRun) {
@@ -492,7 +490,7 @@ public final class QdlCommands {
     /**
      * 探测是否有设备挂在 9008 端口。
      *
-     * <p>命令取自 {@code x8.java} / {@code le1.java}：
+     * <p>命令：
      * {@code lsusb 2>/dev/null | grep -i '05c6:9008'}。有匹配输出即表示在端口上，
      * 调用方按「输出非空」判断，不要去解析退出码（{@code grep} 无匹配时返回 1，属正常情况）。
      *
@@ -506,7 +504,7 @@ public final class QdlCommands {
     /**
      * 清理 adb / fastboot / qdl 残留进程。
      *
-     * <p>取自 {@code n40.java}：{@code pkill adb; pkill fastboot; pkill qdl}。
+     * <p>清理命令：{@code pkill adb; pkill fastboot; pkill qdl}。
      * 比 {@link FlashCommands#killResidual()} 多一个 {@code qdl} —— 现在三条通道都可能留残留。
      *
      * <p>注意它<b>没带</b> {@code -9}，也没在末尾补 {@code true}：三个 {@code pkill} 只要有一个
@@ -518,18 +516,18 @@ public final class QdlCommands {
 
     // ───────────────── 输出解析 ─────────────────
 
-    /** {@code qdl get_slot} 输出的槽位正则，沿用既有工具：{@code slot.*[=:].*([abAB])}。 */
+    /** {@code qdl get_slot} 输出的槽位正则：{@code slot.*[=:].*([abAB])}。 */
     private static final Pattern SLOT_PATTERN =
             Pattern.compile("slot.*[=:].*?([abAB])");
 
     /**
      * 从 {@code qdl get_slot} 的输出里取槽位字母。
      *
-     * <p>既有工具是逐行跑 {@code slot.*[=:].*([abAB])}，命中即取第一个捕获组。
+     * <p>逐行跑 {@code slot.*[=:].*([abAB])}，命中即取第一个捕获组。
      * 这里同样逐行扫（避免跨行误匹配），但把第二个量词改成<b>非贪婪</b> ——
      * 原标题用贪婪的 {@code .*} 时，只要该行在槽位字母后面还有别的英文单词
      * （例如 {@code slot: b, inactive}），就会一路回溯到末尾的那个 {@code a}／{@code b}
-     * 上取错值。这是本项目里少数几处有意偏离原文的地方，因为读错槽位会导致写错分区。
+     * 上取错值。这是本项目里少数几处有意偏离的地方，因为读错槽位会导致写错分区。
      *
      * @return {@code "a"} 或 {@code "b"}（小写）；读不到返回 {@code null}
      */
@@ -552,7 +550,7 @@ public final class QdlCommands {
      * <p>依据是 {@code qdl} 自己的两行输出：
      * {@code Reading GPT tables from all LUNs (0-5)} 与 {@code "  LUN %d GPT saved to %s"}。
      * 后者每导出一个 LUN 打一次，数它最直接。数不到 0 时返回 0，
-     * 上层可对照 {@code qdl_no_gpt}「未找到分区表，请先执行【识别分区表】」提示重跑。
+     * 上层可对照「未找到分区表，请先执行【识别分区表】」这句提示重跑。
      */
     public static int countSavedLuns(String output) {
         if (output == null) {

@@ -23,7 +23,7 @@ import java.util.Locale;
  *
  * <h3>它做什么</h3>
  * 用内置的 {@code qdl} 可执行文件对<b>连着的那台 9008 EDL 设备</b>做两件事，
- * 也就是既有工具那个三步流程里能独立成立的前两步：
+ * 也就是常规线刷三步流程里能独立成立的前两步：
  * <ol>
  *   <li><b>识别分区表</b>（{@code rgpt}）—— 各 LUN 的 GPT 导成文件落到
  *       {@link QdlCommands#OUTPUT_DIR}，之后的任何写入 / 切槽位都依赖这批产物；</li>
@@ -39,17 +39,14 @@ import java.util.Locale;
  * 让「设备能不能通、分区表读不读得到」这个前置问题先能被验证。
  *
  * <h3>为什么页面上没有一句机制说明</h3>
- * 热拔插警告、切槽位依赖分区表、复位意味着什么 —— 全部写在点击后的确认框里。
+ * 热插拔警告、切槽位依赖分区表、复位意味着什么 —— 全部写在点击后的确认框里。
  * 页面只放「控件 + 实时状态」是项目约定。
  *
- * <h3>文案出处</h3>
- * 所有界面文案取自既有工具 {@code strings.xml} 的 {@code qdl_*} 条目：
- * {@code qdl_rgpt_title}「识别分区表」、{@code qdl_select_programmer}「选择引导文件」、
- * {@code qdl_storage_type}「存储类型」、{@code qdl_oplus_auth_mode}「欧加授权方式」及其三档
- * {@code qdl_oplus_auth_off/_token/_vip}、{@code qdl_ab_detect}「识别设备启动槽位」、
- * {@code qdl_ab_switch_a/_b}「切换至A」/「切换至B」、{@code qdl_reset_device}「复位设备」、
- * {@code qdl_dry_run}「模拟刷写」及其 {@code qdl_dry_run_summary}、
- * {@code qdl_hotplug_warning}、{@code qdl_slot_fail}、{@code qdl_vip_sign}、{@code qdl_vip_digest}。
+ * <h3>文案</h3>
+ * 「识别分区表」「选择引导文件」「存储类型」「欧加授权方式」及其三档、
+ * 「识别设备启动槽位」「切换至 A」「切换至 B」「复位设备」、
+ * 「模拟刷写」及其说明、热插拔警告、「无法获取活跃槽位」、
+ * VIP 签名 / 摘要文件。
  */
 public final class QdlActivity extends FlashConsoleActivity {
 
@@ -68,7 +65,7 @@ public final class QdlActivity extends FlashConsoleActivity {
     };
 
     /**
-     * {@code get_slot} 解析失败时的文案，取自既有工具 {@code qdl_slot_fail}。
+     * {@code get_slot} 解析失败时的文案，取自既有工具 「无法获取活跃槽位」。
      *
      * <p>读不到槽位时不要显示「A 槽」也不要留「未读取」—— 「没读到」和「没读过」
      * 是两种状态，混在一起用户会以为设备在 A 槽。
@@ -429,7 +426,7 @@ public final class QdlActivity extends FlashConsoleActivity {
         }
     }
 
-    /** 档位名，取自 {@code qdl_oplus_auth_off / _token / _vip}。 */
+    /** 档位名。 */
     private static String authLabel(QdlCommands.OplusAuth tier) {
         switch (tier) {
             case VIP:
@@ -441,7 +438,7 @@ public final class QdlActivity extends FlashConsoleActivity {
         }
     }
 
-    /** 档位摘要，取自 {@code qdl_oplus_auth_*_summary}。 */
+    /** 档位摘要。 */
     private static String authSummary(QdlCommands.OplusAuth tier) {
         switch (tier) {
             case VIP:
@@ -540,7 +537,7 @@ public final class QdlActivity extends FlashConsoleActivity {
      *
      * <p>这条不是刷机动作，而是上面几步做完之后的「收尾」—— 所有命令都带
      * {@code --skip-reset}，{@code qdl} 不会自己复位。既有工具里同样有一个独立的
-     * 「复位设备」入口（{@code qdl_reset_device}）。它另有一个 {@code reboot} 子命令，
+     * 「复位设备」入口（「复位设备」）。它另有一个 {@code reboot} 子命令，
      * 本项目暂时只在命令模板层保留、未接线。
      */
     private void confirmReset() {

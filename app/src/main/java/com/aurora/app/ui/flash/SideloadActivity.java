@@ -28,7 +28,7 @@ import java.io.File;
  * 而 {@code adb} 是<b>按真实路径</b>读文件的普通程序，读不懂 content URI。
  *
  * <h3>为什么执行前要确认设备真的在 sideload 模式</h3>
- * 既有工具（{@code w2.java} case 4 → {@code k0.smali} case 10）在这里会先做一次设备检查，
+ * 执行前会先做一次设备检查，
  * 不在 sideload 模式就只弹一句「未检测到 %1$s 设备」并且<b>不执行</b>。
  * 照做是有实际意义的：{@code adb sideload} 对着普通 ADB 设备跑会直接报错，
  * 用户看到的是 adb 的英文错误，不如提前一句话说清「你现在这台机器没在 sideload 模式」。
@@ -177,7 +177,7 @@ public final class SideloadActivity extends FlashConsoleActivity {
                     pickedZip = file;
                     prefs().edit().putString(KEY_ZIP, file.getAbsolutePath()).apply();
                     // 按钮文字保持「选择 .zip 文件」不动（页面上一行就是这块的标题），
-                    // 选了哪个包由输出区这行交代 —— 取自既有工具的 sideload_selected。
+                    // 选了哪个包由输出区这行交代。
                     appendLine(FlashCommands.sideloadSelected(file.getName()));
                 });
             }
@@ -212,7 +212,7 @@ public final class SideloadActivity extends FlashConsoleActivity {
     /**
      * 三段校验 → 确认 → 执行。
      *
-     * <p>校验顺序与既有工具一致（{@code w2.java} case 4）：先看包选没选（含文件还在不在），
+     * <p>校验顺序：先看包选没选（含文件还在不在），
      * 再看设备在不在 sideload 模式，最后才动手。
      */
     private void startSideload() {

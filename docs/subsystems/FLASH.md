@@ -226,7 +226,7 @@ export HOME=/data/local/tmp/aurora_flash/home
 
 - **纯字符串模板，一字节都不执行**；
 - **外部输入一律 `shellEscape`**；
-- 每条命令的**原文都注明出处**（既有工具的哪个文件/方法）。
+- 每条命令的**形态都注明依据**（qdl 实测输出 / 厂商脚本 / 设备约束）。
 
 ### 5.1 `FlashCommands`
 
@@ -260,8 +260,8 @@ export HOME=/data/local/tmp/aurora_flash/home
 
 > [!warning] `SparseImage` 有一个上游的 off-by-4 陷阱
 > sparse 展开尺寸 = **`blk_sz`（偏移 12）× `total_blks`（偏移 16）**。
-> 既有工具 `oz1.java` 写成 `seek(8)` 连读两个 int —— **那会恒得到 `1835020`**。
-> 照抄会算错所有 sparse 镜像的大小。
+> 有一种常见写法是 `seek(8)` 后连读两个 int —— **那会恒得到 `1835020`**。
+> 沿用会算错所有 sparse 镜像的大小。
 
 > [!warning] 小米线刷本质是跑厂商脚本
 > 过滤时用 `name.endsWith(".sh")`（**大小写敏感**），

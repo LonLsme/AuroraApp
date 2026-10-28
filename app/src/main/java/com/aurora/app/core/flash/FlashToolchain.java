@@ -22,7 +22,7 @@ import java.util.zip.ZipInputStream;
  * 因此必须由应用自己携带。
  *
  * <h3>带哪些二进制</h3>
- * 既有工具内置了 64MB 的 {@code aarch64.tar}，含 adb / fastboot / qdl /
+ * 一份完整的 {@code aarch64.tar} 一般含 adb / fastboot / qdl /
  * 7z / payload-dumper-go / e2fsdroid / lpunpack / libmagic 等 20 多个文件。
  * 本项目只取链路真正需要的五个：
  * <table>
@@ -42,7 +42,7 @@ import java.util.zip.ZipInputStream;
  * 压缩前 19.0MB、压缩后 9.4MB。{@code payload-dumper-go} / {@code magic.mgc} /
  * {@code lpunpack} 这些留给后续做欧加全量包与 payload 解包再带。
  *
- * <p><b>qdl 是 aarch64 专用的</b>：既有工具也只有 {@code aarch64.tar} 一份，
+ * <p><b>qdl 是 aarch64 专用的</b>：只有 {@code aarch64} 一份构建，
  * 没有 32 位版本。本应用未做 ABI 过滤（{@code abiFilters} 为空），
  * 因此在 32 位 armeabi-v7a 设备上 qdl 解出来也跑不了 ——
  * 这类设备目前只能用到 adb / fastboot 通道，见 {@link #isQdlSupported()}。
@@ -103,7 +103,7 @@ public final class FlashToolchain {
     /**
      * KernelSU 修补工具。
      *
-     * <p>注意文件名是 {@code libksud} 而不是 {@code ksud} —— 它取自既有工具的 {@code aarch64.tar}，
+     * <p>注意文件名是 {@code libksud} 而不是 {@code ksud} —— 它来自 {@code aarch64.tar}，
      * 内部就是 KernelSU 的 userspace 工具（{@code ksud}），重命名是为了绕开
      * 「{@code lib*.so} 才允许放进 APK 的 native 库目录」这条打包约定。
      * 这里按原名解压，命令里也按原名调用（{@code FlashRuntime} 已把 bin 目录放进 PATH）。
@@ -131,7 +131,7 @@ public final class FlashToolchain {
     /**
      * 当前设备能否运行内置的 {@code qdl}。
      *
-     * <p>这份二进制只有 aarch64 一个构建（既有工具也只带 {@code aarch64.tar}），
+     * <p>这份二进制只有 aarch64 一个构建，
      * 32 位 ARM 与 x86 设备解出来也无法执行。用于在 QDL 页上给出准确的拒绝理由，
      * 而不是等到跑命令时冒出一句 {@code Exec format error}。
      */

@@ -5,15 +5,15 @@ import java.util.Locale;
 /**
  * 刷机命令模板。
  *
- * <p>命令字符串的形态对照既有工具逐条核对过：
+ * <p>命令字符串的形态逐条核对过：
  * <ul>
- *   <li>Fastboot 单分区 —— {@code o80.java}：{@code fastboot flash boot "<img>"}；
+ *   <li>Fastboot 单分区：{@code fastboot flash boot "<img>"}；
  *       A/B 的 init_boot 用 {@code &&} 串两个槽位；</li>
- *   <li>临时启动 / 关校验 —— {@code h90.java}：{@code fastboot boot "<img>"} 与
+ *   <li>临时启动 / 关校验：{@code fastboot boot "<img>"} 与
  *       {@code fastboot --disable-verity --disable-verification flash vbmeta "<img>"}；</li>
- *   <li>重启菜单 —— {@code le1.java}：ADB 用 {@code adb reboot <target>}，
+ *   <li>重启菜单：ADB 用 {@code adb reboot <target>}，
  *       Fastboot 用 {@code fastboot reboot-bootloader} 这类旧语法（兼容性更好）；</li>
- *   <li>残留清理 —— {@code n40.java}：{@code pkill -9 adb; pkill -9 fastboot}。</li>
+ *   <li>残留清理：{@code pkill -9 adb; pkill -9 fastboot}。</li>
  * </ul>
  *
  * <p>本类只生成字符串，不执行 —— 执行统一走 {@link FlashRuntime}。
@@ -97,7 +97,7 @@ public final class FlashCommands {
     /**
      * A/B 双槽写入：{@code fastboot flash init_boot_a <img> && fastboot flash init_boot_b <img>}。
      *
-     * <p>只写当前槽位的话，OTA 切槽后会退回未刷的旧镜像 —— 这是既有工具
+     * <p>只写当前槽位的话，OTA 切槽后会退回未刷的旧镜像 —— 这是
      * 对 init_boot 特意走双槽的原因。
      */
     public static String fastbootFlashBothSlots(String partition, String imagePath) {
@@ -109,7 +109,7 @@ public final class FlashCommands {
     /**
      * 带「分区存在性检查」的单分区刷入。
      *
-     * <p>既有工具（{@code f90.smali}）在刷任何一个分区之前，都会先跑一次
+     * <p>刷任何一个分区之前都会先跑一次
      * {@code fastboot getvar partition-size} 确认这个分区在目标机上真的存在；不存在就打印
      * 「检测到设备不存在 xxx分区，拒绝刷入此镜像」并中止，而不是把镜像盲刷进去。
      * 分区名写错（例如把 {@code init_boot} 写成 {@code initboot}）时，这一步能把它挡下来。
@@ -128,7 +128,7 @@ public final class FlashCommands {
     /**
      * 「检测到设备不存在 xxx分区，拒绝刷入此镜像」。
      *
-     * <p>取自既有工具的字符串资源 {@code fb_partition_not_found}（{@code %1$s} = 分区名）。
+     * <p>{@code %1$s} = 分区名。
      */
     public static String partitionMissing(String partition) {
         return "检测到设备不存在 " + partition + "分区，拒绝刷入此镜像";
@@ -165,7 +165,7 @@ public final class FlashCommands {
     /**
      * 「>>> 正在推送: %1$s」——推送开始前的提示。
      *
-     * <p>取自既有工具的字符串资源 {@code sideload_pushing}（{@code %1$s} = 文件名）。
+     * <p>{@code %1$s} = 文件名。
      * {@code adb sideload} 会把整个包推给设备侧校验，几百 MB 的包要等好一会儿，
      * 这一行是「已经开始干活了」的唯一即时反馈。
      */
@@ -173,11 +173,11 @@ public final class FlashCommands {
         return ">>> 正在推送: " + fileName;
     }
 
-    /** 「请先选择 .zip 刷机包」——路径为空时输出（{@code sideload_select_first}）。 */
+    /** 「请先选择 .zip 刷机包」——路径为空时输出。 */
     public static final String SIDELOAD_SELECT_FIRST = "请先选择 .zip 刷机包";
 
     /**
-     * 「文件不存在: %1$s」（{@code sideload_not_found}，{@code %1$s} = 路径）。
+     * 「文件不存在: %1$s」，{@code %1$s} = 路径。
      *
      * <p>恢复上次选择的包之后文件被删 / 被移走，就会走到这一句。
      */
@@ -185,7 +185,7 @@ public final class FlashCommands {
         return "文件不存在: " + path;
     }
 
-    /** 「已选择: %1$s」（{@code sideload_selected}，{@code %1$s} = 文件名）。 */
+    /** 「已选择: %1$s」，{@code %1$s} = 文件名。 */
     public static String sideloadSelected(String fileName) {
         return "已选择: " + fileName;
     }
@@ -255,7 +255,7 @@ public final class FlashCommands {
     /**
      * 欧加系固件包里的<b>动态分区</b>清单。
      *
-     * <p>与既有工具（{@code oz1.java} 的 {@code a} 列表）逐字一致 —— 这 8 个分区在
+     * <p>这 8 个分区在
      * 超分区（{@code super}）里，只能先在 fastbootd 下「重构」再刷，不能在 bootloader 里直接刷。
      */
     public static final String[] OPLUS_LOGICAL_PARTITIONS = {
@@ -263,7 +263,7 @@ public final class FlashCommands {
             "system_dlkm", "product", "vendor", "vendor_dlkm",
     };
 
-    /** 既有工具里的定制分区（{@code oz1.b} 列表），走单分区直刷。 */
+    /** 定制分区，走单分区直刷。 */
     public static final String[] OPLUS_CUSTOM_PARTITIONS = {
             "my_company", "my_preload",
     };
@@ -273,7 +273,7 @@ public final class FlashCommands {
      *
      * <p>输出形如 {@code current-slot: a}；非 A/B 设备返回
      * {@code FAILED (remote: 'GetVar Variable Not found')} —— 解析侧必须能区分这两者，
-     * 因为「非 A/B」在欧加真线刷里是要直接终止的（见 {@code oplus_not_ab} 文案）。
+     * 因为「非 A/B」在欧加真线刷里是要直接终止的。
      */
     public static String fastbootGetCurrentSlot() {
         return "fastboot getvar current-slot";
@@ -317,26 +317,26 @@ public final class FlashCommands {
 
     // ───────────────── 槽位读取 / 切换 ─────────────────
 
-    /** 开始读槽位前的提示。取自既有工具 {@code fb_switching_slot}。 */
+    /** 开始读槽位前的提示。 */
     public static final String SLOT_READING = "正在读取当前槽位...";
 
-    /** 读不到槽位时的提示。取自既有工具 {@code fb_not_ab_device}。 */
+    /** 读不到槽位时的提示。 */
     public static final String SLOT_NOT_AB = "错误: 非AB分区设备，无法切换槽位";
 
     /**
-     * 切换结果提示。取自既有工具 {@code fb_switch_to_slot}：
+     * 切换结果提示。
      * {@code %1$s} = 当前槽位，{@code %2$s} = 目标槽位（两者都大写）。
      */
     public static final String SLOT_SWITCH_TO = "当前槽位 %1$s，切换至 %2$s 槽位";
 
-    /** 读到的槽位。取自既有工具 {@code fb_info_slot}。{@code %1$s} = 槽位字母（大写）。 */
+    /** 读到的槽位。{@code %1$s} = 槽位字母（大写）。 */
     public static final String SLOT_INFO = "当前槽位: %1$s";
 
     /**
      * 读槽位的 shell 前置片段：跑一次 {@code fastboot getvar current-slot}，把原始输出回显，
      * 再把槽位字母抽进 shell 变量 {@code c}（认不出就是空串）。
      *
-     * <p>识别规则与既有工具的正则 {@code current-slot:\s*([ab])} 同义：必须出现
+     * <p>识别规则用正则 {@code current-slot:\s*([ab])}：必须出现
      * {@code current-slot} 且其后跟着 {@code a} 或 {@code b}；不区分大小写，冒号后允许空格。
      * 用 {@code tail -n1} 取最后一次命中，避免输出里混入回显行时取到错的。
      */
@@ -348,7 +348,7 @@ public final class FlashCommands {
 
     /**
      * 只读并显示当前槽位：命令是 {@code fastboot getvar current-slot}，
-     * 能认出槽位时再补一行「当前槽位: A」（对应既有工具的 {@code fb_info_slot}）。
+     * 能认出槽位时再补一行「当前槽位: A」。
      *
      * <p>认不出<b>不</b>报错 —— 「读一下」这个动作本来就不该失败，
      * 非 A/B 设备的提示只在真正要切换时才给（见 {@link #fastbootSwitchSlot()}）。
@@ -366,10 +366,10 @@ public final class FlashCommands {
      * 刷新一次设备状态（那本身也要占闸门），紧接着再发第二条命令有概率被拒。
      * 合成一条就没有这个窗口，整个动作也是原子的 —— 中途插不进别的操作。
      *
-     * <p>文案与判断顺序沿用既有工具（{@code g90.smali}）：
-     * 先 {@code fb_switching_slot}「正在读取当前槽位...」→ 跑 {@code getvar} →
-     * 认不出槽位就 {@code fb_not_ab_device}「错误: 非AB分区设备，无法切换槽位」并<b>不</b>动手；
-     * 认得出就 {@code fb_switch_to_slot}「当前槽位 A，切换至 B 槽位」→ {@code fastboot set_active}。
+     * <p>文案与判断顺序：
+     * 先「正在读取当前槽位...」→ 跑 {@code getvar} →
+     * 认不出槽位就「错误: 非AB分区设备，无法切换槽位」并<b>不</b>动手；
+     * 认得出就「当前槽位 A，切换至 B 槽位」→ {@code fastboot set_active}。
      *
      * <p>读不到槽位时宁可什么都不做，也不猜一个槽位去 {@code set_active} ——
      * 切错槽位是「开机进到另一个系统」，用户很难当场判断出是被谁改的。
@@ -439,7 +439,7 @@ public final class FlashCommands {
     /**
      * 执行小米线刷包里的 shell 脚本。
      *
-     * <p>形式沿用既有工具：{@code cd <目录> && sh <脚本名>}，两段都过 {@link #esc}。
+     * <p>形式：{@code cd <目录> && sh <脚本名>}，两段都过 {@link #esc}。
      *
      * <p>为什么要先 {@code cd}：这些脚本内部大量用<b>相对路径</b>引用同目录的镜像文件
      * （{@code fastboot flash boot boot.img} 这种），不切到包目录会全部找不到；
@@ -535,7 +535,7 @@ public final class FlashCommands {
     /**
      * 清理 adb / fastboot 残留进程。
      *
-     * <p>对应既有工具 {@code n40.java}。刷机中断或异常退出后残留的进程会占住 USB 与
+     * <p>刷机中断或异常退出后残留的进程会占住 USB 与
      * 5037 端口，必须清掉才能重新识别设备。
      */
     public static String killResidual() {

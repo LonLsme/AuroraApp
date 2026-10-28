@@ -206,7 +206,7 @@ public final class KernelSuActivity extends FlashConsoleActivity {
     private void chooseKmi() {
         final String[] items = KernelSuPatcher.KMI_VERSIONS;
         new AlertDialog.Builder(this)
-                .setTitle("请选择内核版本")
+                .setTitle("选择 KMI 版本")
                 .setItems(items, (d, which) -> {
                     selectedKmi = items[which];
                     setPickKmiLabel(selectedKmi);
@@ -230,7 +230,7 @@ public final class KernelSuActivity extends FlashConsoleActivity {
             return;
         }
         if (selectedKmi == null) {
-            toast("请先选择内核版本");
+            toast("请先选择 KMI 版本");
             return;
         }
         if (!KernelSuPatcher.isValidKmi(selectedKmi)) {

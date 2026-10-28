@@ -10,8 +10,8 @@ import java.util.Locale;
  *
  * <h3>小米线刷包是怎么刷的</h3>
  * 小米的 TGZ / 解压目录里带一组批处理脚本，刷机就是「切到包目录、跑其中一个脚本」，
- * 脚本内部再逐条调 {@code fastboot flash}。三个关键脚本与语义沿用既有工具
- * （{@code lq1.java} 里「脚本名 → 确认文案」的映射）：
+ * 脚本内部再逐条调 {@code fastboot flash}。三个关键脚本与语义
+ * （「脚本名 → 确认文案」的映射）：
  *
  * <pre>
  *   flash_all.sh                   全量刷写（清除数据）
@@ -20,7 +20,7 @@ import java.util.Locale;
  * </pre>
  *
  * <p>本类只负责「识别 + 分类」，<b>不含任何界面文案</b> —— 中文怎么写交给 UI 层按
- * {@link Kind} 给出，这样 {@code core} 层不必知道既有工具里那几句提示长什么样。
+ * {@link Kind} 给出，这样 {@code core} 层不必知道那几句提示长什么样。
  */
 public final class MiFlashScript {
 
@@ -52,8 +52,8 @@ public final class MiFlashScript {
     /**
      * 扫一个目录里的 {@code .sh} 脚本。
      *
-     * <p>过滤条件是既有工具的原样搬用：{@code isFile() && getName().endsWith(".sh")}。
-     * <b>特意保持大小写敏感</b>（{@code .SH} 不会被收）—— 与既有工具一致，
+     * <p>过滤条件：{@code isFile() && getName().endsWith(".sh")}。
+     * <b>特意保持大小写敏感</b>（{@code .SH} 不会被收）—— 与厂商脚本命名一致，
      * 免得同一条规则在两处表现不一样。
      *
      * <p>结果按文件名排序（忽略大小写）：目录里通常同时有三个脚本，

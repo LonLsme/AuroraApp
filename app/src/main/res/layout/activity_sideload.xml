@@ -7,14 +7,11 @@
     · 大标题「ADB Sideload」（加粗大字）
     · 第一行：保存日志 / 终止
     · 小标题「选择刷机包」+ 一行两个按钮：选择 .zip 文件（次要）/ 开始刷入（主色）
-    · 小标题「输出」+ 日志输出区（初始占位「选择 .zip 刷机包后点击「开始刷入」」）
+    · 小标题「输出」+ 日志输出区（初始占位「先选取 .zip 包，再点「开始卡刷」」）
 
-  文案全部取自既有工具的字符串资源：
-    title_sideload「ADB Sideload」/ sideload_select_title「选择刷机包」/
-    sideload_select_file「选择 .zip 文件」/ sideload_start「开始刷入」/
-    sideload_placeholder「选择 .zip 刷机包后点击「开始刷入」」
-  「开始刷入」用主色底按钮：既有工具里它是唯一带主色参数的那个（s80.java 里
-  {@code fj.b(re0Var)} 只传给第二个按钮），次要按钮则不带。
+  文案：ADB Sideload / 选择刷机包 / 选取 .zip 包 / 开始卡刷 /
+  「先选取 .zip 包，再点「开始卡刷」」。
+  「开始卡刷」用主色底按钮：整页只有它是主色，次要按钮不带。
 
   外层是 NestedScrollView 且 overScrollMode="always"：内容不满一屏时也保留上下回弹。
   日志区刻意用 wrap_content + minHeight（不用 weight 占满）—— 这样日志变长时页面会跟着变高，
@@ -160,7 +157,7 @@
                 android:layout_width="0dp"
                 android:layout_height="@dimen/miuix_button_height"
                 android:layout_weight="1"
-                android:text="选择 .zip 文件" />
+                android:text="选取 .zip 包" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSideloadStart"
@@ -169,7 +166,7 @@
                 android:layout_height="@dimen/miuix_button_height"
                 android:layout_marginStart="@dimen/miuix_button_gap"
                 android:layout_weight="1"
-                android:text="开始刷入" />
+                android:text="开始卡刷" />
         </LinearLayout>
 
         <!-- ───────── 小标题：输出 ───────── -->
@@ -185,7 +182,7 @@
         <!--
           日志区随内容增长、起步 240dp；由外层 NestedScrollView 负责滚动，
           所以页面里不给它设 ScrollingMovementMethod（否则手势被它吃掉，外层就不再回弹）。
-          初始文字是既有工具的 sideload_placeholder，第一次输出时由基类自动清掉。
+          初始文字由布局给出，第一次输出时由基类自动清掉。
         -->
         <TextView
             android:id="@+id/tvFlashConsole"
@@ -195,7 +192,7 @@
             android:fontFamily="monospace"
             android:minHeight="@dimen/miuix_console_height"
             android:padding="14dp"
-            android:text="选择 .zip 刷机包后点击「开始刷入」"
+            android:text="先选取 .zip 包，再点「开始卡刷」"
             android:textColor="@color/ios_text_secondary"
             android:textIsSelectable="true"
             android:textSize="11sp" />

@@ -19,7 +19,7 @@ Aurora 的实现方式**不是自己写 Sahara / Firehose 协议**，而是
 
 ### 一轮纠错（值得记住）
 
-既有工具的同目录分析文档写着「`aarch64.tar` 含 adb/fastboot/**qdl/rgpt**」——
+有一份流传的分析文档写着「`aarch64.tar` 含 adb/fastboot/**qdl/rgpt**」——
 **这是错的**。`tar -tf` 实测 `aarch64/bin/` 里**只有 `qdl`**；
 **`rgpt` 是这个定制 qdl 的子命令**，不是独立二进制。
 
@@ -84,21 +84,21 @@ USB 标识拼法：`05c6:%04x`（`05c6` 是高通 Vendor ID，`9008` 是 EDL 的
 | --- | --- |
 | `StorageType` | `UFS("ufs")` · `EMMC("emmc")` · `NAND("nand")` · `NVME("nvme")` · `SPINOR("spinor")` |
 | `OplusAuth` | `OFF`（不带授权参数） · `VIP` · `TOKEN` |
-| `OUTPUT_DIR` | `/storage/emulated/0/Aurora/qdl` ← **沿用既有工具原文** |
+| `OUTPUT_DIR` | `/storage/emulated/0/Aurora/qdl` |
 | `PARTITIONS_FILE` | `<OUTPUT_DIR>/partitions.txt` |
 | `DEFAULT_CHUNK_SIZE` | `16384` |
 | `EDL_USB_ID` | `05c6:9008` |
 | `EDL_CHANNEL` | `9008/EDL` |
 | `LUN_COUNT` | `6` |
 | `SKIP_PARTITIONS` | 12 项跳过分区集（含「`my_` 开头」规则） |
-| `HOTPLUG_WARNING` | ⚠️9008不支持热拔插，连上设备后不得断开，并且确保USB连接稳定 |
+| `HOTPLUG_WARNING` | ⚠️EDL 模式不支持热插拔，连接后请勿断开数据线，并确保 USB 连接稳定 |
 
-> `OUTPUT_DIR` 保留成 `外部工具` 是**有意的**（与既有工具一致）。
-> 觉得别扭的话**只需要改这一个常量**。
+> `OUTPUT_DIR` 是应用自己的目录，改动只需动 `QdlCommands` 这一个常量；
+> 注意 `KernelSuPatcher` 的命令注释里也引用了同一路径，改的时候要同步。
 
-### 3.4 六个「照抄而非美化」的形态细节
+### 3.4 六个「保持原样而非美化」的形态细节
 
-这六条都是既有工具的**原样行为**，不是遗漏：
+这六条都是工具的**既有行为**，不是遗漏：
 
 1. **`--out-chunk-size=16384` 只有 VIP / Token 两档才有**，`OFF` 档不带。
 2. **`authSuffix()` 只认 Token 档** —— 所以 **VIP 档在 `set_slot` / `get_slot` / `reset`
@@ -112,7 +112,7 @@ USB 标识拼法：`05c6:%04x`（`05c6` 是高通 Vendor ID，`9008` 是 EDL 的
    **本项目固定用 `o` 前缀版**。
 6. **`oreadAll` 多一句 `mkdir -p`，且不带 `--skip-reset`** —— 与其它命令不同。
 
-### 3.5 唯一有意偏离原文的地方：槽位正则
+### 3.5 唯一有意偏离的地方：槽位正则
 
 ```java
 // 既有工具：slot.*[=:].*([abAB])      ← 第二个量词贪婪
@@ -161,7 +161,7 @@ USB 标识拼法：`05c6:%04x`（`05c6` 是高通 Vendor ID，`9008` 是 EDL 的
 | 切换至 B | `btnQdlSwitchB` | `set_slot b` |
 | 复位设备 | `btnQdlReset` | `reset` |
 
-> 文案**取自既有工具的 `qdl_*` 字符串资源**
+> 文案**按工具的实际输出写定**
 > （`qdl_rgpt_title` / `qdl_select_programmer` / `qdl_storage_type` /
 > `qdl_oplus_auth_*` / `qdl_ab_*` / `qdl_reset_device` / `qdl_dry_run*` /
 > `qdl_hotplug_warning` / `qdl_slot_fail`）。

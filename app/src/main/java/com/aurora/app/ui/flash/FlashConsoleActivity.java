@@ -234,7 +234,7 @@ public abstract class FlashConsoleActivity extends AppCompatActivity {
     /** 把输出区内容落盘。 */
     protected void saveLog() {
         // 判「有没有真实输出」而不是判文本非空：输出区初始那句是占位引导
-        // （「选择操作」「选择 .zip 刷机包后点击「开始刷入」」），
+        // （「选择操作」「先选取 .zip 包，再点「开始卡刷」」），
         // 文本非空但一个字都没产出时存下来的只会是一份没用的文件。
         if (consoleBuffer.length() == 0) {
             toast("还没有输出内容");

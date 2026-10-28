@@ -27,7 +27,7 @@ import java.util.Locale;
  * 小米官方线刷包解开之后，根目录里带着一组批处理脚本，刷机就是
  * <b>「切到包目录 → 跑其中一个脚本」</b>，脚本内部再逐条调 {@code fastboot flash}。
  * 所以这一页的流程很短：选目录 → 扫描出脚本 → 选一个 → 确认 → 执行。
- * 脚本名与语义、执行命令的写法都沿用既有工具（见 {@link MiFlashScript} 与
+ * 脚本名与语义、执行命令的写法见 {@link MiFlashScript} 与
  * {@link FlashCommands#runShellScript}）。
  *
  * <h3>为什么「扫描」之后还要弹一次选择框</h3>
@@ -224,7 +224,7 @@ public final class MiFlashActivity extends FlashConsoleActivity {
     /**
      * 确认后执行。
      *
-     * <p>两个会清数据的脚本（{@code flash_all.sh} / {@code flash_all_lock.sh}）用既有工具里
+     * <p>两个会清数据的脚本（{@code flash_all.sh} / {@code flash_all_lock.sh}）用
      * 的原句把后果说在前面 —— 刷完开不了机再来问就晚了。
      */
     private void confirmAndRun(MiFlashScript script, String dir) {
@@ -238,7 +238,7 @@ public final class MiFlashActivity extends FlashConsoleActivity {
         confirmThenRun("确认执行", message.toString(), "确认", command);
     }
 
-    // ───────────────── 文案（取自既有工具的字符串资源） ─────────────────
+    // ───────────────── 文案 ─────────────────
 
     /** 换行缩进 + 类型提示；认不出类型时返回空串。 */
     private static String hintSuffix(MiFlashScript.Kind kind) {
