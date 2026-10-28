@@ -15,7 +15,7 @@ Aurora 的实现方式**不是自己写 Sahara / Firehose 协议**，而是
 **移植了一个定制版 Linux `qdl` CLI**：把 aarch64 可执行文件打进工具链，
 用 `su -c` + 固定 env 前缀跑起来，由它去操作 9008 口。
 
-> 上游 banner：`QDL For Your Devices & LSCM(, ChenXluk)` / `qdl 2.8` —— 是作者改过的分支。
+> 版本标识 `qdl 2.8`；banner 里保留着该分支构建者的署名 —— 是作者改过的分支。
 
 ### 一轮纠错（值得记住）
 

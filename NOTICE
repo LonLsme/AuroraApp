@@ -22,9 +22,10 @@ Copyright (C) 2026 LonLsme         — Aurora 二次开发部分
 
 ### 关于 `bin/qdl`
 
-包内 `qdl` 是 **linux-msm/qdl** 的一个第三方定制构建，二进制内 banner 为
-`QDL For Your Devices & LSCM(, ChenXluk)` / `qdl 2.8`，相对上游增加了
-`rgpt` / `oread` / `owrite` / `oerase` / `--oplus-token` / `--signeddigests` 等子命令与选项。
+包内 `qdl` 是 **linux-msm/qdl** 的一个第三方定制构建，版本标识为 `qdl 2.8`，
+banner 中保留有该分支构建者的署名（署名权归构建者，本项目不予改写），
+相对上游增加了 `rgpt` / `oread` / `owrite` / `oerase` / `--oplus-token` /
+`--signeddigests` 等子命令与选项。
 
 本项目**不修改、不重新编译**该二进制，只是原样打包，并在运行时以 `su` 身份调用。
 其完整源码不在本仓库内，应向上游 <https://github.com/linux-msm/qdl> 及该定制分支的
