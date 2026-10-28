@@ -1,12 +1,15 @@
 package com.aurora.app.ui.widget;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.widget.ScrollView;
 
+import com.aurora.app.R;
+
 /**
  * 带高度上限的 {@link ScrollView}：内容短时按内容高（wrap_content），
- * 内容长时最多长到屏高的 {@value #MAX_HEIGHT_FRACTION} 倍，超出部分滚动。
+ * 内容长时最多长到上限，超出部分滚动。
  *
  * <p><b>为什么需要它</b>：{@code android:maxHeight} 是 {@code ImageView} 的属性，
  * {@code ScrollView} 并不识别 —— 写在 ScrollView 上会被静默忽略，不报错、
@@ -14,25 +17,45 @@ import android.widget.ScrollView;
  * {@code maxHeight="220dp"}，看起来限了高，实际一点作用没有，
  * 于是一条长 Release 正文能把对话框顶到整屏之外，底部按钮直接跑到屏幕外。
  *
- * <p>取值用「屏高比例」而不是固定 dp：分屏 / 小窗口下父容器给的约束本身更小，
- * 本类只在<b>父约束比上限还大</b>时才收窄（见 {@link #onMeasure}），
- * 因此不会把对话框撑出可用区域。
+ * <p>上限有两种给法：
+ * <ul>
+ *   <li>XML 里写 {@code app:auroraMaxHeight="340dp"} —— 明确的上限，适合「头部 + 按钮
+ *       还要占地方」的对话框，剩余空间靠限高自己算不准；</li>
+ *   <li>不写 —— 用屏高的 {@value #DEFAULT_HEIGHT_FRACTION}，适合「整张卡片就是这一个
+ *       滚动容器」的场合（如更新日志弹窗）。</li>
+ * </ul>
+ *
+ * <p>两种都给 {@code AT_MOST} 而不是 {@code EXACTLY}，并且<b>只在父约束比上限还大时
+ * 才收窄</b>：分屏 / 小窗口下父容器给的可用高度本身更小，不会被这个上限反过来撑开。
  */
 public class MaxHeightScrollView extends ScrollView {
 
-    /** 上限占屏幕高度的比例。留出上下边距，保证按钮与系统栏都在可见区域内。 */
-    private static final float MAX_HEIGHT_FRACTION = 0.82f;
+    /** 未指定 {@code app:auroraMaxHeight} 时，上限占屏幕高度的比例。 */
+    private static final float DEFAULT_HEIGHT_FRACTION = 0.82f;
+
+    /** XML 给的上限（像素）；0 表示未指定，回落到屏高比例。 */
+    private int explicitMaxHeight;
 
     public MaxHeightScrollView(Context context) {
-        super(context);
+        this(context, null);
     }
 
     public MaxHeightScrollView(Context context, AttributeSet attrs) {
-        super(context, attrs);
+        this(context, attrs, android.R.attr.scrollViewStyle);
     }
 
     public MaxHeightScrollView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        if (attrs != null) {
+            TypedArray a = context.obtainStyledAttributes(
+                    attrs, R.styleable.MaxHeightScrollView, defStyleAttr, 0);
+            try {
+                explicitMaxHeight = a.getDimensionPixelSize(
+                        R.styleable.MaxHeightScrollView_auroraMaxHeight, 0);
+            } finally {
+                a.recycle();
+            }
+        }
     }
 
     @Override
@@ -40,10 +63,12 @@ public class MaxHeightScrollView extends ScrollView {
         final int mode = MeasureSpec.getMode(heightMeasureSpec);
         final int size = MeasureSpec.getSize(heightMeasureSpec);
         if (mode != MeasureSpec.UNSPECIFIED) {
-            final int limit = Math.round(
-                    getResources().getDisplayMetrics().heightPixels * MAX_HEIGHT_FRACTION);
+            final int limit = explicitMaxHeight > 0
+                    ? explicitMaxHeight
+                    : Math.round(getResources().getDisplayMetrics().heightPixels
+                            * DEFAULT_HEIGHT_FRACTION);
             if (size > limit) {
-                // 收窄成 AT_MOST：内容低于上限时仍然是自适应高度，不低于上限时才截断
+                // 收窄成 AT_MOST：内容低于上限时仍是自适应高度，达到上限才截断
                 heightMeasureSpec = MeasureSpec.makeMeasureSpec(limit, MeasureSpec.AT_MOST);
             }
         }

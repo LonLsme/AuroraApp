@@ -57,19 +57,22 @@
         android:layout_marginVertical="14dp"
         android:background="@color/ios_separator" />
 
-    <!-- 详情键值对（代码动态填充） -->
-    <ScrollView
+    <!-- 详情键值对（代码动态填充）。
+         上限必须靠自定义控件给：android:maxHeight 是 ImageView 的属性，
+         ScrollView 不认，写了等于没写，行数一多就把对话框撑出屏幕。 -->
+    <com.aurora.app.ui.widget.MaxHeightScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxHeight="340dp"
-        android:overScrollMode="never">
+        android:overScrollMode="never"
+        android:scrollbars="vertical"
+        app:auroraMaxHeight="340dp">
 
         <LinearLayout
             android:id="@+id/layoutProcessDetailRows"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical" />
-    </ScrollView>
+    </com.aurora.app.ui.widget.MaxHeightScrollView>
 
     <LinearLayout
         android:layout_width="match_parent"

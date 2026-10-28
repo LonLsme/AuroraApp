@@ -18,4 +18,9 @@
             <enum name="donut" value="1" />
         </attr>
     </declare-styleable>
+
+    <!-- 限高滚动容器的上限。不写则按屏高的默认比例（见 MaxHeightScrollView）。 -->
+    <declare-styleable name="MaxHeightScrollView">
+        <attr name="auroraMaxHeight" format="dimension" />
+    </declare-styleable>
 </resources>
