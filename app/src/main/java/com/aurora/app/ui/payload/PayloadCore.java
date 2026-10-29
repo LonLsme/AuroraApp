@@ -231,8 +231,9 @@ final class PayloadCore {
                 if (!child.isFile() || !isImageName(child.getName())) {
                     continue;
                 }
+                // entryName 存真实文件名：源文件可能是 boot.bin，用展示名拼回 boot.img 会找不到
                 rows.add(new PartitionInfoRow(stripImageSuffix(child.getName()),
-                        child.length(), child.length(), ""));
+                        child.length(), child.length(), "", child.getName()));
                 total += child.length();
             }
         }
@@ -445,8 +446,7 @@ final class PayloadCore {
                         break;
                     default:
                         written = copyLocalFile(inspection.kind == KIND_DIRECTORY
-                                        ? new File(inspection.localPath, row.entryName != null
-                                        ? row.entryName : row.name + ".img")
+                                        ? new File(inspection.localPath, row.entryName)
                                         : inspection.localPath,
                                 outFile, token, doneTotal, totalSize, listener);
                         break;
