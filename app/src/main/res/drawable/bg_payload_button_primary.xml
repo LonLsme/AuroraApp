@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主操作按钮（读取信息）：实心蓝 + 8dp 圆角，扁平无阴影无渐变。 -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#33FFFFFF">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#2F6BFF" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+</ripple>

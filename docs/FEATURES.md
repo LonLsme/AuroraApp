@@ -125,7 +125,7 @@
 
 | 入口 | id | 页面 | 说明 |
 | --- | --- | --- | --- |
-| OTA 云提取 | `btnPayload` | `PayloadActivity` | 从 OTA 包中提取 payload |
+| Payload 解包 | `btnPayload` | `PayloadActivity` | 全量包 / 欧加散包按分区提取镜像（刷机页也有同一入口） |
 | CPU 控制 | `btnCpuControl` | `CpuControlActivity` | — |
 | 进程管理 | `btnProcessList` | `ProcessListActivity` | 查看 / 搜索 / 结束系统进程，支持按 CPU 与内存排序 |
 | 帧率记录 | `btnFpsRecord` | `FpsRecordActivity` | 记录系统帧率并生成曲线与统计 |
@@ -267,7 +267,7 @@
 | `ui/font/FontLibraryBackupActivity` | 基础功能 → 字库备份 |
 | `ui/appmanager/AppManagerActivity` | 扩展功能 → 应用管理 |
 | `ui/display/DisplayTuneActivity` ☆ | 扩展功能 → 屏幕 |
-| `ui/payload/PayloadActivity` | 实用功能 → OTA 云提取 |
+| `ui/payload/PayloadActivity` | 实用功能 → Payload 解包；刷机页 → Payload 解包 |
 | `ui/cpu/CpuControlActivity` | 实用功能 → CPU 控制 |
 | `ui/process/ProcessListActivity` | 实用功能 → 进程管理 |
 | `ui/fps/FpsRecordActivity` | 实用功能 → 帧率记录 |

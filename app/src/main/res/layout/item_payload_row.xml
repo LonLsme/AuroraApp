@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  分区表的一行：复选框 | 分区名称 | 分区大小。
+  底部分割线用 1dp 灰线而不是 CardView/阴影 —— 整张表是扁平表格（设计如此）。
+  分割线从左内边距开始，视觉上与文字对齐，不横穿到表格边框。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#FFFFFF"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="10dp">
+
+        <CheckBox
+            android:id="@+id/cbPayloadRow"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:buttonTint="#2F6BFF"
+            android:clickable="false"
+            android:focusable="false"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp" />
+
+        <TextView
+            android:id="@+id/tvPayloadRowName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="middle"
+            android:singleLine="true"
+            android:textColor="#2B2F36"
+            android:textSize="12.5sp" />
+
+        <TextView
+            android:id="@+id/tvPayloadRowSize"
+            android:layout_width="86dp"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:singleLine="true"
+            android:textColor="#6B7280"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:background="#F0F1F3" />
+</LinearLayout>

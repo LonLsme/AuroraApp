@@ -86,6 +86,15 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        unitTests {
+            // payload 解包内核要用到 android.text.TextUtils 这类纯工具方法。
+            // 不起这个开关时，桩方法一调用就抛 "not mocked"，
+            // 只能把整个解析链路挪到真机上测 —— 那才是真的没测。
+            isReturnDefaultValues = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

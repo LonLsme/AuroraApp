@@ -32,13 +32,13 @@ import com.aurora.app.core.flash.FlashToolchain;
  *   <li>头部：左标题 + 右上角<b>设备状态下拉</b>（10 个槽位，见
  *       {@link FlashDevice#SLOT_NAMES}）；顶栏那一行在本页整行隐藏，
  *       由 {@code MainActivity.updateToolbarForTab()} 负责。</li>
- *   <li>主体：11 张等宽等高卡片，顺序固定。前 8 张「刷写设备本身」—— 小米线刷 / 欧加真线刷 /
- *       刷入KernelSU / 高通QDL / 刷写分区 / 设备重启 / ADB Sideload 卡刷 / 执行命令；
+ *   <li>主体：12 张等宽等高卡片，顺序固定。前 9 张「刷写设备本身」—— 小米线刷 / 欧加真线刷 /
+ *       刷入KernelSU / 高通QDL / 刷写分区 / 设备重启 / ADB Sideload 卡刷 / 执行命令 / Payload 解包；
  *       之后是「应用工具」分组，3 张「操作设备上的应用」—— 应用卸载冻结 / 免root激活 / 应用安装。</li>
  * </ul>
  *
  * <h3>本页已经不跑命令了</h3>
- * 十张卡片各自进了独立竖屏页，命令执行与输出都搬到了那边。
+ * 这些卡片各自进了独立竖屏页，命令执行与输出都搬到了那边。
  * 所以本类从「一个会跑命令的页面」退化成了<b>纯入口</b>：探测设备、维护右上角下拉、
  * 把点击翻成一次 {@code startActivity}。
  *
@@ -76,6 +76,7 @@ public final class FlashPage {
     private View cardReboot;
     private View cardSideload;
     private View cardExec;
+    private View cardPayload;
 
     // ── 「应用工具」分组：3 张设备应用卡 ──
     private View cardAppUninstall;
@@ -139,7 +140,7 @@ public final class FlashPage {
 
     // ───────────────── 绑定 ─────────────────
 
-    /** 建立视图引用、接好 11 张卡片与下拉入口、开始准备工具链。幂等。 */
+    /** 建立视图引用、接好 12 张卡片与下拉入口、开始准备工具链。幂等。 */
     public void bind() {
         tvDeviceSummary = activity.findViewById(R.id.tvFlashDeviceSummary);
         btnDevices = activity.findViewById(R.id.btnFlashDevices);
@@ -152,6 +153,7 @@ public final class FlashPage {
         cardReboot = activity.findViewById(R.id.cardFlashReboot);
         cardSideload = activity.findViewById(R.id.cardFlashSideload);
         cardExec = activity.findViewById(R.id.cardFlashExec);
+        cardPayload = activity.findViewById(R.id.cardFlashPayload);
 
         cardAppUninstall = activity.findViewById(R.id.cardAppUninstall);
         cardAppActivate = activity.findViewById(R.id.cardAppActivate);
@@ -181,6 +183,7 @@ public final class FlashPage {
         setOnClick(cardReboot, () -> startPage(RebootActivity.class));
         setOnClick(cardSideload, () -> startPage(SideloadActivity.class));
         setOnClick(cardExec, () -> startPage(ExecCommandActivity.class));
+        setOnClick(cardPayload, () -> startPage(com.aurora.app.ui.payload.PayloadActivity.class));
 
         // 「应用工具」分组：操作的都是连着的那台设备上的应用，命令经内置 adb 打到目标机。
         setOnClick(cardAppUninstall, () -> startPage(AppUninstallActivity.class));
@@ -381,7 +384,7 @@ public final class FlashPage {
     /**
      * 执行一次设备探测。
      *
-     * @param showProgress 显示「正在检测…」、置灰 10 张卡与下拉、失败给提示；{@code false} 为静默探测
+     * @param showProgress 显示「正在检测…」、置灰全部卡片与下拉、失败给提示；{@code false} 为静默探测
      *                     （两者的取舍见 {@link #refreshDeviceAuto()}）
      */
     private void detect(final boolean showProgress) {
@@ -480,11 +483,11 @@ public final class FlashPage {
     /**
      * 统一设置「忙碌」态。
      *
-     * <p>忙碌时禁用会打断刷机流程的入口（下拉检测 + 10 张卡片）。
+     * <p>忙碌时禁用会打断刷机流程的入口（下拉检测 + 全部卡片）。
      */
     private void setBusy(boolean busy) {
         for (View view : new View[]{btnDevices, cardMi, cardOplus, cardKernelSu, cardQdl,
-                cardPartition, cardReboot, cardSideload, cardExec,
+                cardPartition, cardReboot, cardSideload, cardExec, cardPayload,
                 cardAppUninstall, cardAppActivate, cardAppInstall}) {
             if (view != null) {
                 view.setEnabled(!busy);

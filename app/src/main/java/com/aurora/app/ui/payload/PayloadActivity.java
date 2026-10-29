@@ -1,35 +1,33 @@
 package com.aurora.app.ui.payload;
 
-import android.content.ClipboardManager;
-import android.content.ClipData;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.DocumentsContract;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.View;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.Nullable;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.content.ContextCompat;
-import androidx.documentfile.provider.DocumentFile;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.button.MaterialButton;
 import com.aurora.app.R;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -38,58 +36,99 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Payload 解包页。
+ *
+ * <h3>三种输入、一个出口</h3>
+ * OTA 全量包（zip 里的 payload.bin）、欧加散包（zip 里直接是若干 img）、
+ * 单个镜像或镜像目录 —— 都由 {@link PayloadCore#inspect(String)} 识别成同一张分区表，
+ * 提取走同一条路径。用户不需要先判断自己手上的是哪种包。
+ *
+ * <h3>为什么进度是「读 + 写」两条时间线</h3>
+ * 读取信息要解析 zip 目录与 manifest（云端包还要几次 Range 请求），
+ * 提取要解压并落盘 —— 两段都可能卡住几十秒。分别给状态文案，
+ * 用户才不会把「正在读包」当成「卡死了」。
+ *
+ * <h3>为什么输出目录要单独校验</h3>
+ * 默认输出 {@code /storage/emulated/0/Aurora}。Android 11 起这个位置用 File API 直接写
+ * 需要「所有文件访问」授权，未授权时 {@code mkdirs()} 只返回 false、不抛异常 ——
+ * 不主动探测就会一路跑到「无法创建输出目录」这种含糊提示上。
+ */
 public class PayloadActivity extends AppCompatActivity {
 
-    private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
+    /** 默认输出目录：与 QDL 的产物目录同根，用户按机器找文件时只有一处。 */
+    private static final String DEFAULT_OUTPUT_DIR = "/storage/emulated/0/Aurora";
 
-    private TextView tvSource;
-    private TextView tvResult;
-    private LinearLayout partitionContainer;
-    private MaterialButton btnExtract;
-    private MaterialButton btnParse;
-    private MaterialButton btnInputAction;
-    private EditText etUrl;
-    private EditText etSearch;
+    /** 进度条最大刻度：用千分比而不是百分比，慢速长任务不会长时间停在同一个整数。 */
+    private static final int PROGRESS_SCALE = 1000;
+
+    /** 进度刷新节流：太快会把主线程刷满，太慢看起来像卡住。 */
+    private static final long PROGRESS_INTERVAL_MS = 200L;
+
+    private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "aurora-payload");
+        t.setDaemon(true);
+        return t;
+    });
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    private EditText etPath;
+    private EditText etOutput;
+    private EditText etFilter;
+    private TextView btnRead;
+    private TextView btnExtract;
+    private TextView btnStop;
     private CheckBox cbSelectAll;
-    private ProgressBar progressExtract;
-    private TextView tvProgress;
-    private boolean suppressSelectAllCallback;
+    private RecyclerView rvPartitions;
+    private ProgressBar pbProgress;
+    private TextView tvStatus;
+    private TextView tvPercent;
+    private TextView tvSpeed;
+    private TextView tvEta;
 
-    @Nullable
-    private PayloadCore.PayloadSession currentSession;
-    @Nullable
-    private String currentSourceName;
-    private final List<PayloadCore.PartitionInfoRow> allPartitionRows = new ArrayList<>();
-    private final Set<String> selectedPartitionNames = new LinkedHashSet<>();
-    private List<String> pendingExtractPartitions = new ArrayList<>();
+    private PayloadPartitionAdapter adapter;
 
-    private final ActivityResultLauncher<Uri> openOutputDirLauncher =
-            registerForActivityResult(new ActivityResultContracts.OpenDocumentTree(), treeUri -> {
-                try {
-                    List<String> partitions = new ArrayList<>(pendingExtractPartitions);
-                    pendingExtractPartitions = new ArrayList<>();
-                    if (partitions.isEmpty()) {
-                        return;
-                    }
-                    if (treeUri == null) {
-                        Toast.makeText(this, "未选择保存位置", Toast.LENGTH_SHORT).show();
-                        btnExtract.setEnabled(true);
-                        return;
-                    }
-                    DocumentFile targetDir = DocumentFile.fromTreeUri(this, treeUri);
-                    if (targetDir == null || !targetDir.canWrite()) {
-                        Toast.makeText(this, "所选目录不可写", Toast.LENGTH_SHORT).show();
-                        btnExtract.setEnabled(true);
-                        return;
-                    }
-                    extractPartitionsToTree(partitions, targetDir);
-                } catch (Throwable t) {
-                    pendingExtractPartitions = new ArrayList<>();
-                    btnExtract.setEnabled(true);
-                    String msg = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
-                    tvResult.append("\n提取失败: 保存位置选择异常 - " + msg);
-                    Toast.makeText(this, "保存位置选择失败", Toast.LENGTH_SHORT).show();
+    /** 当前解析结果；换输入或退出页面时关闭。 */
+    private PayloadCore.Inspection inspection;
+    private final List<PayloadCore.PartitionInfoRow> allRows = new ArrayList<>();
+    private final Set<String> selectedNames = new LinkedHashSet<>();
+
+    /** 当前提取任务的取消令牌；非提取期间为 null。 */
+    private PayloadCore.CancelToken cancelToken;
+    /** 是否有后台任务在跑（读取或提取），用来互斥按钮。 */
+    private volatile boolean busy;
+
+    // 进度统计：速度用「两次采样之间的增量」算，避免累计平均把速度摊平
+    private long lastSampleDone;
+    private long lastSampleAt;
+    private long lastProgressAt;
+    private long totalBytes;
+    private long lastPercent = -1;
+
+    private final ActivityResultLauncher<String[]> pickFileLauncher =
+            registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+                if (uri == null) {
+                    return;
                 }
+                String path = resolveReadablePath(uri);
+                if (path == null) {
+                    toast("该位置无法按路径读取，请把包放到 /storage/emulated/0 下再选，或直接输入路径");
+                    return;
+                }
+                etPath.setText(path);
+            });
+
+    private final ActivityResultLauncher<Uri> pickOutputLauncher =
+            registerForActivityResult(new ActivityResultContracts.OpenDocumentTree(), uri -> {
+                if (uri == null) {
+                    return;
+                }
+                String path = resolveReadablePath(uri);
+                if (path == null) {
+                    toast("无法解析该目录的真实路径，请手动输入");
+                    return;
+                }
+                etOutput.setText(path);
             });
 
     @Override
@@ -97,386 +136,565 @@ public class PayloadActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_payload);
 
-        Toolbar toolbar = findViewById(R.id.toolbarPayload);
-        setSupportActionBar(toolbar);
-        toolbar.setTitle("OTA云提取");
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("OTA云提取");
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        }
-        toolbar.setNavigationOnClickListener(v -> finish());
+        bindViews();
+        setupList();
+        setupActions();
 
-        tvSource = findViewById(R.id.tvPayloadSource);
-        tvResult = findViewById(R.id.tvPayloadResult);
-        partitionContainer = findViewById(R.id.layoutPayloadPartitions);
+        etOutput.setText(DEFAULT_OUTPUT_DIR);
+        updateProgressUi(0L, 0L, "");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        PayloadCore.CancelToken token = cancelToken;
+        if (token != null) {
+            token.cancel();
+        }
+        ioExecutor.shutdownNow();
+        closeInspection();
+    }
+
+    // ───────────────────────────── 初始化 ─────────────────────────────
+
+    private void bindViews() {
+        etPath = findViewById(R.id.etPayloadPath);
+        etOutput = findViewById(R.id.etPayloadOutput);
+        etFilter = findViewById(R.id.etPayloadFilter);
+        btnRead = findViewById(R.id.btnPayloadRead);
         btnExtract = findViewById(R.id.btnPayloadExtract);
-        btnParse = findViewById(R.id.btnPayloadParse);
-        btnInputAction = findViewById(R.id.btnPayloadParseUrl);
-        etUrl = findViewById(R.id.etPayloadUrl);
-        etSearch = findViewById(R.id.etPayloadSearch);
+        btnStop = findViewById(R.id.btnPayloadStop);
         cbSelectAll = findViewById(R.id.cbPayloadSelectAll);
-        progressExtract = findViewById(R.id.progressPayloadExtract);
-        tvProgress = findViewById(R.id.tvPayloadProgress);
-        btnInputAction.setOnClickListener(v -> pasteUrlFromClipboard());
-        btnParse.setOnClickListener(v -> parseCurrentSource());
-        btnExtract.setOnClickListener(v -> startExtractSelectedPartitions());
-        btnExtract.setEnabled(false);
-        tvSource.setText("来源: 云端 URL");
-        updateExtractProgressUi(0L, 0L);
-        cbSelectAll.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (suppressSelectAllCallback) {
-                return;
-            }
-            if (isChecked) {
-                selectedPartitionNames.clear();
-                for (PayloadCore.PartitionInfoRow row : allPartitionRows) {
-                    selectedPartitionNames.add(row.name);
+        rvPartitions = findViewById(R.id.rvPayloadPartitions);
+        pbProgress = findViewById(R.id.pbPayload);
+        tvStatus = findViewById(R.id.tvPayloadStatus);
+        tvPercent = findViewById(R.id.tvPayloadPercent);
+        tvSpeed = findViewById(R.id.tvPayloadSpeed);
+        tvEta = findViewById(R.id.tvPayloadEta);
+
+        findViewById(R.id.btnPayloadBack).setOnClickListener(v -> finish());
+    }
+
+    private void setupList() {
+        adapter = new PayloadPartitionAdapter(selectedNames, this::syncSelectAllState);
+        rvPartitions.setLayoutManager(new LinearLayoutManager(this));
+        rvPartitions.setAdapter(adapter);
+        rvPartitions.setHasFixedSize(true);
+    }
+
+    private void setupActions() {
+        findViewById(R.id.btnPickPayloadFile).setOnClickListener(v ->
+                pickFileLauncher.launch(new String[]{"*/*"}));
+        findViewById(R.id.btnPickPayloadOutput).setOnClickListener(v ->
+                pickOutputLauncher.launch(null));
+
+        btnRead.setOnClickListener(v -> readInfo());
+        btnExtract.setOnClickListener(v -> extractSelected());
+        btnStop.setOnClickListener(v -> stopCurrentTask());
+
+        cbSelectAll.setOnClickListener(v -> {
+            boolean checked = cbSelectAll.isChecked();
+            selectedNames.clear();
+            if (checked) {
+                for (PayloadCore.PartitionInfoRow row : adapter.getRows()) {
+                    selectedNames.add(row.name);
                 }
-            } else {
-                selectedPartitionNames.clear();
             }
-            renderPartitionList(filterRows(allPartitionRows, etSearch.getText() == null ? "" : etSearch.getText().toString()));
+            adapter.notifyDataSetChanged();
+            syncSelectAllState();
         });
-        etSearch.addTextChangedListener(new TextWatcher() {
+
+        etFilter.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                renderPartitionList(filterRows(allPartitionRows, s == null ? "" : s.toString()));
+                applyFilter();
             }
 
             @Override
             public void afterTextChanged(Editable s) {
             }
         });
-        renderPartitionList(null);
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        ioExecutor.shutdownNow();
-        closeCurrentSession();
-    }
+    // ───────────────────────────── 读取信息 ─────────────────────────────
 
-    private void pasteUrlFromClipboard() {
-        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        if (clipboard == null || !clipboard.hasPrimaryClip()) {
-            Toast.makeText(this, "剪贴板为空", Toast.LENGTH_SHORT).show();
+    private void readInfo() {
+        if (busy) {
+            toast("有任务在进行中，请先等它结束或点停止");
             return;
         }
-        ClipData clipData = clipboard.getPrimaryClip();
-        if (clipData == null || clipData.getItemCount() == 0) {
-            Toast.makeText(this, "剪贴板为空", Toast.LENGTH_SHORT).show();
+        final String input = text(etPath);
+        if (input.isEmpty()) {
+            toast("请先填写路径或 URL");
             return;
         }
-        CharSequence text = clipData.getItemAt(0).coerceToText(this);
-        if (text == null) {
-            Toast.makeText(this, "剪贴板内容不可用", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        String url = text.toString().trim();
-        etUrl.setText(url);
-        if (url.isEmpty()) {
-            Toast.makeText(this, "剪贴板没有 URL", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void parseCurrentSource() {
-        final String parseSource = etUrl.getText() == null ? "" : etUrl.getText().toString().trim();
-        if (!PayloadCore.isValidUrl(parseSource)) {
-            currentSourceName = null;
-            tvSource.setText("来源: 云端 URL");
-            Toast.makeText(this, "URL 无效，请输入完整的 http(s) 地址", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        currentSourceName = parseSource;
-
-        tvResult.setText("正在解析远程 payload...");
-        btnExtract.setEnabled(false);
-        updateExtractProgressUi(0L, 0L);
-        renderPartitionList(null);
-
+        beginBusy("正在读取包信息…");
         ioExecutor.execute(() -> {
             try {
-                closeCurrentSession();
-                currentSession = PayloadCore.parseFromUrl(parseSource, null);
-                List<PayloadCore.PartitionInfoRow> rows = PayloadCore.getPartitionInfoList(currentSession);
-                runOnUiThread(() -> {
-                    tvResult.setText(buildSessionText(currentSession, rows));
-                    allPartitionRows.clear();
-                    allPartitionRows.addAll(rows);
-                    selectedPartitionNames.clear();
-                    setSelectAllChecked(false);
-                    renderPartitionList(filterRows(allPartitionRows, etSearch.getText() == null ? "" : etSearch.getText().toString()));
-                    btnExtract.setEnabled(!rows.isEmpty());
+                PayloadCore.Inspection result = PayloadCore.inspect(input);
+                mainHandler.post(() -> {
+                    closeInspection();
+                    inspection = result;
+                    allRows.clear();
+                    allRows.addAll(result.rows);
+                    selectedNames.clear();
+                    applyFilter();
+                    syncSelectAllState();
+                    endBusy();
+                    tvStatus.setText(describe(result));
+                    updateProgressUi(0L, 0L, "");
+                    if (result.rows.isEmpty()) {
+                        toast("没有解析到任何可提取的分区");
+                    }
                 });
             } catch (Throwable t) {
-                runOnUiThread(() -> tvResult.setText("解析失败: " + buildErrorMessage(t)));
+                mainHandler.post(() -> {
+                    endBusy();
+                    tvStatus.setText("读取失败");
+                    toast(readableMessage(t));
+                });
             }
         });
     }
 
-    private void startExtractSelectedPartitions() {
-        PayloadCore.PayloadSession session = currentSession;
-        if (session == null) {
-            Toast.makeText(this, "请先解析 payload", Toast.LENGTH_SHORT).show();
+    private String describe(PayloadCore.Inspection result) {
+        String kind;
+        switch (result.kind) {
+            case PayloadCore.KIND_PAYLOAD:
+                kind = "OTA 全量包";
+                break;
+            case PayloadCore.KIND_ZIP_IMAGES:
+                kind = "欧加散包";
+                break;
+            case PayloadCore.KIND_SINGLE_IMAGE:
+                kind = "单个镜像";
+                break;
+            default:
+                kind = "镜像目录";
+                break;
+        }
+        return kind + " · " + result.rows.size() + " 个分区 · " + formatSize(result.totalBytes);
+    }
+
+    // ───────────────────────────── 提取 ─────────────────────────────
+
+    private void extractSelected() {
+        if (busy) {
+            toast("有任务在进行中，请先等它结束或点停止");
             return;
         }
-        if (allPartitionRows.isEmpty()) {
-            Toast.makeText(this, "没有可提取分区", Toast.LENGTH_SHORT).show();
+        if (inspection == null) {
+            toast("请先点「读取信息」");
             return;
         }
-        if (selectedPartitionNames.isEmpty()) {
-            Toast.makeText(this, "请先勾选分区", Toast.LENGTH_SHORT).show();
+        if (selectedNames.isEmpty()) {
+            toast("请先勾选要提取的分区");
             return;
         }
-        pendingExtractPartitions = new ArrayList<>(selectedPartitionNames);
-        openOutputDirLauncher.launch(null);
-    }
-
-    private void extractPartitionsToTree(List<String> partitions, DocumentFile targetDir) {
-        PayloadCore.PayloadSession session = currentSession;
-        if (session == null) return;
-        btnExtract.setEnabled(false);
-        tvResult.append("\n\n开始提取分区数量: " + partitions.size());
-
-        ioExecutor.execute(() -> {
-            long totalBytes = sumPartitionSizes(partitions);
-            final long[] completedBytes = {0L};
-            runOnUiThread(() -> updateExtractProgressUi(0L, totalBytes));
-            File tempDir = new File(getCacheDir(), "payload_extract");
-            if (!tempDir.exists() && !tempDir.mkdirs()) {
-                runOnUiThread(() -> {
-                    tvResult.append("\n提取失败: 无法创建临时目录");
-                    btnExtract.setEnabled(true);
-                });
-                return;
-            }
-            try {
-                for (int i = 0; i < partitions.size(); i++) {
-                    String partitionName = partitions.get(i);
-                    int index = i + 1;
-                    long partitionSize = findPartitionSize(partitionName);
-                    File tempOutFile = new File(tempDir, partitionName + ".img");
-                    PayloadCore.extractPartition(session, partitionName, tempDir.getAbsolutePath(), (bytes, outPath) ->
-                            runOnUiThread(() -> {
-                                tvResult.setText("提取中(" + index + "/" + partitions.size() + "): " + partitionName + "\n已写入: " + formatSize(bytes));
-                                long currentDone = completedBytes[0] + Math.min(bytes, partitionSize);
-                                updateExtractProgressUi(currentDone, totalBytes);
-                            }));
-                    DocumentFile existing = targetDir.findFile(partitionName + ".img");
-                    if (existing != null) {
-                        existing.delete();
-                    }
-                    DocumentFile targetFile = targetDir.createFile("application/octet-stream", partitionName + ".img");
-                    if (targetFile == null || targetFile.getUri() == null) {
-                        throw new IOException("无法创建目标文件: " + partitionName + ".img");
-                    }
-                    copyToUri(tempOutFile, targetFile.getUri());
-                    if (tempOutFile.exists()) {
-                        //noinspection ResultOfMethodCallIgnored
-                        tempOutFile.delete();
-                    }
-                    completedBytes[0] += partitionSize;
-                    runOnUiThread(() -> updateExtractProgressUi(completedBytes[0], totalBytes));
-                }
-                runOnUiThread(() -> {
-                    tvResult.append("\n提取完成，共 " + partitions.size() + " 个分区");
-                    updateExtractProgressUi(totalBytes, totalBytes);
-                });
-            } catch (Throwable t) {
-                runOnUiThread(() -> {
-                    tvResult.append("\n提取失败: " + buildErrorMessage(t));
-                    btnExtract.setEnabled(true);
-                });
-            } finally {
-                File[] leftovers = tempDir.listFiles();
-                if (leftovers != null) {
-                    for (File file : leftovers) {
-                        if (file != null && file.isFile()) {
-                            //noinspection ResultOfMethodCallIgnored
-                            file.delete();
-                        }
-                    }
-                }
-                runOnUiThread(() -> btnExtract.setEnabled(!allPartitionRows.isEmpty()));
-            }
-        });
-    }
-
-    private void renderPartitionList(@Nullable List<PayloadCore.PartitionInfoRow> rows) {
-        partitionContainer.removeAllViews();
-        if (rows == null || rows.isEmpty()) {
-            TextView empty = buildRow("请先进行解析");
-            partitionContainer.addView(empty);
+        final String outputPath = text(etOutput);
+        if (outputPath.isEmpty()) {
+            toast("请先填写输出路径");
             return;
         }
-        for (PayloadCore.PartitionInfoRow row : rows) {
-            partitionContainer.addView(buildPartitionRow(row.name, row.name + " · " + formatSize(row.size)));
+        final File outDir = new File(outputPath);
+        if (!ensureWritable(outDir)) {
+            return;
         }
-        syncSelectAllState();
-    }
 
-    private LinearLayout buildPartitionRow(String partitionName, String displayText) {
-        LinearLayout row = new LinearLayout(this);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = dpToPx(8);
-        row.setLayoutParams(lp);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
-        row.setBackgroundResource(R.drawable.fluent_cell_bg);
-
-        CheckBox checkBox = new CheckBox(this);
-        checkBox.setChecked(selectedPartitionNames.contains(partitionName));
-        checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                selectedPartitionNames.add(partitionName);
-            } else {
-                selectedPartitionNames.remove(partitionName);
-            }
-            syncSelectAllState();
-        });
-        row.addView(checkBox);
-
-        TextView label = new TextView(this);
-        LinearLayout.LayoutParams textLp = new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        label.setLayoutParams(textLp);
-        label.setText(displayText);
-        label.setTextColor(ContextCompat.getColor(this, R.color.explore_slate_800));
-        label.setTextSize(13f);
-        label.setOnClickListener(v -> checkBox.setChecked(!checkBox.isChecked()));
-        row.addView(label);
-        return row;
-    }
-
-    private List<PayloadCore.PartitionInfoRow> filterRows(List<PayloadCore.PartitionInfoRow> src, String query) {
-        String q = query == null ? "" : query.trim().toLowerCase(Locale.US);
-        if (q.isEmpty()) {
-            return new ArrayList<>(src);
-        }
-        List<PayloadCore.PartitionInfoRow> out = new ArrayList<>();
-        for (PayloadCore.PartitionInfoRow row : src) {
-            if (row.name != null && row.name.toLowerCase(Locale.US).contains(q)) {
-                out.add(row);
+        List<PayloadCore.PartitionInfoRow> targets = new ArrayList<>();
+        for (PayloadCore.PartitionInfoRow row : inspection.rows) {
+            if (selectedNames.contains(row.name)) {
+                targets.add(row);
             }
         }
-        return out;
-    }
-
-    private long findPartitionSize(String partitionName) {
-        for (PayloadCore.PartitionInfoRow row : allPartitionRows) {
-            if (partitionName.equals(row.name)) {
-                return Math.max(0L, row.size);
-            }
-        }
-        return 0L;
-    }
-
-    private long sumPartitionSizes(List<String> partitionNames) {
         long total = 0L;
-        for (String name : partitionNames) {
-            total += findPartitionSize(name);
+        for (PayloadCore.PartitionInfoRow row : targets) {
+            total += Math.max(0L, row.size);
         }
-        return total;
-    }
+        final long totalBytesFinal = total;
 
-    private TextView buildRow(String text) {
-        TextView tv = new TextView(this);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = dpToPx(8);
-        tv.setLayoutParams(lp);
-        tv.setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10));
-        tv.setTextColor(ContextCompat.getColor(this, R.color.explore_slate_800));
-        tv.setTextSize(13f);
-        tv.setBackgroundResource(R.drawable.fluent_cell_bg);
-        tv.setText(text);
-        return tv;
-    }
+        cancelToken = new PayloadCore.CancelToken();
+        beginBusy("正在提取…");
+        resetProgressStats(totalBytesFinal);
 
-    private String buildSessionText(PayloadCore.PayloadSession session, List<PayloadCore.PartitionInfoRow> rows) {
-        return "来源: " + session.fileName + "\n"
-                + "包体大小: " + formatSize(session.archiveSize) + "\n"
-                + "数据偏移: " + session.dataOffset + "\n"
-                + "块大小: " + session.blockSize + "\n"
-                + "安全补丁: " + session.getSecurityPatchLevel() + "\n"
-                + "分区数量: " + rows.size();
-    }
-
-    private void closeCurrentSession() {
-        if (currentSession != null) {
+        ioExecutor.execute(() -> {
             try {
-                currentSession.close();
+                PayloadCore.extract(inspection, targets, outDir, cancelToken,
+                        new PayloadCore.ExtractListener() {
+                            @Override
+                            public void onEntryStarted(String name, int index, int count) {
+                                mainHandler.post(() -> tvStatus.setText(
+                                        "正在提取 " + name + "（" + index + "/" + count + "）"));
+                            }
+
+                            @Override
+                            public void onProgress(long entryDone, long entryTotal,
+                                                   long totalDone, long totalSize) {
+                                postProgress(totalDone, totalSize);
+                            }
+                        });
+                mainHandler.post(() -> {
+                    endBusy();
+                    tvStatus.setText("提取完成 · " + targets.size() + " 个分区 → " + outDir.getAbsolutePath());
+                    updateProgressUi(totalBytesFinal, totalBytesFinal, null);
+                });
+            } catch (PayloadCore.CancelledException e) {
+                mainHandler.post(() -> {
+                    endBusy();
+                    tvStatus.setText("已停止");
+                    tvSpeed.setText("速度 —");
+                    tvEta.setText("剩余 —");
+                });
+            } catch (Throwable t) {
+                mainHandler.post(() -> {
+                    endBusy();
+                    tvStatus.setText("提取失败");
+                    toast(readableMessage(t));
+                });
+            }
+        });
+    }
+
+    private void stopCurrentTask() {
+        PayloadCore.CancelToken token = cancelToken;
+        if (token == null || !busy) {
+            toast("当前没有进行中的任务");
+            return;
+        }
+        token.cancel();
+        tvStatus.setText("正在停止…");
+    }
+
+    /**
+     * 输出目录可写性探测。
+     *
+     * <p>Android 11+ 在未授予「所有文件访问」时，对共享存储的写入会被静默拦下：
+     * {@code mkdirs()} 返回 false、{@code createNewFile()} 抛 EACCES。这里真写一个探针文件，
+     * 比只看 {@code canWrite()} 可靠（后者在被 scoped storage 拦截时仍可能返回 true）。
+     */
+    private boolean ensureWritable(File dir) {
+        if (!dir.exists()) {
+            if (dir.mkdirs()) {
+                return true;
+            }
+        } else {
+            File probe = new File(dir, ".aurora_probe");
+            try {
+                if (probe.createNewFile() || probe.exists()) {
+                    //noinspection ResultOfMethodCallIgnored
+                    probe.delete();
+                    return true;
+                }
             } catch (IOException ignored) {
             }
         }
-        currentSession = null;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R
+                && Environment.isExternalStorageManager()) {
+            toast("输出目录不可写：" + dir.getAbsolutePath());
+            return false;
+        }
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("需要「所有文件访问」权限")
+                .setMessage("输出目录 " + dir.getAbsolutePath()
+                        + " 在共享存储上，Android 11 起写入需要「所有文件访问」授权。\n\n"
+                        + "授权后回到本页再点一次「提取镜像」。")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("去授权", (d, w) -> {
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                        intent.setData(Uri.parse("package:" + getPackageName()));
+                        startActivity(intent);
+                    } catch (Throwable t) {
+                        try {
+                            startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                        } catch (Throwable ignored) {
+                            toast("无法打开授权页面，请到系统设置里手动授予");
+                        }
+                    }
+                })
+                .show();
+        return false;
     }
 
-    private void copyToUri(File sourceFile, Uri targetUri) throws IOException {
-        try (InputStream in = new FileInputStream(sourceFile);
-             OutputStream out = getContentResolver().openOutputStream(targetUri, "w")) {
-            if (out == null) {
-                throw new IOException("无法打开目标输出流");
+    // ───────────────────────────── 进度 ─────────────────────────────
+
+    private void resetProgressStats(long total) {
+        totalBytes = total;
+        lastSampleDone = 0L;
+        lastSampleAt = System.currentTimeMillis();
+        lastProgressAt = 0L;
+        lastPercent = -1;
+        mainHandler.post(() -> updateProgressUi(0L, total, ""));
+    }
+
+    /** 后台线程调用；按 200ms 节流后才切到主线程。 */
+    private void postProgress(long done, long total) {
+        long now = System.currentTimeMillis();
+        if (now - lastProgressAt < PROGRESS_INTERVAL_MS) {
+            return;
+        }
+        lastProgressAt = now;
+        final long doneSnapshot = done;
+        final long totalSnapshot = total > 0 ? total : totalBytes;
+        mainHandler.post(() -> updateProgressUi(doneSnapshot, totalSnapshot, ""));
+    }
+
+    private void updateProgressUi(long done, long total, String statusOverride) {
+        long safeDone = Math.max(0L, done);
+        long safeTotal = Math.max(0L, total);
+        int permille = safeTotal <= 0 ? 0
+                : (int) Math.min(PROGRESS_SCALE, safeDone * PROGRESS_SCALE / safeTotal);
+        pbProgress.setProgress(permille);
+
+        int percent = safeTotal <= 0 ? 0 : (int) Math.min(100L, safeDone * 100L / safeTotal);
+        if (lastPercent != percent) {
+            tvPercent.setText(percent + "%");
+            lastPercent = percent;
+        }
+
+        long now = System.currentTimeMillis();
+        long elapsed = now - lastSampleAt;
+        if (elapsed >= 500L) {
+            long delta = safeDone - lastSampleDone;
+            if (delta >= 0 && elapsed > 0) {
+                double speed = delta * 1000.0 / elapsed;
+                tvSpeed.setText("速度 " + formatSpeed(speed));
+                long remain = safeTotal - safeDone;
+                if (speed > 1024 && remain > 0) {
+                    tvEta.setText("剩余 " + formatDuration((long) (remain / speed)));
+                } else {
+                    tvEta.setText("剩余 计算中");
+                }
             }
-            byte[] buffer = new byte[1024 * 128];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
-            }
-            out.flush();
+            lastSampleDone = safeDone;
+            lastSampleAt = now;
+        }
+        if (safeTotal <= 0) {
+            tvSpeed.setText("速度 —");
+            tvEta.setText("剩余 —");
+        }
+        if (statusOverride != null && !statusOverride.isEmpty()) {
+            tvStatus.setText(statusOverride);
         }
     }
 
-    private static String formatSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
+    // ───────────────────────────── 状态与列表 ─────────────────────────────
+
+    private void beginBusy(String status) {
+        busy = true;
+        btnRead.setEnabled(false);
+        btnRead.setAlpha(0.5f);
+        btnExtract.setEnabled(false);
+        btnExtract.setAlpha(0.5f);
+        tvStatus.setText(status);
+    }
+
+    private void endBusy() {
+        busy = false;
+        cancelToken = null;
+        btnRead.setEnabled(true);
+        btnRead.setAlpha(1f);
+        btnExtract.setEnabled(true);
+        btnExtract.setAlpha(1f);
+    }
+
+    private void applyFilter() {
+        String query = text(etFilter).toLowerCase(Locale.US);
+        List<PayloadCore.PartitionInfoRow> filtered = new ArrayList<>();
+        for (PayloadCore.PartitionInfoRow row : allRows) {
+            if (query.isEmpty() || row.name.toLowerCase(Locale.US).contains(query)) {
+                filtered.add(row);
+            }
+        }
+        adapter.submit(filtered);
+        syncSelectAllState();
+    }
+
+    /** 全选框跟随当前可见行：筛选后仍按「可见的都选了」判断，避免误以为全选。 */
+    private void syncSelectAllState() {
+        List<PayloadCore.PartitionInfoRow> visible = adapter.getRows();
+        boolean allSelected = !visible.isEmpty();
+        for (PayloadCore.PartitionInfoRow row : visible) {
+            if (!selectedNames.contains(row.name)) {
+                allSelected = false;
+                break;
+            }
+        }
+        cbSelectAll.setChecked(allSelected);
+    }
+
+    private void closeInspection() {
+        if (inspection != null) {
+            inspection.close();
+            inspection = null;
+        }
+    }
+
+    // ───────────────────────────── 工具 ─────────────────────────────
+
+    /**
+     * 把 SAF 返回的 URI 还原成可用的真实路径。
+     *
+     * <p>{@link PayloadCore} 按字节偏移读包，必须拿到真实路径；
+     * content:// 无法随机读，所以这里把 DocumentsProvider 的 documentId
+     * （形如 {@code primary:Download/xxx.zip}）翻译回挂载点下的路径。
+     */
+    private String resolveReadablePath(Uri uri) {
+        if (uri == null) {
+            return null;
+        }
+        String scheme = uri.getScheme();
+        if ("file".equals(scheme)) {
+            return uri.getPath();
+        }
+        try {
+            String documentId = DocumentsContract.getDocumentId(uri);
+            String volumeId;
+            String relative;
+            int colon = documentId.indexOf(':');
+            if (colon < 0) {
+                return null;
+            }
+            volumeId = documentId.substring(0, colon);
+            relative = documentId.substring(colon + 1);
+            File base = "primary".equals(volumeId)
+                    ? Environment.getExternalStorageDirectory()
+                    : new File("/storage/" + volumeId);
+            File target = new File(base, relative);
+            return target.exists() && target.canRead() ? target.getAbsolutePath() : null;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private String text(EditText editText) {
+        return editText.getText() == null ? "" : editText.getText().toString().trim();
+    }
+
+    private void toast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+
+    private static String readableMessage(Throwable t) {
+        if (t == null) {
+            return "未知错误";
+        }
+        String message = t.getMessage();
+        if (message == null || message.trim().isEmpty()) {
+            return t.getClass().getSimpleName();
+        }
+        return message;
+    }
+
+    static String formatSize(long bytes) {
+        if (bytes < 1024) {
+            return bytes + " B";
+        }
         double kb = bytes / 1024.0;
-        if (kb < 1024) return String.format(Locale.US, "%.1f KB", kb);
+        if (kb < 1024) {
+            return String.format(Locale.US, "%.1f KB", kb);
+        }
         double mb = kb / 1024.0;
-        if (mb < 1024) return String.format(Locale.US, "%.1f MB", mb);
+        if (mb < 1024) {
+            return String.format(Locale.US, "%.1f MB", mb);
+        }
         return String.format(Locale.US, "%.2f GB", mb / 1024.0);
     }
 
-    private static String buildErrorMessage(Throwable t) {
-        if (t == null) {
-            return "未知异常";
+    private static String formatSpeed(double bytesPerSecond) {
+        if (bytesPerSecond < 1024) {
+            return String.format(Locale.US, "%.0f B/s", bytesPerSecond);
         }
-        String msg = t.getMessage();
-        if (msg == null || msg.trim().isEmpty()) {
-            return t.getClass().getSimpleName();
+        double kb = bytesPerSecond / 1024.0;
+        if (kb < 1024) {
+            return String.format(Locale.US, "%.1f KB/s", kb);
         }
-        return msg;
+        return String.format(Locale.US, "%.1f MB/s", kb / 1024.0);
     }
 
-    private void updateExtractProgressUi(long doneBytes, long totalBytes) {
-        long safeDone = Math.max(0L, doneBytes);
-        long safeTotal = Math.max(0L, totalBytes);
-        int percent = safeTotal <= 0 ? 0 : (int) Math.min(100L, (safeDone * 100L) / safeTotal);
-        progressExtract.setProgress(percent);
-        if (safeTotal <= 0) {
-            tvProgress.setText("进度：0%");
-        } else {
-            tvProgress.setText("进度：" + percent + "%（" + formatSize(safeDone) + " / " + formatSize(safeTotal) + "）");
+    private static String formatDuration(long seconds) {
+        if (seconds < 60) {
+            return seconds + " 秒";
         }
+        long minutes = seconds / 60;
+        long remain = seconds % 60;
+        if (minutes < 60) {
+            return minutes + " 分 " + remain + " 秒";
+        }
+        return (minutes / 60) + " 时 " + (minutes % 60) + " 分";
     }
 
-    private void syncSelectAllState() {
-        boolean shouldChecked = !allPartitionRows.isEmpty() && selectedPartitionNames.size() == allPartitionRows.size();
-        setSelectAllChecked(shouldChecked);
-    }
+    /** 分区表适配器：复选框状态由页面的 {@code selected} 集合统一持有。 */
+    private static final class PayloadPartitionAdapter
+            extends RecyclerView.Adapter<PayloadPartitionAdapter.Holder> {
 
-    private void setSelectAllChecked(boolean checked) {
-        suppressSelectAllCallback = true;
-        cbSelectAll.setChecked(checked);
-        suppressSelectAllCallback = false;
-    }
+        private final List<PayloadCore.PartitionInfoRow> rows = new ArrayList<>();
+        private final Set<String> selected;
+        private final Runnable onSelectionChanged;
 
-    private int dpToPx(int dp) {
-        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
+        PayloadPartitionAdapter(Set<String> selected, Runnable onSelectionChanged) {
+            this.selected = selected;
+            this.onSelectionChanged = onSelectionChanged;
+        }
+
+        void submit(List<PayloadCore.PartitionInfoRow> data) {
+            rows.clear();
+            rows.addAll(data);
+            notifyDataSetChanged();
+        }
+
+        List<PayloadCore.PartitionInfoRow> getRows() {
+            return new ArrayList<>(rows);
+        }
+
+        @NonNull
+        @Override
+        public Holder onCreateViewHolder(@NonNull android.view.ViewGroup parent, int viewType) {
+            View view = android.view.LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_payload_row, parent, false);
+            return new Holder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull Holder holder, int position) {
+            PayloadCore.PartitionInfoRow row = rows.get(position);
+            holder.name.setText(row.name);
+            holder.size.setText(PayloadActivity.formatSize(row.size));
+            holder.checkBox.setChecked(selected.contains(row.name));
+            holder.itemView.setOnClickListener(v -> {
+                if (selected.contains(row.name)) {
+                    selected.remove(row.name);
+                } else {
+                    selected.add(row.name);
+                }
+                int bindingPosition = holder.getBindingAdapterPosition();
+                if (bindingPosition != RecyclerView.NO_POSITION) {
+                    notifyItemChanged(bindingPosition);
+                }
+                onSelectionChanged.run();
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return rows.size();
+        }
+
+        static final class Holder extends RecyclerView.ViewHolder {
+            final CheckBox checkBox;
+            final TextView name;
+            final TextView size;
+
+            Holder(View itemView) {
+                super(itemView);
+                checkBox = itemView.findViewById(R.id.cbPayloadRow);
+                name = itemView.findViewById(R.id.tvPayloadRowName);
+                size = itemView.findViewById(R.id.tvPayloadRowSize);
+            }
+        }
     }
 }

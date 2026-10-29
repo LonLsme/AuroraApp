@@ -600,6 +600,71 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- ───────── 9. Payload 解包 ───────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardFlashPayload"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/flash_card_height"
+        android:layout_marginTop="@dimen/flash_card_gap"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        app:cardBackgroundColor="?attr/auroraCard"
+        app:cardCornerRadius="@dimen/ios_card_corner"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:src="@drawable/ic_payload_box"
+                android:tint="?attr/auroraAccent" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Payload 解包"
+                    android:textColor="@color/ios_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="全量包 / 欧加散包 按分区提取镜像"
+                    android:textColor="@color/ios_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                android:tint="@color/ios_text_secondary" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <!--
       ───────── 分组标题：应用工具 ─────────
       下面 3 张卡操作的是「连着的那台设备」上的应用（卸载冻结 / 免 root 激活 / 应用安装），

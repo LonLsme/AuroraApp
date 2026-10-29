@@ -7,6 +7,21 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <!--
+      读共享存储里用户自己挑的刷机包（SAF 选中的文件要还原成真实路径才能按偏移解析）。
+      Android 13 起该权限只剩媒体语义，普通文件读取走 SAF，故上限设到 32。
+    -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!--
+      Payload 解包要把镜像写到 /storage/emulated/0/Aurora（与 QDL 产物同根）。
+      Android 11 起这类「共享存储上的普通目录」写入必须有「所有文件访问」授权，
+      scoped storage 下 File API 会静默失败。用户拒绝时页面会降级提示并引导去授权。
+    -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
@@ -61,9 +76,15 @@
         <activity
             android:name=".ui.appmanager.AppManagerActivity"
             android:exported="false" />
+        <!--
+          Payload 解包页：竖屏 + 自己处理配置变化。
+          解包可能跑十几分钟，旋转屏幕重建 Activity 会让后台任务与进度条脱节。
+        -->
         <activity
             android:name=".ui.payload.PayloadActivity"
-            android:exported="false" />
+            android:configChanges="screenSize|smallestScreenSize|density|screenLayout|orientation|keyboardHidden|uiMode|layoutDirection|fontScale"
+            android:exported="false"
+            android:screenOrientation="portrait" />
         <activity
             android:name=".ui.cpu.CpuControlActivity"
             android:exported="false" />

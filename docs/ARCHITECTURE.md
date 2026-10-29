@@ -84,7 +84,7 @@
 | `ui/theme` | 主题引擎（算法 + 偏好 + 调色板） | `AuroraPalette`(483) · `ThemeManager`(422) · `AccentOverlays` |
 | `ui/overlay` | 监视悬浮窗全套（窗口 + 采集调度） | `MonitorOverlayService` · `OverlayWindow`(506) · 6 个窗口实现 |
 | `ui/plugin` | Aurora 插件页（Root 生态集成） | `HiddenAppListConfigActivity`(1423) · `AuroraPluginActivity`(1222) |
-| `ui/payload` | OTA 包云提取与解析 | `PayloadCore`(969) · `PayloadActivity`(482) |
+| `ui/payload` | Payload 解包（全量包 / 散包 / 单镜像） | `PayloadCore`(1176) · `PayloadZip`(444) · `PayloadActivity`(700) |
 | `ui/display` | 屏幕调节（分辨率/密度/刷新率） | `DisplayTuneActivity`(621) · `RefreshRateTester`(331) |
 | `ui/partition` | 分区管理 | `PartitionManagerActivity`(648) |
 | `ui/module` | 模块管理与备份 | `ModuleManagerActivity`(512) · `ModuleBackupActivity`(440) |
