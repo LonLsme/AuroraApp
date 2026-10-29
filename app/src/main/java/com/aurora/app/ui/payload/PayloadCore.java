@@ -1,7 +1,6 @@
 package com.aurora.app.ui.payload;
 
 import android.os.Build;
-import android.text.TextUtils;
 
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
@@ -70,6 +69,17 @@ final class PayloadCore {
     private static final int PUMP_CHUNK = 64 * 1024;
 
     private PayloadCore() {
+    }
+
+    /**
+     * 判空。
+     *
+     * <p>不用 {@code android.text.TextUtils}：它在 JVM 单测里是桩（恒返回 {@code false}），
+     * 所有 {@code !TextUtils.isEmpty(x)} 的分支都会走错，测试就失去了意义 —— 真机上不崩的
+     * 空值路径到了单测里全变 NPE。这一层只做字符串判断，不需要 Android。
+     */
+    static boolean isPlainEmpty(String value) {
+        return value == null || value.isEmpty();
     }
 
     // ───────────────────────────── 取消 ─────────────────────────────
@@ -201,25 +211,104 @@ final class PayloadCore {
      * <p>调用方负责在执行结束后 {@link Inspection#close()}；本方法失败时已自行释放资源。
      */
     static Inspection inspect(String input) throws IOException {
-        if (TextUtils.isEmpty(input)) {
+        return inspect(input, null);
+    }
+
+    /**
+     * 带取消令牌的版本。
+     *
+     * <p>「停止」原来只对提取有效：读取阶段（探针 / 尾部 EOCD / 中央目录 / manifest）
+     * 一次都不看令牌，网络慢的时候点停止毫无反应，还被提示「当前没有进行中的任务」。
+     */
+    static Inspection inspect(String input, CancelToken token) throws IOException {
+        String value = normalizeInput(input);
+        if (isPlainEmpty(value)) {
             throw new IOException("请输入本地路径或 http(s) 链接");
         }
-        String value = input.trim();
         if (isValidUrl(value)) {
-            return inspectRemote(value);
+            return inspectRemote(value, token);
+        }
+        if (looksLikeUrl(value)) {
+            // 能走到这里说明带了 http(s) 但 URI 解析不过：绝大多数是从聊天软件复制时
+            // 混进了换行、全角空格或截断，直接提示「路径不存在」会把人带偏。
+            throw new IOException("链接格式不合法：" + abbreviate(value, 96)
+                    + "\n请确认地址完整，且 ? 后面的签名参数没有缺漏（签名链接通常只有几分钟有效期）");
         }
         if (value.startsWith("file://")) {
             value = value.substring("file://".length());
         }
         File file = new File(value);
         if (!file.exists()) {
-            throw new IOException("路径不存在：" + value);
+            throw new IOException("路径不存在：" + abbreviate(value, 96));
         }
         if (file.isDirectory()) {
             return inspectDirectory(file);
         }
         return inspectLocalFile(file);
     }
+
+    /**
+     * 清洗输入：去掉复制粘贴带进来的不可见字符，并把夹在文字里的链接抽出来。
+     *
+     * <p>{@link String#trim()} 只处理 {@code <= U+0020} 的字符，零宽空格（U+200B）、
+     * 不换行空格（U+00A0）、全角空格（U+3000）它都不管 —— 从微信/QQ 复制 OTA 直链时
+     * 这些字符很常见，而 {@code new URI()} 遇到它们必抛异常，最终会误导成「路径不存在」。
+     */
+    static String normalizeInput(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(raw.length());
+        for (int i = 0; i < raw.length(); i++) {
+            char c = raw.charAt(i);
+            if (c == '\u200B' || c == '\u200C' || c == '\u200D' || c == '\uFEFF'
+                    || c == '\u00A0' || c == '\u3000' || c == '\u2028' || c == '\u2029') {
+                continue;
+            }
+            sb.append(c);
+        }
+        String s = sb.toString().trim();
+        int plain = indexOfIgnoreCase(s, "http://");
+        int secure = indexOfIgnoreCase(s, "https://");
+        int start = plain < 0 ? secure : (secure < 0 ? plain : Math.min(plain, secure));
+        if (start > 0) {
+            // 前后还夹着说明文字：从链接起点截到第一个空白
+            int end = start;
+            while (end < s.length() && !Character.isWhitespace(s.charAt(end))) {
+                end++;
+            }
+            s = s.substring(start, end).trim();
+        }
+        return s;
+    }
+
+    private static int indexOfIgnoreCase(String source, String needle) {
+        int limit = source.length() - needle.length();
+        for (int i = 0; i <= limit; i++) {
+            if (source.regionMatches(true, i, needle, 0, needle.length())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** 是不是「看起来像链接」：判断用宽松版本，不要求 URI 能解析。 */
+    private static boolean looksLikeUrl(String value) {
+        return indexOfIgnoreCase(value, "http://") >= 0
+                || indexOfIgnoreCase(value, "https://") >= 0;
+    }
+
+    /** 报错里带原串时要截断，不然一整条签名链接会把提示撑爆。 */
+    static String abbreviate(String value, int max) {
+        if (value == null) {
+            return "";
+        }
+        if (value.length() <= max) {
+            return value;
+        }
+        return value.substring(0, Math.max(1, max - 3)) + "...";
+    }
+
 
     /** 本地目录：列出其中的镜像文件，提取就是复制。 */
     private static Inspection inspectDirectory(File dir) throws IOException {
@@ -276,8 +365,9 @@ final class PayloadCore {
     }
 
     /** 云端：先探 Content-Length，再按 zip 结构判断是 payload 还是散包。 */
-    private static Inspection inspectRemote(String url) throws IOException {
+    private static Inspection inspectRemote(String url, CancelToken token) throws IOException {
         HttpReader http = new HttpReader();
+        http.setCancelToken(token);
         try {
             http.init(url, null);
             long length = http.length();
@@ -497,6 +587,12 @@ final class PayloadCore {
                 written += runOperation(session, operation, out, token,
                         written, expected, doneBase, totalSize, listener);
             }
+            // extents 不一定排到分区末尾（my_stock 这类 4.7 GB 的分区有两千多个 operation，
+            // 尾部留空洞很常见）。不补齐的话镜像比 manifest 声明的小一截，
+            // 刷进去尺寸对不上；setLength 扩展出来的部分按 0 填充，正是空洞该有的内容。
+            if (expected > 0 && out.length() != expected) {
+                out.setLength(expected);
+            }
         }
         return written;
     }
@@ -623,15 +719,57 @@ final class PayloadCore {
 
     // ───────────────────────────── 工具 ─────────────────────────────
 
+    /**
+     * 把 HTTP 状态码翻成人话。
+     *
+     * <p>OTA 与网盘直链普遍带时效签名（这条 OPPO 的 {@code Expires} 只给几分钟），
+     * 过期后一律回 403 —— 只提示「HTTP 403 Forbidden」等于没说，用户会以为是地址填错了。
+     */
+    private static String describeHttpStatus(int code, String message) {
+        switch (code) {
+            case 401:
+            case 403:
+                return "HTTP " + code + "：链接已失效或已过期。这类直链带签名且有效期很短，"
+                        + "请重新获取一条新链接再试";
+            case 404:
+                return "HTTP 404：服务器上没有这个文件，链接可能已失效";
+            case 416:
+                return "HTTP 416：服务器拒绝了这次分段读取的范围（文件可能已被替换）";
+            case 429:
+                return "HTTP 429：请求过于频繁被限流，稍后再试";
+            default:
+                if (code >= 500) {
+                    return "HTTP " + code + "：服务器或 CDN 出错，稍后再试";
+                }
+                return "HTTP " + code + (isPlainEmpty(message) ? "" : " " + message);
+        }
+    }
+
+    /** 报错文案里的大小，交给调用方拼句子，不依赖 UI 层的格式化。 */
+    private static String formatBytes(long bytes) {
+        if (bytes < 1024) {
+            return bytes + " B";
+        }
+        double kb = bytes / 1024.0;
+        if (kb < 1024) {
+            return String.format(Locale.US, "%.1f KB", kb);
+        }
+        double mb = kb / 1024.0;
+        if (mb < 1024) {
+            return String.format(Locale.US, "%.1f MB", mb);
+        }
+        return String.format(Locale.US, "%.2f GB", mb / 1024.0);
+    }
+
     static boolean isValidUrl(String value) {
-        if (TextUtils.isEmpty(value)) {
+        if (isPlainEmpty(value)) {
             return false;
         }
         try {
             URI uri = new URI(value.trim());
             String scheme = uri.getScheme();
             return ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
-                    && !TextUtils.isEmpty(uri.getHost());
+                    && !isPlainEmpty(uri.getHost());
         } catch (URISyntaxException e) {
             return false;
         }
@@ -696,36 +834,83 @@ final class PayloadCore {
      * 数据会整体错位 —— 与其解出坏镜像，不如明确报错。
      */
     static final class HttpReader implements Closeable {
+        /**
+         * 读超时给到 90s：单次 Range 可能拉一个几十 MB 的 operation，
+         * 手机上遇到弱信号时 30s 很容易被打断，而打断后整段要重来。
+         * 这个超时算的是「两次收到数据之间的间隔」，不是总时长，正常网络不会触到。
+         */
         private final OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(90, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .build();
-        private static final String DEFAULT_UA = buildDefaultUserAgent();
         private String url;
         private String fileName;
         private long fileLength;
         private long position;
-        private String userAgent = DEFAULT_UA;
+        private String userAgent;
+        private CancelToken cancelToken;
 
+        void setCancelToken(CancelToken token) {
+            this.cancelToken = token;
+        }
+
+        /** 每个读取片段前看一眼：读取阶段也要能被「停止」打断。 */
+        private void checkCancelled() throws IOException {
+            CancelToken token = cancelToken;
+            if (token != null) {
+                token.throwIfCancelled();
+            }
+        }
+
+        /** 惰性构建：静态初始化一旦抛异常，整个类加载失败，兜底成本太高。 */
+        private static String defaultUserAgent;
+
+        private static String defaultUserAgent() {
+            if (defaultUserAgent == null) {
+                try {
+                    defaultUserAgent = buildDefaultUserAgent();
+                } catch (Throwable t) {
+                    // 任何字段不可用都不该拖垮下载：给个最简 UA 继续。
+                    defaultUserAgent = "AndroidDownloadManager";
+                }
+            }
+            return defaultUserAgent;
+        }
+
+        /**
+         * 拼默认 UA。
+         *
+         * <p>版本号用 {@link Build.VERSION#RELEASE}（API 1 起就有）而不是
+         * {@code RELEASE_OR_CODENAME}（API 30 才加）：后者在 Android 10 及以下会抛
+         * {@code NoSuchFieldError}，那是 {@link Error}，外面的 catch 接不住，直接崩。
+         */
         private static String buildDefaultUserAgent() {
             StringBuilder sb = new StringBuilder();
-            String release = Build.VERSION.RELEASE_OR_CODENAME;
-            String buildId = Build.ID;
-            boolean validRelease = !TextUtils.isEmpty(release);
-            boolean validId = !TextUtils.isEmpty(buildId);
-            boolean includeModel = "REL".equals(Build.VERSION.CODENAME)
-                    && !TextUtils.isEmpty(Build.MODEL);
+            String release;
+            try {
+                release = Build.VERSION.RELEASE;
+            } catch (Throwable t) {
+                release = null;
+            }
+            String buildId;
+            try {
+                buildId = Build.ID;
+            } catch (Throwable t) {
+                buildId = null;
+            }
+            boolean validRelease = !isPlainEmpty(release);
+            boolean validId = !isPlainEmpty(buildId);
 
             sb.append("AndroidDownloadManager");
             if (validRelease) {
                 sb.append("/").append(release);
             }
             sb.append(" (Linux; U; Android");
-            if (includeModel || validId) {
+            if (validRelease || validId) {
                 sb.append(";");
-                if (includeModel) {
-                    sb.append(" ").append(Build.MODEL);
+                if (validRelease) {
+                    sb.append(" ").append(release);
                 }
                 if (validId) {
                     sb.append(" Build/").append(buildId);
@@ -737,7 +922,7 @@ final class PayloadCore {
 
         void init(String url, String userAgent) throws IOException {
             this.url = url;
-            this.userAgent = TextUtils.isEmpty(userAgent) ? DEFAULT_UA : userAgent;
+            this.userAgent = isPlainEmpty(userAgent) ? defaultUserAgent() : userAgent;
 
             // 先用 1 字节 Range 探一下：既拿总长度，又能立刻看出服务器支不支持 Range
             Response response = null;
@@ -757,10 +942,12 @@ final class PayloadCore {
                         fileLength = response.body() == null ? 0L : response.body().contentLength();
                     }
                 } else if (response.isSuccessful()) {
-                    throw new IOException("该链接不支持 Range 分段读取（HTTP " + response.code()
-                            + "），无法按需解析大包；请改用支持 Range 的直链或下载到本地");
+                    long hint = response.body() == null ? -1L : response.body().contentLength();
+                    throw new IOException("该链接能下载但不支持 Range 分段读取（HTTP "
+                            + response.code() + (hint > 0 ? "，整包 " + formatBytes(hint) : "")
+                            + "），无法按需解析；请改用支持 Range 的直链或先下载到本地");
                 } else {
-                    throw new IOException("HTTP " + response.code() + " " + response.message());
+                    throw new IOException(describeHttpStatus(response.code(), response.message()));
                 }
                 fileName = getFileNameFromHeaders(response.headers());
                 position = 0L;
@@ -796,7 +983,8 @@ final class PayloadCore {
                     .build()).execute();
             try {
                 if (response.code() != 206) {
-                    throw new IOException("服务器未按 Range 返回（HTTP " + response.code() + "）");
+                    throw new IOException("服务器未按 Range 返回："
+                            + describeHttpStatus(response.code(), response.message()));
                 }
                 ResponseBody body = response.body();
                 if (body == null) {
@@ -805,6 +993,7 @@ final class PayloadCore {
                 InputStream in = body.byteStream();
                 int readTotal = 0;
                 while (readTotal < target.length) {
+                    checkCancelled();
                     int r = in.read(target, readTotal, target.length - readTotal);
                     if (r < 0) {
                         throw new IOException("Range 读取提前结束");
@@ -833,7 +1022,8 @@ final class PayloadCore {
                     .build()).execute();
             if (response.code() != 206) {
                 response.close();
-                throw new IOException("服务器未按 Range 返回（HTTP " + response.code() + "）");
+                throw new IOException("服务器未按 Range 返回："
+                        + describeHttpStatus(response.code(), response.message()));
             }
             ResponseBody body = response.body();
             if (body == null) {
@@ -845,7 +1035,7 @@ final class PayloadCore {
 
         private String getFileNameFromHeaders(Headers headers) {
             String contentDisposition = headers.get("Content-Disposition");
-            if (!TextUtils.isEmpty(contentDisposition)) {
+            if (!isPlainEmpty(contentDisposition)) {
                 String[] parts = contentDisposition.split(";");
                 for (String part : parts) {
                     String p = part.trim();
@@ -861,8 +1051,22 @@ final class PayloadCore {
             }
         }
 
+        /**
+         * 释放连接池与派发线程。
+         *
+         * <p>原来这里是空的：每点一次「读取信息」就新建一个 {@link OkHttpClient}，
+         * 它的连接池和 5 个线程的派发器全都不回收 —— 连着读几次，连接和线程就都挂在那。
+         */
         @Override
         public void close() {
+            try {
+                client.connectionPool().evictAll();
+            } catch (Throwable ignored) {
+            }
+            try {
+                client.dispatcher().executorService().shutdown();
+            } catch (Throwable ignored) {
+            }
         }
     }
 

@@ -347,6 +347,48 @@ public class PayloadCoreTest {
         return data;
     }
 
+    /**
+     * 从聊天软件复制链接时经常夹带零宽空格、不换行空格与全角空格。
+     * {@code String.trim()} 只处理 {@code <= U+0020}，这些字符它一个都不管，
+     * 留下来会让 {@code new URI()} 抛异常，最终误导成「路径不存在」。
+     */
+    @Test
+    public void normalizeInputRemovesInvisibleCharacters() {
+        String dirty = "\u200Bhttps://example.com/a.zip?sign=1\u00A0&t=2\u3000\uFEFF";
+        assertEquals("https://example.com/a.zip?sign=1&t=2", PayloadCore.normalizeInput(dirty));
+    }
+
+    /** 整句粘贴时要把链接本身抽出来，而不是拿整句话去当路径。 */
+    @Test
+    public void normalizeInputExtractsUrlFromSurroundingText() {
+        assertEquals("https://example.com/a.zip?a=1",
+                PayloadCore.normalizeInput("这个包 https://example.com/a.zip?a=1 试试看"));
+        assertEquals("https://example.com/a.zip?a=1",
+                PayloadCore.normalizeInput("https://example.com/a.zip?a=1"));
+    }
+
+    /** 含 http 但解析不了，要报「链接格式不合法」，不能报成「路径不存在」。 */
+    @Test
+    public void malformedUrlReportsLinkInsteadOfPath() {
+        try {
+            PayloadCore.inspect("http://");
+            fail("应当抛出异常");
+        } catch (IOException e) {
+            assertNotNull(e.getMessage());
+            assertTrue(e.getMessage(), e.getMessage().startsWith("链接格式不合法"));
+        }
+    }
+
+    /** 报错里带原始输入要截断，否则一整条签名链接会把提示撑爆。 */
+    @Test
+    public void abbreviateCutsLongInput() {
+        String longUrl = "https://example.com/" + "a".repeat(300);
+        String cut = PayloadCore.abbreviate(longUrl, 40);
+        assertEquals(40, cut.length());
+        assertTrue(cut.endsWith("..."));
+        assertEquals("short", PayloadCore.abbreviate("short", 40));
+    }
+
     private static void deleteRecursively(File file) {
         if (file == null || !file.exists()) {
             return;

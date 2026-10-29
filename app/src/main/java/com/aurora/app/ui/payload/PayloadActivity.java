@@ -232,10 +232,12 @@ public class PayloadActivity extends AppCompatActivity {
             toast("请先填写路径或 URL");
             return;
         }
+        final PayloadCore.CancelToken token = new PayloadCore.CancelToken();
+        cancelToken = token;
         beginBusy("正在读取包信息…");
         ioExecutor.execute(() -> {
             try {
-                PayloadCore.Inspection result = PayloadCore.inspect(input);
+                PayloadCore.Inspection result = PayloadCore.inspect(input, token);
                 mainHandler.post(() -> {
                     closeInspection();
                     inspection = result;
@@ -251,11 +253,17 @@ public class PayloadActivity extends AppCompatActivity {
                         toast("没有解析到任何可提取的分区");
                     }
                 });
-            } catch (Throwable t) {
+            } catch (PayloadCore.CancelledException e) {
+                // 用户自己点的停止，不是失败，别弹「读取失败」吓人
                 mainHandler.post(() -> {
                     endBusy();
-                    tvStatus.setText("读取失败");
-                    toast(readableMessage(t));
+                    tvStatus.setText("已停止");
+                });
+            } catch (Throwable t) {
+                final String message = readableMessage(t);
+                mainHandler.post(() -> {
+                    endBusy();
+                    showFailure("读取失败", message);
                 });
             }
         });
@@ -317,6 +325,16 @@ public class PayloadActivity extends AppCompatActivity {
         }
         final long totalBytesFinal = total;
 
+        // 全量包解压后普遍比包体更大（这份真机包 9.86 GB 解压出 12.6 GB）。
+        // 不预检的话会写到最后几个分区才失败，前面几 GB 白写。
+        long usable = outDir.getUsableSpace();
+        if (usable > 0 && usable < total + total / 20) {
+            showFailure("空间不足", "所选分区解压后约 " + formatSize(total)
+                    + "，输出目录可用 " + formatSize(usable) + "。\n"
+                    + "请少勾几个分区，或换一个有空间的目录。");
+            return;
+        }
+
         cancelToken = new PayloadCore.CancelToken();
         beginBusy("正在提取…");
         resetProgressStats(totalBytesFinal);
@@ -350,10 +368,10 @@ public class PayloadActivity extends AppCompatActivity {
                     tvEta.setText("剩余 —");
                 });
             } catch (Throwable t) {
+                final String message = readableMessage(t);
                 mainHandler.post(() -> {
                     endBusy();
-                    tvStatus.setText("提取失败");
-                    toast(readableMessage(t));
+                    showFailure("提取失败", message);
                 });
             }
         });
@@ -577,6 +595,56 @@ public class PayloadActivity extends AppCompatActivity {
 
     private void toast(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * 失败提示。
+     *
+     * <p>短消息走 Toast；长消息（链接过期、不支持 Range 这类多句解释）落一个可滚动的
+     * 对话框 —— Toast 两行就截断，正文还没读完就没了，用户最后只记得「读取失败」四个字，
+     * 连原因都说不出来。正文可选可复制，方便把原始报错原样贴出来。
+     */
+    private void showFailure(String title, String message) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        String body = message == null || message.trim().isEmpty() ? "未知错误" : message.trim();
+        // 留一条可抓的现场：toast 一闪而过，用户回头说不清，adb logcat 里能找回原文
+        android.util.Log.w("AuroraPayload", title + " | "
+                + PayloadCore.abbreviate(text(etPath), 200) + " | " + body);
+        tvStatus.setText(title + "：" + firstLine(body));
+        if (body.length() <= 40) {
+            toast(body);
+            return;
+        }
+
+        float density = getResources().getDisplayMetrics().density;
+        int horizontal = Math.round(16 * density);
+        TextView text = new TextView(this);
+        text.setText(body);
+        text.setTextSize(13f);
+        text.setTextColor(0xFF16181C);
+        text.setLineSpacing(4 * density, 1f);
+        text.setTextIsSelectable(true);
+        text.setPadding(horizontal, Math.round(8 * density), horizontal, Math.round(8 * density));
+
+        com.aurora.app.ui.widget.MaxHeightScrollView scroll =
+                new com.aurora.app.ui.widget.MaxHeightScrollView(this);
+        scroll.setFillViewport(false);
+        scroll.addView(text);
+
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(title)
+                .setView(scroll)
+                .setPositiveButton("知道了", null)
+                .show();
+    }
+
+    /** 状态栏只有一行，失败原因取首行再说。 */
+    private static String firstLine(String text) {
+        int newline = text.indexOf('\n');
+        String line = newline >= 0 ? text.substring(0, newline) : text;
+        return line.length() <= 60 ? line : line.substring(0, 60) + "…";
     }
 
     private static String readableMessage(Throwable t) {
