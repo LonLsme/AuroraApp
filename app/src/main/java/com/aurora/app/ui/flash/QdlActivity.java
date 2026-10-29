@@ -17,6 +17,7 @@ import com.aurora.app.core.flash.QdlCommands;
 
 import java.io.File;
 import java.util.Locale;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 /**
  * 「高通 QDL 深刷」页（独立 Activity，竖屏，自带返回箭头与大标题）。
@@ -369,7 +370,7 @@ public final class QdlActivity extends FlashConsoleActivity {
                 checked = i;
             }
         }
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("存储类型")
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                     storage = all[which];
@@ -401,7 +402,7 @@ public final class QdlActivity extends FlashConsoleActivity {
                 checked = i;
             }
         }
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("欧加授权方式")
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                     auth = AUTH_TIERS[which];

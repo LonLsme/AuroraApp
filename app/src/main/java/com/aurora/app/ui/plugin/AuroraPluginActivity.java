@@ -42,6 +42,7 @@ import java.io.InputStreamReader;
 import java.security.MessageDigest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 public class AuroraPluginActivity extends AppCompatActivity {
 
@@ -772,7 +773,7 @@ public class AuroraPluginActivity extends AppCompatActivity {
             items[i] = c.displayName + suffix + config + "\n" + c.packageName;
         }
 
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("绑定隐藏应用列表模块")
                 .setItems(items, (dialog, which) -> {
                     if (which < 0 || which >= safe.size()) return;

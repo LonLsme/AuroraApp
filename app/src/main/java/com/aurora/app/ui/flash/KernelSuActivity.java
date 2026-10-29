@@ -18,6 +18,7 @@ import com.aurora.app.core.flash.KernelSuPatcher;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 /**
  * 「刷入 KernelSU」页。
@@ -205,7 +206,7 @@ public final class KernelSuActivity extends FlashConsoleActivity {
 
     private void chooseKmi() {
         final String[] items = KernelSuPatcher.KMI_VERSIONS;
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("选择 KMI 版本")
                 .setItems(items, (d, which) -> {
                     selectedKmi = items[which];

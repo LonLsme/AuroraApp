@@ -44,6 +44,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 public class HiddenAppListConfigActivity extends AppCompatActivity {
 
@@ -831,7 +832,7 @@ public class HiddenAppListConfigActivity extends AppCompatActivity {
                 "白名单（希望目标应用看到的）",
                 "黑名单（希望目标应用看不到的）"
         };
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("选择模板类型")
                 .setItems(types, (dialog, which) -> addTemplate(which == 0))
                 .setNegativeButton("取消", null)
@@ -1182,7 +1183,7 @@ public class HiddenAppListConfigActivity extends AppCompatActivity {
             labels[i] = (isWhitelist ? "白名单 | " : "黑名单 | ") + id + "（" + count + "）";
             checked[i] = current.contains(id);
         }
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("为 " + targetPackage + " 选择模板")
                 .setMultiChoiceItems(labels, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
                 .setNegativeButton("取消", null)

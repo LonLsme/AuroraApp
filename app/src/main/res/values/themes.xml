@@ -14,6 +14,44 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">false</item>
+
+        <!--
+          弹窗圆角必须在这两条里收口，不能靠每个 Builder 自己传主题。
+          Material3 主题把 alertDialogTheme 指向 ThemeOverlay.Material3.Dialog.Alert ——
+          那条是直角窗口，任何 new AlertDialog.Builder(this) 出来的弹窗四角都是方的；
+          materialAlertDialogTheme 那条默认是 28dp 大圆角，与项目 20dp 的视觉语言不一致。
+          两条都指到 Aurora 自己的样式，新旧弹窗共用同一份圆角与底色。
+        -->
+        <item name="alertDialogTheme">@style/ThemeOverlay.Aurora.AlertDialog</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.Aurora.MaterialAlertDialog</item>
+    </style>
+
+    <!--
+      AppCompat AlertDialog 走这条：列表选择、确认框这类没有自定义布局的弹窗。
+      窗口底用与 @drawable/bg_dialog_rounded 同一份形状，20dp 圆角 + 深层语义色填充。
+    -->
+    <style name="ThemeOverlay.Aurora.AlertDialog" parent="ThemeOverlay.Material3.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/bg_dialog_rounded</item>
+    </style>
+
+    <!--
+      MaterialAlertDialogBuilder 走这条：只把 m3 自带的 28dp 换成项目统一的 20dp，
+      并把容器底色换成 aurora 语义色（用 @color/ 写死会丢失 AMOLED 覆盖层）。
+    -->
+    <style name="ThemeOverlay.Aurora.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="alertDialogStyle">@style/Widget.Aurora.MaterialAlertDialog</item>
+    </style>
+
+    <style name="Widget.Aurora.MaterialAlertDialog" parent="MaterialAlertDialog.Material3">
+        <item name="shapeAppearance">@style/ShapeAppearance.Aurora.Dialog</item>
+        <item name="backgroundTint">?attr/auroraBackgroundElevated</item>
+    </style>
+
+    <!-- parent 必须显式写空：点分样式名会把最后一段前的前缀当成隐含父样式，
+         不写就会去找并不存在的 ShapeAppearance.Aurora 并链接失败。 -->
+    <style name="ShapeAppearance.Aurora.Dialog" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">@dimen/dialog_corner_radius</item>
     </style>
 
     <style name="Theme.Aurora" parent="Base.Theme.Aurora" />

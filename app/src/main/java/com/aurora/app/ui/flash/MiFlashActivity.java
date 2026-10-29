@@ -19,6 +19,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 /**
  * 「小米线刷」页（独立 Activity，竖屏，自带返回箭头与大标题）。
@@ -214,7 +215,7 @@ public final class MiFlashActivity extends FlashConsoleActivity {
             MiFlashScript script = scanned.get(i);
             labels[i] = script.name + hintSuffix(script.kind);
         }
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("选择脚本")
                 .setItems(labels, (d, which) -> confirmAndRun(scanned.get(which), dir))
                 .setNegativeButton("取消", null)

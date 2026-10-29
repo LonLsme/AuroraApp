@@ -98,6 +98,7 @@ import androidx.core.view.WindowInsetsCompat;
 import com.aurora.app.R;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -960,7 +961,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        new androidx.appcompat.app.AlertDialog.Builder(this, com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(title)
                 .setMessage("即将执行重启操作，是否继续？")
                 .setNegativeButton("取消", null)
@@ -1251,17 +1252,10 @@ public class MainActivity extends AppCompatActivity {
         swMini.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.MINI, isChecked));
         swFps.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.FPS, isChecked));
         swTemperature.setOnCheckedChangeListener((buttonView, isChecked) -> applyMonitorSwitch(MonitorType.TEMPERATURE, isChecked));
-        AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this, com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog)
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setView(view)
                 .setPositiveButton("确定", null)
                 .create();
-        // 替换 Material3 自带的窗口背景（默认 28dp 大圆角）为 iOS 风格的 20dp 圆角。
-        // 注意是给整个 window 设背景而不是给 content view 设：
-        // AlertDialog 的按钮区由系统创建、位于自定义 view 之外，
-        // 只改 view 背景会让「确定」按钮浮在圆角卡片外面。
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(R.drawable.bg_dialog_rounded);
-        }
         dialog.show();
     }
 
@@ -1570,7 +1564,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showLogsDialog() {
         String logs = readSelinuxRawLogFile();
-        androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this, com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog)
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setView(R.layout.dialog_logs)
                 .setPositiveButton("关闭", null)
                 .create();

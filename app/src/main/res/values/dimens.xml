@@ -13,6 +13,12 @@
     <dimen name="floating_nav_bottom_margin">12dp</dimen>
     <dimen name="floating_nav_horizontal_margin">14dp</dimen>
     <dimen name="floating_nav_card_corner">32dp</dimen>
+    <!--
+      弹窗圆角。三处共用同一个值：自定义布局的 @drawable/bg_dialog_rounded、
+      主题里给 AppCompat AlertDialog 的窗口底、MaterialAlertDialog 的 shapeAppearance。
+      写死在 drawable 里会导致改一处漏两处，这里收成单一来源。
+    -->
+    <dimen name="dialog_corner_radius">20dp</dimen>
     <dimen name="floating_nav_item_width">76dp</dimen>
     <dimen name="floating_nav_item_height">56dp</dimen>
     <!-- 刷机页：7 张功能卡片统一高度与等间距（「统一宽高」由这两条保证） -->

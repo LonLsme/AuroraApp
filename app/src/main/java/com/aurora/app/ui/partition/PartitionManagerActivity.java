@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.lang.reflect.Method;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 public class PartitionManagerActivity extends AppCompatActivity {
 
@@ -237,7 +238,7 @@ public class PartitionManagerActivity extends AppCompatActivity {
             return;
         }
         String[] actions = {"提取分区", "写入分区", "擦除分区"};
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("分区操作 - " + selectedPartition)
                 .setItems(actions, (dialog, which) -> {
                     if (which == 0) {
