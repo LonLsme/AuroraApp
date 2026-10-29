@@ -349,7 +349,12 @@ CoordinatorLayout 时期写在 XML 里的 margin 随之丢失。
 | 7 | `ui/flash/FlashRunDialog.java`（7.3KB）**已无任何使用者** | 死代码，但刻意保留未删 | `ui/flash/` |
 | 8 | `QdlCommands` 里 `owrite` 系列 / `detectEdl` / `killResidual` / `reboot` **无调用方** | 命令层已就绪，UI 未接 | `core/flash/QdlCommands.java` |
 | 9 | 引导库 `Loader.7z`（16MB / 265 机型）**未搬** | QDL 页的授权档位只能由用户手选，不能自动判定 | — |
-| 10 | `res/menu/bottom_nav_menu.xml` 是**遗留资源** | 已被 Compose 底栏取代，但文件仍在（里面 `nav_home` 还写着「首页」）。实测无任何引用 | `res/menu/` |
+
+> 2026-10-29 已清掉一条：`res/menu/bottom_nav_menu.xml` 及其一整套 XML 底栏残留资源
+> （含 `ic_home` / `nav_item_*` / `bottom_nav_*`、4 个废弃 layout、3 个废弃 menu、
+> `fluent_progress_*`、关于页旧图标等共 42 个文件，APK 减 87.9 KB）。清理方法见
+> `.workbuddy/memory` 里的「两级引用分析」，要点是**先判 layout/menu 的死活，再用存活
+> 的那些当图片引用入口**，否则会漏掉「只被死布局引用的活图」。
 
 ---
 
@@ -364,9 +369,9 @@ AuroraApp/
 │       ├── assets/
 │       │   ├── flash_tools.zip     刷机工具链（5 个可执行文件，见 FLASH.md）
 │       │   └── aurora_box_module.zip  Aurora 核心扩展模块（Magisk / KernelSU）
-│       ├── java/com/aurora/app/    119 个源文件
+│       ├── java/com/aurora/app/    117 个源文件
 │       └── res/
-│           ├── layout/             61 个布局
+│           ├── layout/             59 个布局
 │           ├── values/             attrs / colors / dimens / strings / themes
 │           │   └── aurora_accent_overlays.xml   自动生成，勿手改
 │           └── values-night/       深色覆盖层

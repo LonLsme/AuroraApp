@@ -207,7 +207,7 @@ AuroraApp/
 │   │   ├── flash_tools.zip       刷机工具链：adb / fastboot / libksud / magiskboot / qdl（aarch64）
 │   │   └── aurora_box_module.zip 核心扩展模块（Magisk / KernelSU）
 │   └── res/
-│       ├── layout/               60 个布局
+│       ├── layout/               59 个布局
 │       └── values*/              attrs / colors / dimens / strings / themes + 自动生成的主题覆盖层
 ├── aurora_box_module/            Magisk / KernelSU 模块源码（独立打包，不参与 Gradle 构建）
 ├── docs/                         技术文档（见下方「文档地图」）
