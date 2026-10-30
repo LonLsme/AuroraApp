@@ -287,11 +287,41 @@ public final class DeviceReader {
         ShellManager.Result result = AdbBridge.shell(context, serial, cmd, REMOTE_TIMEOUT_MS);
         DeviceSnapshot s = new DeviceSnapshot();
         if (!result.hasOutput()) {
-            // 连上了却读不到：返回空快照，页面显示「—」而不是崩
+            // 连上了却读不到：返回带原因的空快照，页面写「读取失败」而不是满屏「—」
+            s.error = describeFailure(result);
+            Log.w(TAG, "外接设备读取失败 serial=" + serial + " → " + s.error);
             return s;
         }
-        applyFields(s, parseKeyValues(result.out));
+        Map<String, String> kv = parseKeyValues(result.out);
+        applyFields(s, kv);
+        Log.i(TAG, "外接设备读取成功 serial=" + serial + " 字段数=" + kv.size()
+                + " title=" + s.title);
         return s;
+    }
+
+    /**
+     * 把一次失败翻译成一句能看懂的原因。
+     *
+     * <p>这三种失败的修法完全不同，页面上一律显示「—」就没法排查：
+     * 超时是 adb 卡住（对方掉线、USB 供电不足）；不可用是本机通道断了（root 掉了）；
+     * 有输出但空则是命令发出去了、对方没给结果（未授权、shell 被拒）。
+     */
+    static String describeFailure(ShellManager.Result r) {
+        if (r == null) {
+            return "没有返回结果";
+        }
+        if (r.unavailable) {
+            return "本机 adb 通道不可用（root 是否还在？）";
+        }
+        if (r.timedOut) {
+            return "读取超时，对方可能掉线了";
+        }
+        String out = r.out == null ? "" : r.out.trim();
+        if (!out.isEmpty()) {
+            // adb 的报错原文比任何猜测都有用：「device offline」「device unauthorized」
+            return out.length() > 120 ? out.substring(0, 120) : out;
+        }
+        return "命令没有返回内容（exit=" + r.exitCode + "）";
     }
 
     private static DeviceSnapshot readRemoteDynamic(Context context, String serial) {
@@ -390,9 +420,13 @@ public final class DeviceReader {
         ShellManager.Result r = AdbBridge.fastbootGetvarAll(context, serial, FASTBOOT_TIMEOUT_MS);
         if (r.hasOutput()) {
             applyFastbootVars(s, parseFastbootVars(r.out));
+        } else {
+            // 「系统没启动」与「读不到」是两件事：前者是 transport 决定的，后者要用户去查线
+            s.error = describeFailure(r);
         }
         Log.i(TAG, "fastboot 读取 " + serial + " → " + s.bootloader
-                + " (product=" + s.deviceCode + ", slot=" + s.bootSlot + ")");
+                + " (product=" + s.deviceCode + ", slot=" + s.bootSlot
+                + (s.error == null ? "" : ", 失败: " + s.error) + ")");
         return s;
     }
 

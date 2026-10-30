@@ -8,6 +8,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -56,6 +57,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class DeviceFragment extends Fragment {
 
+    private static final String TAG = "DeviceFragment";
+
     /** 本机刷新间隔：sysfs 直读，1 秒不心疼。 */
     private static final long TICK_LOCAL_MS = 1000L;
 
@@ -85,6 +88,26 @@ public class DeviceFragment extends Fragment {
      * 30 秒只是留一个兜底，防止用户在外面 connect 过、回到页面看不到。
      */
     private static final long SOURCES_REFRESH_MS_IDLE = 30_000L;
+
+    /**
+     * 整份静态快照读取失败后的重试间隔。
+     *
+     * <p>外接设备切过去的第一下经常失败：对方刚插上、adb 正在握手、首次 shell 要等授权，
+     * 那一刻读回来是空快照。而静态行<b>只在切源时读一次</b>（tick 只刷 CPU 与循环次数），
+     * 不重试的话页面会永久停在满屏「—」，用户只能来回切两次数据源才可能恢复。
+     * 6 秒是「别把失败的 adb 打通」与「插好线别等太久」的折中。
+     */
+    private static final long STATIC_RETRY_MS = 6000L;
+
+    /**
+     * 外接设备判掉线要连续缺席几轮。
+     *
+     * <p>单轮缺席不能算掉线：{@code adb devices} 会因为 server 忙、USB 供电抖动、
+     * 对方正在切换 usb 配置而偶尔返回空表。按单轮判的话，用户刚切到对方设备，
+     * 5 秒后就被弹回本机 —— 看到的现象是「切换了但数据没变（还是本机的）」，
+     * 而实际上切换成功过。
+     */
+    private static final int SOURCE_MISSING_TICKS_TO_DROP = 2;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -140,6 +163,15 @@ public class DeviceFragment extends Fragment {
     /** 上次查外接设备列表的时间戳（毫秒），用于限流。 */
     private long lastSourcesRefresh;
 
+    /** 当前数据源连续几轮没在 adb / fastboot 列表里出现（用于掉线防抖）。 */
+    private int sourceMissingTicks;
+
+    /** 贴到界面上的那份快照是不是读成功了 —— 失败时 tick 会按 {@link #STATIC_RETRY_MS} 重试。 */
+    private boolean loadedOk = true;
+
+    /** 上次整份重读的时间戳，给失败重试限流。 */
+    private long lastStaticAttempt;
+
     /** 各核圆环、电池循环次数：定时刷新（静态行只在切源/resume 时读一次）。 */
     private final Runnable tickRunnable = new Runnable() {
         @Override
@@ -148,6 +180,15 @@ public class DeviceFragment extends Fragment {
                 return;
             }
             refreshDynamic();
+            // 上一份静态快照没读成功（外接设备刚连上、还在等授权）：按限流重试一次。
+            // 不重试的话静态行永远停在「—」，因为 tick 不碰静态字段。
+            if (!loadedOk) {
+                long now = System.currentTimeMillis();
+                if (now - lastStaticAttempt >= STATIC_RETRY_MS) {
+                    Log.i(TAG, "静态快照未成功，重试 " + sourceSerial);
+                    loadStatic(true);
+                }
+            }
             // 插拔外接设备不会发广播，只能顺手轮询。放这里而不是只在 gate 刷新时查，
             // 是为了让「页面开着、现在插上线」这种最常见的动作能被看到。
             refreshSources(false);
@@ -328,15 +369,29 @@ public class DeviceFragment extends Fragment {
         loadedSerial = serial;
         loadedMode = mode;
         loadedFastboot = fastboot;
+        lastStaticAttempt = System.currentTimeMillis();
         final int token = loadToken.incrementAndGet();
+        Log.i(TAG, "读数源 serial=" + serial + " fastboot=" + fastboot
+                + " mode=" + mode + " force=" + force + " token=" + token);
         executor.execute(() -> {
-            DeviceSnapshot snapshot = DeviceReader.readStatic(ctx, serial,
-                    fastboot ? DeviceSnapshot.Transport.FASTBOOT : DeviceSnapshot.Transport.ADB);
+            DeviceSnapshot snapshot;
+            try {
+                snapshot = DeviceReader.readStatic(ctx, serial,
+                        fastboot ? DeviceSnapshot.Transport.FASTBOOT : DeviceSnapshot.Transport.ADB);
+            } catch (Throwable t) {
+                // 读的时候抛异常不能把这条后台线程带走：页面会永远停在上一份数据上，
+                // 看起来和「没切换」一模一样，而且没有任何报错
+                Log.w(TAG, "读快照抛异常 serial=" + serial, t);
+                snapshot = new DeviceSnapshot();
+                snapshot.error = "读取异常: " + t.getClass().getSimpleName();
+            }
+            final DeviceSnapshot result = snapshot;
             mainHandler.post(() -> {
                 if (!isAdded() || token != loadToken.get()) {
+                    Log.i(TAG, "丢弃过期快照 token=" + token + " now=" + loadToken.get());
                     return;
                 }
-                bindStatic(snapshot);
+                bindStatic(result);
             });
         });
     }
@@ -368,8 +423,19 @@ public class DeviceFragment extends Fragment {
         if (s == null) {
             return;
         }
-        setText(tvDeviceName, s.title);
-        setText(tvDeviceCode, s.deviceCode == null ? null : "设备代号: " + s.deviceCode);
+        loadedOk = s.error == null;
+        if (s.error == null) {
+            setText(tvDeviceName, s.title);
+            setText(tvDeviceCode, s.deviceCode == null ? null : "设备代号: " + s.deviceCode);
+        } else {
+            // 失败时把「谁 + 为什么」直接摆在原来放设备名与代号的两格上。
+            // 只写「—」的话，「没切换成功」「对方没授权」「掉线」三种情况长得一模一样，
+            // 用户只能反复点下拉，而真正要做的动作（去对方手机点允许 / 换线）一个都看不出来。
+            Log.w(TAG, "快照读取失败 serial=" + sourceSerial + " → " + s.error);
+            String who = sourceSerial == null ? "本机" : sourceSerial;
+            setText(tvDeviceName, who + " · 读取失败");
+            setText(tvDeviceCode, s.error);
+        }
         setText(tvAndroidVersion, s.android);
         setText(tvKernelVersion, s.kernel);
         setText(tvBootSlot, s.bootSlot);
@@ -643,7 +709,19 @@ public class DeviceFragment extends Fragment {
                     return;
                 }
                 boolean changed = !sameSources(snapshot);
-                if (!changed && pendingSelectSerial == null) {
+                // 掉线判定必须防抖：adb devices 会因为 server 忙、USB 供电抖动、
+                // 对方正在切换 usb 配置而偶尔吐一张空表。按单轮判的话，用户刚切过去
+                // 5 秒就被弹回本机 —— 现象正是「切换了但数据没变（还是本机的）」。
+                boolean present = sourceSerial == null
+                        || containsCurrent(snapshot, sourceSerial, sourceFastboot);
+                if (present) {
+                    sourceMissingTicks = 0;
+                } else {
+                    sourceMissingTicks++;
+                    Log.i(TAG, "数据源本轮缺席 #" + sourceMissingTicks + " serial=" + sourceSerial);
+                }
+                boolean drop = sourceMissingTicks >= SOURCE_MISSING_TICKS_TO_DROP;
+                if (!changed && pendingSelectSerial == null && !drop) {
                     // 列表没变就不碰下拉：setSources 会把正在展开的弹窗关掉
                     return;
                 }
@@ -665,13 +743,17 @@ public class DeviceFragment extends Fragment {
                     sourceSerial = pendingSelectSerial;
                     sourceFastboot = false;
                     pendingSelectSerial = null;
+                    sourceMissingTicks = 0;
+                    Log.i(TAG, "自动切到刚连上的设备 " + sourceSerial);
                     loadStatic(true);
-                } else if (sourceSerial != null
-                        && !containsCurrent(snapshot, sourceSerial, sourceFastboot)) {
-                    // 当前选中的外接设备不见了（掉线 / 撤销授权 / 退出 fastboot）：
-                    // 退回本机，别让页面停在读不到的快照上
+                } else if (sourceSerial != null && drop) {
+                    // 连续两轮都不见了（掉线 / 撤销授权 / 退出 fastboot）才回落本机，
+                    // 单轮抖动不切 —— 见 SOURCE_MISSING_TICKS_TO_DROP 的说明
+                    Log.w(TAG, "数据源连续 " + sourceMissingTicks + " 轮缺席，回落本机: "
+                            + sourceSerial);
                     sourceSerial = null;
                     sourceFastboot = false;
+                    sourceMissingTicks = 0;
                     loadStatic(true);
                 }
 
@@ -768,8 +850,12 @@ public class DeviceFragment extends Fragment {
         if (Objects.equals(serial, sourceSerial) && sourceFastboot == source.fastboot) {
             return;
         }
+        Log.i(TAG, "切换数据源 " + sourceSerial + " → " + serial
+                + " (fastboot=" + source.fastboot + ", ready=" + source.ready + ")");
         sourceSerial = serial;
         sourceFastboot = source.fastboot;
+        // 刚手动切过去，从零开始数缺席轮次 —— 否则上一个数据源攒下的计数会立刻触发回落
+        sourceMissingTicks = 0;
         if (sourceDropdown != null) {
             // 胶囊上的字得跟着换：它就是「现在看的是哪台」的唯一提示
             sourceDropdown.setSources(lastSources, sourceSerial);

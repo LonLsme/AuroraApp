@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.aurora.app.core.shell.AdbBridge;
+import com.aurora.app.core.shell.ShellManager;
 
 import org.junit.Test;
 
@@ -214,5 +215,50 @@ public class DeviceReaderTest {
     public void parseFastbootVars_normalizesKeyCase() {
         Map<String, String> kv = DeviceReader.parseFastbootVars("(bootloader) Product:Violet\n");
         assertEquals("Violet", kv.get("product"));
+    }
+
+    // ───────────────── 读取失败的原因 ─────────────────
+
+    @Test
+    public void describeFailure_unavailableMeansChannelGone() {
+        // 通道不可用 vs 执行失败必须分开说：前者要去查 root 还在不在，后者要查数据线
+        String msg = DeviceReader.describeFailure(
+                ShellManager.Result.of(-1, "", false, true));
+        assertTrue(msg.contains("root"));
+    }
+
+    @Test
+    public void describeFailure_timeoutPointsAtDisconnect() {
+        String msg = DeviceReader.describeFailure(
+                ShellManager.Result.of(-1, "", true, false));
+        // 超时大概率是对方掉线，不能和「命令执行失败」混成一句
+        assertFalse(msg.contains("root"));
+        assertTrue(msg.contains("超时"));
+    }
+
+    @Test
+    public void describeFailure_keepsAdbErrorText() {
+        // adb 自己的报错原文最有价值：「device offline」「device unauthorized」
+        String msg = DeviceReader.describeFailure(
+                ShellManager.Result.of(1, "error: device offline\n", false, false));
+        assertTrue(msg.contains("device offline"));
+    }
+
+    @Test
+    public void describeFailure_truncatesHugeOutput() {
+        StringBuilder huge = new StringBuilder();
+        for (int i = 0; i < 500; i++) {
+            huge.append("x");
+        }
+        String msg = DeviceReader.describeFailure(
+                ShellManager.Result.of(1, huge.toString(), false, false));
+        assertTrue(msg.length() <= 120);
+    }
+
+    @Test
+    public void describeFailure_emptyOutputMentionsExitCode() {
+        String msg = DeviceReader.describeFailure(
+                ShellManager.Result.of(7, "   ", false, false));
+        assertTrue(msg.contains("7"));
     }
 }

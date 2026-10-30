@@ -42,6 +42,16 @@ public final class DeviceSnapshot {
     /** 这份快照从哪来。本机与正常的 USB 外接都是 {@link Transport#ADB}。 */
     public Transport transport = Transport.ADB;
 
+    /**
+     * 读取失败的原因；读到了就是 {@code null}。
+     *
+     * <p>没有这个字段时，一次失败的读取和「这台设备本来就没有这些字段」在页面上完全
+     * 长一个样 —— 全是「—」。用户切到外接设备后看到满屏「—」，既分不清是命令没发出去、
+     * 对方没授权，还是根本就没切换成功，只能反复点下拉。有它之后页面能写明
+     * 「序列号 · 读取失败」。
+     */
+    public String error;
+
     /** 制造商 + 型号，如 {@code OPPO PJX110}。 */
     public String title;
     /** 设备代号，如 {@code PJX110}。 */

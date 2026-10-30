@@ -79,6 +79,16 @@ public final class ShellManager {
             this.unavailable = unavailable;
         }
 
+        /**
+         * 按字段拼一个结果。
+         *
+         * <p>公开只为让单测能造「超时」「无输出但退出码非零」这些真机上难复现的形态 ——
+         * 本类是纯值对象，没有副作用。
+         */
+        public static Result of(int exitCode, String out, boolean timedOut, boolean unavailable) {
+            return new Result(exitCode, out, timedOut, unavailable);
+        }
+
         static Result unavailable() {
             return new Result(-1, "", false, true);
         }
@@ -192,9 +202,15 @@ public final class ShellManager {
      * 执行一条命令。
      *
      * <p>没有 root 时返回 {@link Result#unavailable()}，调用方据此显示「—」而不是报错。
+     *
+     * <p><b>这里绝不读 {@link #state} 的缓存模式来拦</b>：{@link AdbBridge} 判身份用的是
+     * {@link RootShell#isRootAvailable()}（实时），两边判据不一致时会出现
+     * 「身份认定是 root → 走进 root 分支 → 本方法按缓存判成 NONE → 命令被静默拒绝」，
+     * 表现就是外接设备列表为空、或者切过去一个字段都读不到，而且没有任何报错。
+     * 缓存只在页面决定「要不要重读」时用，不参与命令是否放行。
      */
     public Result exec(String command, long timeoutMs) {
-        if (state.mode != Mode.ROOT) {
+        if (!RootShell.get().isRootAvailable()) {
             return Result.unavailable();
         }
         RootShell.Result r = RootShell.get().exec(command, timeoutMs);

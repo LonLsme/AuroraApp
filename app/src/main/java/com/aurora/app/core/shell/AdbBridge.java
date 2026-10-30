@@ -99,14 +99,33 @@ public final class AdbBridge {
     private static ShellManager.Result runBinary(Context context, File bin, boolean mergeStderr,
                                                  long timeoutMs, String... args) {
         if (!bin.isFile()) {
+            Log.w(TAG, "工具链没解压，调用放弃: " + bin);
             return ShellManager.Result.unavailable();
         }
         // 直接问 RootShell 而不是读 ShellManager 的缓存状态：首帧它还停在 DETECTING，
-        // 那一刻按缓存判断会把 root 用户降级成应用身份，ad 设备表就少一半。
-        if (RootShell.get().isRootAvailable()) {
-            return runAsRoot(context, bin, mergeStderr, timeoutMs, args);
+        // 那一刻按缓存判断会把 root 用户降级成应用身份，adb 设备表就少一半。
+        boolean root = RootShell.get().isRootAvailable();
+        ShellManager.Result r;
+        try {
+            r = root ? runAsRoot(context, bin, mergeStderr, timeoutMs, args)
+                    : runAsApp(context, bin, timeoutMs, args);
+        } catch (Throwable t) {
+            Log.w(TAG, "adb 调用抛异常 [" + (root ? "root" : "app") + "] "
+                    + String.join(" ", args), t);
+            return ShellManager.Result.unavailable();
         }
-        return runAsApp(context, bin, timeoutMs, args);
+        if (!r.hasOutput()) {
+            // 失败必须留痕：没有这行，页面只会显示「—」或空下拉，无从判断是身份、超时
+            // 还是 adb 自己报错（未授权 / offline 都在这条输出里）
+            String out = r.out == null ? "" : r.out.trim();
+            Log.w(TAG, "adb 无有效输出 [" + (root ? "root" : "app") + "] "
+                    + String.join(" ", args)
+                    + " → exit=" + r.exitCode + " timedOut=" + r.timedOut
+                    + " unavailable=" + r.unavailable
+                    + (out.isEmpty() ? ""
+                    : " out=" + (out.length() > 200 ? out.substring(0, 200) : out)));
+        }
+        return r;
     }
 
     /**
