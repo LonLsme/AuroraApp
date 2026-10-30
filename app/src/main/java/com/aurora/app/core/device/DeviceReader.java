@@ -5,6 +5,7 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.aurora.app.core.shell.AdbBridge;
 import com.aurora.app.core.shell.ShellManager;
@@ -23,8 +24,9 @@ import java.util.Map;
  *
  * <h3>本机 vs 外接</h3>
  * <ul>
- *   <li><b>本机</b>：{@code Build.*} 直接给，CPU/电池读 sysfs，只有 {@code getenforce}
- *       与 {@code android_id} 走一次 shell（两者都受 SELinux 限制，普通应用拿不到真值）。</li>
+ *   <li><b>本机</b>：{@code Build.*} 直接给，CPU/电池读 sysfs，BL 三个属性走属性服务
+ *       （应用身份就能读，无 root 也有值），只有 {@code getenforce} 与 {@code android_id}
+ *       走一次 shell（两者都受 SELinux 限制，普通应用拿不到真值）。</li>
  *   <li><b>外接设备</b>：一条 {@code adb shell} 把十几个字段一次性 dump 回来。
  *       绝不逐字段各发一条命令 —— 每次 adb 往返 50~150ms，十几次就是一两秒。</li>
  * </ul>
@@ -40,10 +42,12 @@ import java.util.Map;
  */
 public final class DeviceReader {
 
+    private static final String TAG = "DeviceReader";
+
     /** 外接设备一次读取的上限：刚连上时首次 shell 会慢一拍。 */
     private static final long REMOTE_TIMEOUT_MS = 8000L;
 
-    /** 本机拿特权字段的一次调用：五条命令合成一次，省掉四次 su 往返。 */
+    /** 本机拿特权字段的一次调用：两条命令合成一次，省掉一次 su 往返。 */
     private static final long LOCAL_SHELL_TIMEOUT_MS = 3000L;
 
     /**
@@ -117,19 +121,24 @@ public final class DeviceReader {
         s.bootSlot = bootSlotLabel(systemProperty("ro.boot.slot_suffix",
                 systemProperty("ro.boot.slot", "")));
 
-        // 一次 shell 拿回 5 个字段：getenforce、android_id 与 BL 的三个属性。
-        // Android 12 起三方应用读不到真实 SELinux 状态，android_id 也可能被 ROM 改写，
-        // BL 属性则是 application 域拿不全 —— 三个都得靠 shell 身份才可信。
-        // 合并成一次调用，省掉 4 次 su 往返（单次约 60~150ms）。
+        // BL 三个属性不需要 root：它们在 AOSP 里标成 bootloader_prop，应用身份
+        // 就有 get 权限（本机实测 uid 10490 直读得到 green / 1 / locked）。
+        // 所以放走私路，走属性服务读 —— 无 root 设备上这是 BL 唯一能出值的路径，
+        // 混进下面那条 root shell 里的话，无 root 会整条返回空，格子只能显示「—」。
+        s.bootloader = BootloaderState.of(
+                systemProperty("ro.boot.verifiedbootstate", ""),
+                systemProperty("ro.boot.flash.locked", ""),
+                systemProperty("ro.boot.vbmeta.device_state", ""));
+
+        // 一次 shell 拿回 2 个字段：getenforce 与 android_id。
+        // Android 12 起三方应用读不到真实 SELinux 状态（本机实测应用身份 getenforce
+        // 直接 Permission denied），android_id 也可能被 ROM 改写，这两个才真需要特权身份。
         String dump = ShellManager.get().execOrEmpty(
-                "getenforce; echo '##AURORA##'; settings get secure android_id; "
-                        + "echo '##AURORA##'; getprop ro.boot.verifiedbootstate; "
-                        + "echo '##AURORA##'; getprop ro.boot.flash.locked; "
-                        + "echo '##AURORA##'; getprop ro.boot.vbmeta.device_state",
+                "getenforce; echo '##AURORA##'; settings get secure android_id",
                 LOCAL_SHELL_TIMEOUT_MS);
         if (!dump.isEmpty()) {
             // 必须传 -1：属性不存在时 getprop 输出空行，尾部空段会被默认的 split 丢掉，
-            // 那样 parts.length 小于 5，按固定下标取值就会错位
+            // 那样 parts.length 不够，按固定下标取值就会错位
             String[] parts = dump.split("##AURORA##", -1);
             if (parts.length > 0) {
                 s.selinux = emptyToNull(parts[0]);
@@ -137,9 +146,32 @@ public final class DeviceReader {
             if (parts.length > 1) {
                 s.androidId = emptyToNull(parts[1]);
             }
-            if (parts.length > 4) {
-                s.bootloader = BootloaderState.of(parts[2], parts[3], parts[4]);
+        }
+        if (s.bootloader == BootloaderState.UNKNOWN) {
+            // 少数 ROM 把 bootloader_prop 也收紧了，这时才回退到 root 身份再读一次。
+            // 无 root 时 execOrEmpty 直接返回空串（通道不可用），不会多等一次往返。
+            String bl = ShellManager.get().execOrEmpty(
+                    "getprop ro.boot.verifiedbootstate; echo '##AURORA##'; "
+                            + "getprop ro.boot.flash.locked; echo '##AURORA##'; "
+                            + "getprop ro.boot.vbmeta.device_state",
+                    LOCAL_SHELL_TIMEOUT_MS);
+            if (!bl.isEmpty()) {
+                String[] p = bl.split("##AURORA##", -1);
+                if (p.length > 2) {
+                    BootloaderState fromRoot = BootloaderState.of(p[0], p[1], p[2]);
+                    if (fromRoot != BootloaderState.UNKNOWN) {
+                        s.bootloader = fromRoot;
+                        Log.i(TAG, "BL 走 root 回退: " + fromRoot);
+                    }
+                }
             }
+        } else {
+            // 这一行是排查 BL 显示「—」的唯一线索：属性服务被 ROM 收紧时不会抛异常，
+            // 只会静静返回空串，页面表现就是「—」。有日志才能分清是「读不到」还是「判错」。
+            Log.i(TAG, "BL 应用身份直读: " + s.bootloader + " (vb="
+                    + systemProperty("ro.boot.verifiedbootstate", "") + ", locked="
+                    + systemProperty("ro.boot.flash.locked", "") + ", vbmeta="
+                    + systemProperty("ro.boot.vbmeta.device_state", "") + ")");
         }
         if (s.androidId == null) {
             // shell 不通时的兜底：普通 API 也能读到，只是可能被 ROM 改写过
