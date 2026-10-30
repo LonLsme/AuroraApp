@@ -68,6 +68,13 @@
 `Result.unavailable`（通道不可用，命令根本没执行）与「执行了但失败」必须分开 ——
 前者是正常的「没权限」，后者才需要看日志。
 
+> [!warning] `exec()` 判权限不看缓存
+> `ShellManager.exec()` 内部用 `RootShell.isRootAvailable()`（实时）判断，**不读
+> `state.mode` 缓存**。缓存只用于「页面要不要重读」，不参与命令放行。
+> 两边判据不一致时会出现：`AdbBridge` 认定身份是 root → 走进 root 分支 →
+> `exec` 按缓存判成 NONE → 命令被静默拒绝，返回空设备表 / 空快照，且没有任何报错。
+> 这个坑在提交 `e74e4dd` 修掉，是「切换数据源不换数据」的第一号根因。
+
 ---
 
 ## 三、本机 / 外接：同一套卡片
@@ -82,6 +89,27 @@
   + 末尾常驻一行 **`添加设备…`**
 
 切换时整份快照重读（`loadStatic(true)`），卡片结构不动，所以不存在「两张卡片各显示一半」的中间态。
+
+### 切换必须扛住三件事
+
+外接设备第一次切过去的时候，恰好是最容易失败的时刻：对方刚插上、adb 正在握手、
+首次 shell 要等 RSA 授权。这三条是「切了没反应」的全部来源，缺一条就会出现
+「胶囊上的字已经是对方序列号，卡片还是本机数据」。
+
+| 机制 | 不做会怎样 |
+| --- | --- |
+| **重试**：`loadedOk` 为 false 时，tick 每 `STATIC_RETRY_MS`（6 秒）重读一次整份静态快照 | tick 只刷 CPU 与循环次数，静态行只在切源时读一次 —— 失败后页面永久停在「—」，用户只能来回切两次数据源才可能恢复 |
+| **防抖**：连续 `SOURCE_MISSING_TICKS_TO_DROP`（2）轮缺席才回落本机 | `adb devices` 会因 server 忙、USB 供电抖动、对方切换 usb 配置而偶发空表；按单轮判，刚切过去 5 秒就被弹回本机 |
+| **失败可见**：`DeviceSnapshot.error`，页面写「序列号 · 读取失败」+ 原因 | 满屏「—」时分不清「没切换成功」「对方没授权」「掉线」，要做的动作（去对方点允许 / 换线 / 查 root）一个都看不出来 |
+
+失败原因分四种，修法完全不同（`DeviceReader.describeFailure`）：
+
+| 输出 | 判定 | 该去查什么 |
+| --- | --- | --- |
+| `unavailable` | 本机通道断了 | root 还在不在 |
+| `timedOut` | 读取超时 | 对方掉线、USB 供电、数据线 |
+| 有 adb 报错原文 | 命令发出去了被拒 | `device offline` / `device unauthorized` 原文照搬到页面上 |
+| 空输出 + 非零退出码 | 命令没结果 | 带 exit code，便于对照 adb 行为 |
 
 | 读什么 | 本机 | 外接设备 |
 | --- | --- | --- |
@@ -241,6 +269,8 @@ crw-rw---- 1 root usb 189, 0 /dev/bus/usb/001/001
 | BL 状态恒为「—」 | 三个属性都读不到（个别 ROM 收紧了 `bootloader_prop`，属少数）；先看 `adb logcat -s DeviceReader` 里 `BL 应用身份直读` 那行 | `BootloaderState.of()` 逐级回退，判不出时回退 root 再读 |
 | **无 root 时 BL 显示「—」**（已修） | 曾把 BL 三属性与 `getenforce` 压进同一条 root shell，`execOrEmpty` 在无 root 时整条返回空串 → 一条挂全挂 | `DeviceReader` 把 BL 拆成属性服务直读（提交 `9a965f2`） |
 | 本机多段输出切完后下标错位 | `split` 没传 `-1`，尾部空段被丢掉 | `DeviceReader` 里 `split("##AURORA##", -1)` |
+| **切到外接设备，数据没换 / 满屏「—」后永不恢复**（已修） | 三个静默失败叠在一起：① `ShellManager.exec` 按缓存 `state.mode` 拦命令，与 `AdbBridge` 的实时判据不一致 → 命令被拒却不报错；② 静态快照读失败后 tick 不重试，永久停在「—」；③ 掉线按单轮判 —— `adb devices` 偶发空表就把刚切过去的设备弹回本机 | `ShellManager.exec()` 改问 `RootShell.isRootAvailable()`；`DeviceFragment.loadedOk` + `STATIC_RETRY_MS` 重试；`SOURCE_MISSING_TICKS_TO_DROP` 连续两轮才回落（提交 `e74e4dd`） |
+| 读取失败时看不出为什么 | 失败被静默吞成满屏「—」，「没切换」「没授权」「掉线」三者长得一样 | `DeviceSnapshot.error` + `DeviceReader.describeFailure()`，页面写「序列号 · 读取失败」+ 原因 |
 
 ---
 
