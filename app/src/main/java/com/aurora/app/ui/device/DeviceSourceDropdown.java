@@ -57,20 +57,35 @@ public final class DeviceSourceDropdown {
          */
         public final boolean ready;
 
+        /**
+         * 这台设备是不是在 fastboot 模式。
+         *
+         * <p>它不是「另一种连接方式」，而是<b>另一种设备状态</b>：对方的 Android 没启动，
+         * 只能读到 bootloader 变量，CPU / 系统版本 / 指纹全都没有。
+         * 选中后读取链路要整体换一套，所以这个标记必须跟着数据源一起传下去。
+         */
+        public final boolean fastboot;
+
         public Source(String label, String detail, String serial) {
-            this(label, detail, serial, false, true);
+            this(label, detail, serial, false, true, false);
         }
 
         public Source(String label, String detail, String serial, boolean action) {
-            this(label, detail, serial, action, true);
+            this(label, detail, serial, action, true, false);
         }
 
         public Source(String label, String detail, String serial, boolean action, boolean ready) {
+            this(label, detail, serial, action, ready, false);
+        }
+
+        public Source(String label, String detail, String serial, boolean action, boolean ready,
+                      boolean fastboot) {
             this.label = label;
             this.detail = detail;
             this.serial = serial;
             this.action = action;
             this.ready = ready;
+            this.fastboot = fastboot;
         }
 
         /** 本机数据源。 */
@@ -115,6 +130,19 @@ public final class DeviceSourceDropdown {
                 }
             }
             return new Source(device.serial, detail, device.serial, false, ready);
+        }
+
+        /**
+         * 一台处于 fastboot / fastbootd 的设备。
+         *
+         * <p>之所以放进同一个下拉而不是另开一段：它就是「另一台手机」，只是现在停在
+         * bootloader 里。分开放的话用户会以为要切两套逻辑，实际上卡片是同一套。
+         */
+        public static Source fastboot(AdbBridge.FastbootDevice device) {
+            String detail = device.userspace()
+                    ? "FastbootD · 系统未启动，只能读分区信息"
+                    : "Fastboot · 系统未启动，可读 BL 状态";
+            return new Source(device.serial, detail, device.serial, false, true, true);
         }
 
         /**

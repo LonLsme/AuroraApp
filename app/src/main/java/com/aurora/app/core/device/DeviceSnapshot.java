@@ -17,6 +17,31 @@ import java.util.Locale;
  */
 public final class DeviceSnapshot {
 
+    /**
+     * 这份快照的来源通道。
+     *
+     * <p>两者能读到的字段差得很远，页面必须知道自己拿的是哪一种，
+     * 否则 fastboot 模式下整屏「—」会被当成读取失败：
+     * <table border="1">
+     *   <tr><th>字段</th><th>{@link #ADB}</th><th>{@link #FASTBOOT}</th></tr>
+     *   <tr><td>产品代号 / 序列号</td><td>✅</td><td>✅</td></tr>
+     *   <tr><td>BL 解锁状态</td><td>✅</td><td>✅（问 bootloader 自己）</td></tr>
+     *   <tr><td>当前槽位</td><td>✅</td><td>✅</td></tr>
+     *   <tr><td>Android 版本 / 指纹 / 安全补丁 / 基带</td><td>✅</td><td>❌ 系统没启动</td></tr>
+     *   <tr><td>SELinux / 安卓 ID</td><td>✅（需 root）</td><td>❌</td></tr>
+     *   <tr><td>CPU 各核频率 / 电池循环</td><td>✅</td><td>❌</td></tr>
+     * </table>
+     */
+    public enum Transport {
+        /** 正常系统，走 {@code adb shell}。 */
+        ADB,
+        /** fastboot / fastbootd 模式，只能读 bootloader 变量。 */
+        FASTBOOT
+    }
+
+    /** 这份快照从哪来。本机与正常的 USB 外接都是 {@link Transport#ADB}。 */
+    public Transport transport = Transport.ADB;
+
     /** 制造商 + 型号，如 {@code OPPO PJX110}。 */
     public String title;
     /** 设备代号，如 {@code PJX110}。 */

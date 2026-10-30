@@ -110,4 +110,63 @@ public class BootloaderStateTest {
         DeviceReader.applyFields(snapshot, kv);
         assertEquals(BootloaderState.UNKNOWN, snapshot.bootloader);
     }
+
+    // ───────────────── fastboot 模式（系统没启动）─────────────────
+
+    @Test
+    public void fastboot_unlockedVariableWins() {
+        // 最常见的一家：unlocked:yes
+        assertEquals(BootloaderState.UNLOCKED, BootloaderState.fromFastboot("yes", null, null));
+        assertEquals(BootloaderState.LOCKED, BootloaderState.fromFastboot("no", null, null));
+    }
+
+    @Test
+    public void fastboot_deviceStateIsSecondChoice() {
+        assertEquals(BootloaderState.UNLOCKED, BootloaderState.fromFastboot(null, "unlocked", null));
+        assertEquals(BootloaderState.LOCKED, BootloaderState.fromFastboot(null, "locked", null));
+    }
+
+    @Test
+    public void fastboot_unlockedVariableBeatsDeviceState() {
+        // 两个都有时以 unlocked 为准：device-state 反映的是 vbmeta，与 fastboot 的锁不一致
+        assertEquals(BootloaderState.UNLOCKED, BootloaderState.fromFastboot("yes", "locked", null));
+        assertEquals(BootloaderState.LOCKED, BootloaderState.fromFastboot("no", "unlocked", null));
+    }
+
+    @Test
+    public void fastboot_secureIsOnlyLastResort() {
+        // secure=no 意味着验证被关（等于已解锁），但它是兜底，不能盖过前两个
+        assertEquals(BootloaderState.UNLOCKED, BootloaderState.fromFastboot(null, null, "no"));
+        assertEquals(BootloaderState.LOCKED, BootloaderState.fromFastboot("no", null, "yes"));
+        // secure=yes 单独出现不足以判锁定 —— 有些机型 secure 与解锁状态并不同步
+        assertEquals(BootloaderState.UNKNOWN, BootloaderState.fromFastboot(null, null, "yes"));
+    }
+
+    @Test
+    public void fastboot_nothingReadableStaysUnknown() {
+        assertEquals(BootloaderState.UNKNOWN, BootloaderState.fromFastboot(null, null, null));
+        assertEquals(BootloaderState.UNKNOWN, BootloaderState.fromFastboot("", "  ", "garbage"));
+    }
+
+    @Test
+    public void fastboot_applyVarsFillsOnlyFastbootFields() {
+        DeviceSnapshot snapshot = new DeviceSnapshot();
+        DeviceReader.applyFastbootVars(snapshot, DeviceReader.parseFastbootVars(
+                "(bootloader) product:violet\n"
+                        + "(bootloader) variant:sm6150\n"
+                        + "(bootloader) unlocked:yes\n"
+                        + "(bootloader) current-slot:b\n"
+                        + "Finished. Total time: 0.050s\n"));
+        // transport 由 readFastbootStatic 设，这里只管字段；ADB 是默认值
+        assertEquals(DeviceSnapshot.Transport.ADB, snapshot.transport);
+        assertEquals("violet · sm6150", snapshot.title);
+        assertEquals("violet", snapshot.deviceCode);
+        assertEquals(BootloaderState.UNLOCKED, snapshot.bootloader);
+        assertEquals("B 槽位", snapshot.bootSlot);
+        // 系统没启动的那几项必须留空，页面才会显示「—」
+        assertEquals(null, snapshot.android);
+        assertEquals(null, snapshot.kernel);
+        assertEquals(null, snapshot.fingerprint);
+        assertEquals(null, snapshot.selinux);
+    }
 }

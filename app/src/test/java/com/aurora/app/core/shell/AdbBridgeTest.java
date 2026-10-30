@@ -88,5 +88,41 @@ public class AdbBridgeTest {
         // 只有「未授权」也算不空：用户需要在下拉里看到那一项，才知道去对方点允许
         snapshot.pending.add(new AdbBridge.Device("45850c2f", "unauthorized"));
         assertFalse(snapshot.isEmpty());
+        // 只有 fastboot 设备同样不算空
+        AdbBridge.Snapshot onlyFastboot = new AdbBridge.Snapshot();
+        onlyFastboot.fastboot.add(new AdbBridge.FastbootDevice("45850c2f", "fastboot"));
+        assertFalse(onlyFastboot.isEmpty());
+    }
+
+    // ───────────────── fastboot devices ─────────────────
+
+    @Test
+    public void parseFastbootDevices_readsBootloaderAndFastbootd() {
+        String out = "45850c2f\tfastboot\n"
+                + "emulator-5554\tfastbootd\n";
+        List<AdbBridge.FastbootDevice> devices = AdbBridge.parseFastbootDevices(out);
+        assertEquals(2, devices.size());
+        assertEquals("45850c2f", devices.get(0).serial);
+        assertEquals("fastboot", devices.get(0).mode);
+        assertFalse(devices.get(0).userspace());
+        assertTrue(devices.get(1).userspace());
+    }
+
+    @Test
+    public void parseFastbootDevices_dropsWaitingAndPermissionNoise() {
+        // 等设备时会打 "< waiting for any device >"；没权限时打 "no permissions ..."
+        String out = "< waiting for any device >\n"
+                + "no permissions (udev rules?): /dev/bus/usb/001/002\n"
+                + "45850c2f\tfastboot\n";
+        List<AdbBridge.FastbootDevice> devices = AdbBridge.parseFastbootDevices(out);
+        assertEquals(1, devices.size());
+        assertEquals("45850c2f", devices.get(0).serial);
+    }
+
+    @Test
+    public void parseFastbootDevices_handlesEmptyAndUnknown() {
+        assertTrue(AdbBridge.parseFastbootDevices("").isEmpty());
+        assertTrue(AdbBridge.parseFastbootDevices(null).isEmpty());
+        assertTrue(AdbBridge.parseFastbootDevices("45850c2f\tdevice\n").isEmpty());
     }
 }

@@ -50,6 +50,9 @@ public final class DeviceReader {
     /** 本机拿特权字段的一次调用：两条命令合成一次，省掉一次 su 往返。 */
     private static final long LOCAL_SHELL_TIMEOUT_MS = 3000L;
 
+    /** fastboot {@code getvar all} 的上限：所有变量一次吐回，通常不到 1 秒。 */
+    private static final long FASTBOOT_TIMEOUT_MS = 8000L;
+
     /**
      * {@code BATTERY_PROPERTY_CYCLE_COUNT}。
      *
@@ -90,7 +93,24 @@ public final class DeviceReader {
      * @param serial 外接设备序列号；{@code null} 表示读本机
      */
     public static DeviceSnapshot readStatic(Context context, String serial) {
-        return serial == null ? readLocalStatic(context) : readRemoteStatic(context, serial);
+        return readStatic(context, serial, DeviceSnapshot.Transport.ADB);
+    }
+
+    /**
+     * 读一份完整快照，按通道分流。
+     *
+     * @param serial    外接设备序列号；{@code null} 表示读本机
+     * @param transport 外接设备跑的是正常系统（ADB）还是 fastboot 模式
+     */
+    public static DeviceSnapshot readStatic(Context context, String serial,
+                                            DeviceSnapshot.Transport transport) {
+        if (serial == null) {
+            return readLocalStatic(context);
+        }
+        if (transport == DeviceSnapshot.Transport.FASTBOOT) {
+            return readFastbootStatic(context, serial);
+        }
+        return readRemoteStatic(context, serial);
     }
 
     /**
@@ -100,7 +120,26 @@ public final class DeviceReader {
      * adb，所以调用方要把刷新间隔放宽（设备页里是 2 秒）。
      */
     public static DeviceSnapshot readDynamic(Context context, String serial) {
-        return serial == null ? readLocalDynamic(context) : readRemoteDynamic(context, serial);
+        return readDynamic(context, serial, DeviceSnapshot.Transport.ADB);
+    }
+
+    /**
+     * 只读会变的字段，按通道分流。
+     *
+     * <p>fastboot 设备<b>直接返回空快照</b>，一条命令都不发：系统没启动，CPU 频率、
+     * 电池循环、内存全都不存在。它那几项在页面上恒为「—」，这不是读取失败。
+     */
+    public static DeviceSnapshot readDynamic(Context context, String serial,
+                                             DeviceSnapshot.Transport transport) {
+        if (serial == null) {
+            return readLocalDynamic(context);
+        }
+        if (transport == DeviceSnapshot.Transport.FASTBOOT) {
+            DeviceSnapshot empty = new DeviceSnapshot();
+            empty.transport = DeviceSnapshot.Transport.FASTBOOT;
+            return empty;
+        }
+        return readRemoteDynamic(context, serial);
     }
 
     // ───────────────── 本机 ─────────────────
@@ -327,6 +366,100 @@ public final class DeviceReader {
             cores.add(new DeviceSnapshot.CpuCore(i, online, online ? cur : -1L, max, min));
         }
         return cores.toArray(new DeviceSnapshot.CpuCore[0]);
+    }
+
+    // ───────────────── fastboot 模式的外接设备 ─────────────────
+
+    /**
+     * 读一台<b>处于 fastboot 模式</b>的外接设备。
+     *
+     * <p>这条链路和 adb 完全是两套东西：对方手机的 Android 根本没启动，
+     * {@code adb shell} 连不上，只能问 bootloader。能读到的只有它自己那一套变量 ——
+     * 产品代号、序列号、**BL 解锁状态**、当前槽位、电池电压。
+     * CPU 频率、Android 版本、指纹、SELinux 这些<b>物理上不存在</b>，页面显示「—」是对的。
+     *
+     * <p>只发<b>一条</b> {@code getvar all}：所有变量一次吐回来。逐条 {@code getvar}
+     * 要几十次 USB 往返（每次 50~150ms），光读个解锁状态就得等好几秒。
+     */
+    private static DeviceSnapshot readFastbootStatic(Context context, String serial) {
+        DeviceSnapshot s = new DeviceSnapshot();
+        s.transport = DeviceSnapshot.Transport.FASTBOOT;
+        // 这一行必须写：不然整屏「—」看起来像读取失败，用户会以为功能坏了
+        s.android = "Fastboot 模式 · 系统未启动";
+
+        ShellManager.Result r = AdbBridge.fastbootGetvarAll(context, serial, FASTBOOT_TIMEOUT_MS);
+        if (r.hasOutput()) {
+            applyFastbootVars(s, parseFastbootVars(r.out));
+        }
+        Log.i(TAG, "fastboot 读取 " + serial + " → " + s.bootloader
+                + " (product=" + s.deviceCode + ", slot=" + s.bootSlot + ")");
+        return s;
+    }
+
+    /**
+     * 解析 {@code fastboot getvar all} 的输出。
+     *
+     * <p>格式固定成 {@code (bootloader) key:value}，一条一行：
+     * <pre>
+     * (bootloader) product:violet
+     * (bootloader) unlocked:yes
+     * (bootloader) current-slot:a
+     * Finished. Total time: 0.050s
+     * </pre>
+     * 只认带 {@code (…)} 前缀的行 —— 末尾那行 {@code Finished.} 也含冒号，
+     * 不设这道门槛会解析出一条 {@code finished. total time} 的假键。
+     *
+     * <p>同名键只留第一条：{@code partition-size:xxx} 会重复出现几十次。
+     *
+     * <p>包级可见是为了单测能直接喂假输出（这段解析跨厂商差异最大，最容易写错）。
+     */
+    static Map<String, String> parseFastbootVars(String output) {
+        Map<String, String> kv = new HashMap<>();
+        if (output == null || output.isEmpty()) {
+            return kv;
+        }
+        for (String raw : output.split("\n")) {
+            String line = raw.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            int close = line.lastIndexOf(')');
+            if (close <= 0 || line.charAt(0) != '(') {
+                continue;
+            }
+            String body = line.substring(close + 1).trim();
+            int colon = body.indexOf(':');
+            if (colon <= 0) {
+                continue;
+            }
+            String key = body.substring(0, colon).trim().toLowerCase(Locale.US);
+            String value = body.substring(colon + 1).trim();
+            if (!key.isEmpty() && !kv.containsKey(key)) {
+                kv.put(key, value);
+            }
+        }
+        return kv;
+    }
+
+    /**
+     * 把 {@code getvar all} 的变量填进快照。
+     *
+     * <p>只填 fastboot 真有的字段，其余保持 {@code null}（页面显示「—」）。
+     * 特别注意<b>不要</b>把 {@code battery-voltage} 塞进「电池循环次数」——
+     * 那是毫伏，塞进去会显示成一个看起来像循环数的四位数。
+     */
+    static void applyFastbootVars(DeviceSnapshot s, Map<String, String> kv) {
+        String product = kvGet(kv, "product");
+        String variant = kvGet(kv, "variant");
+        s.deviceCode = product;
+        if (product != null) {
+            s.title = variant == null ? product : product + " · " + variant;
+        }
+        s.bootSlot = bootSlotLabel(kvGet(kv, "current-slot"));
+        s.bootloader = BootloaderState.fromFastboot(
+                kvGet(kv, "unlocked"),
+                kvGet(kv, "device-state"),
+                kvGet(kv, "secure"));
     }
 
     // ───────────────── 解析工具 ─────────────────

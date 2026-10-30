@@ -62,6 +62,15 @@ public class DeviceFragment extends Fragment {
     /** 外接设备刷新间隔：每次都要一次 adb 往返，2 秒是「看起来实时」与「别把 adb 打通」的折中。 */
     private static final long TICK_REMOTE_MS = 2000L;
 
+    /**
+     * fastboot 设备刷新间隔。
+     *
+     * <p>它没有 CPU 频率、没有电池循环可刷 —— 静态那几项（产品代号、BL 状态、槽位）
+     * 在设备退出 fastboot 之前不会变。这里只保留一个低频心跳，让拔线能被发现；
+     * 真正的插拔变化由 {@code refreshSources} 的轮询负责。
+     */
+    private static final long TICK_FASTBOOT_MS = 15_000L;
+
     /** 外接设备的轮询间隔（有 root）：每轮要起一次 adb，5 秒是「插上就能看见」与别太费的折中。 */
     private static final long SOURCES_REFRESH_MS = 5000L;
 
@@ -109,12 +118,21 @@ public class DeviceFragment extends Fragment {
     /** 当前数据源序列号；{@code null} 表示本机。 */
     private String sourceSerial;
 
+    /**
+     * 当前数据源是不是一台<b>在 fastboot 模式</b>的设备。
+     *
+     * <p>它不是连接方式的差别，而是设备状态的差别：对方的 Android 没启动，
+     * 读取链路要整体换成 {@code fastboot getvar all}，动态刷新也完全没意义。
+     */
+    private boolean sourceFastboot;
+
     /** 刚 connect 上的设备：等它出现在 {@code adb devices} 里就自动切过去。 */
     private String pendingSelectSerial;
 
     /** 已经贴到界面上的那份数据来自哪个数据源 / 哪条通道 —— 用来决定要不要重读。 */
     private String loadedSerial;
     private ShellManager.Mode loadedMode;
+    private boolean loadedFastboot;
 
     /** 每次整份重读自增，晚到的旧结果直接丢掉（快速切数据源时会发生）。 */
     private final AtomicInteger loadToken = new AtomicInteger(0);
@@ -133,7 +151,8 @@ public class DeviceFragment extends Fragment {
             // 插拔外接设备不会发广播，只能顺手轮询。放这里而不是只在 gate 刷新时查，
             // 是为了让「页面开着、现在插上线」这种最常见的动作能被看到。
             refreshSources(false);
-            mainHandler.postDelayed(this, sourceSerial == null ? TICK_LOCAL_MS : TICK_REMOTE_MS);
+            mainHandler.postDelayed(this, sourceSerial == null ? TICK_LOCAL_MS
+                    : (sourceFastboot ? TICK_FASTBOOT_MS : TICK_REMOTE_MS));
         }
     };
 
@@ -300,15 +319,19 @@ public class DeviceFragment extends Fragment {
             return;
         }
         final String serial = sourceSerial;
+        final boolean fastboot = sourceFastboot;
         final ShellManager.Mode mode = ShellManager.get().state().mode;
-        if (!force && Objects.equals(loadedSerial, serial) && loadedMode == mode) {
+        if (!force && Objects.equals(loadedSerial, serial) && loadedMode == mode
+                && loadedFastboot == fastboot) {
             return;
         }
         loadedSerial = serial;
         loadedMode = mode;
+        loadedFastboot = fastboot;
         final int token = loadToken.incrementAndGet();
         executor.execute(() -> {
-            DeviceSnapshot snapshot = DeviceReader.readStatic(ctx, serial);
+            DeviceSnapshot snapshot = DeviceReader.readStatic(ctx, serial,
+                    fastboot ? DeviceSnapshot.Transport.FASTBOOT : DeviceSnapshot.Transport.ADB);
             mainHandler.post(() -> {
                 if (!isAdded() || token != loadToken.get()) {
                     return;
@@ -323,6 +346,10 @@ public class DeviceFragment extends Fragment {
         final ExecutorService executor = worker;
         final Context ctx = appContext;
         if (executor == null || ctx == null) {
+            return;
+        }
+        if (sourceFastboot) {
+            // fastboot 模式下没有 CPU 频率、没有电池循环 —— 一条命令都不用发
             return;
         }
         final String serial = sourceSerial;
@@ -353,6 +380,11 @@ public class DeviceFragment extends Fragment {
         setText(tvBuildFingerprint, s.fingerprint);
         applySelinuxLabel(s.selinux);
         applyBootloaderLabel(s.bootloader);
+        if (s.cores == null || s.cores.length == 0) {
+            // 这台没有 CPU 数据（fastboot 模式）：必须把上一台的圆环清掉。
+            // 不清的话会拿着本机的 8 个核继续显示，看起来像是读到了对方的数据。
+            clearCpuCoreRings();
+        }
         bindDynamic(s);
         // 循环次数在静态读里也一并带回来；读不到就写「—」，
         // 不能留着上一台设备（或上一轮）的数字假装还准
@@ -380,6 +412,21 @@ public class DeviceFragment extends Fragment {
     }
 
     // ───────────────── CPU 圆环 ─────────────────
+
+    /**
+     * 清空 CPU 圆环。
+     *
+     * <p>切到 fastboot 设备时必须调用：那台没有 CPU 频率可言，
+     * 而 {@link #ensureCpuCoreRings(int)} 只在核数变化时重建 —— 核数「消失」
+     * 这件事它看不见，旧圆环会留在屏幕上继续显示上一个设备（通常是本机）的频率。
+     */
+    private void clearCpuCoreRings() {
+        if (llCpuCoreRings == null || cpuCoreRingHolders.isEmpty()) {
+            return;
+        }
+        llCpuCoreRings.removeAllViews();
+        cpuCoreRingHolders.clear();
+    }
 
     private void ensureCpuCoreRings(int count) {
         if (llCpuCoreRings == null || count <= 0 || count == cpuCoreRingHolders.size()) {
@@ -608,17 +655,23 @@ public class DeviceFragment extends Fragment {
                 for (AdbBridge.Device device : snapshot.pending) {
                     next.add(DeviceSourceDropdown.Source.external(device));
                 }
+                for (AdbBridge.FastbootDevice device : snapshot.fastboot) {
+                    next.add(DeviceSourceDropdown.Source.fastboot(device));
+                }
                 next.add(DeviceSourceDropdown.Source.addDevice());
 
                 // 刚 connect 上的设备出现了：自动切过去，省掉用户再点一次下拉
                 if (pendingSelectSerial != null && containsOnline(snapshot, pendingSelectSerial)) {
                     sourceSerial = pendingSelectSerial;
+                    sourceFastboot = false;
                     pendingSelectSerial = null;
                     loadStatic(true);
-                } else if (sourceSerial != null && !containsOnline(snapshot, sourceSerial)) {
-                    // 当前选中的外接设备掉线了（或被撤销授权变回 unauthorized）：
+                } else if (sourceSerial != null
+                        && !containsCurrent(snapshot, sourceSerial, sourceFastboot)) {
+                    // 当前选中的外接设备不见了（掉线 / 撤销授权 / 退出 fastboot）：
                     // 退回本机，别让页面停在读不到的快照上
                     sourceSerial = null;
+                    sourceFastboot = false;
                     loadStatic(true);
                 }
 
@@ -644,6 +697,29 @@ public class DeviceFragment extends Fragment {
     }
 
     /**
+     * 当前选中的那台是否还在。
+     *
+     * <p>必须按通道分开比：一台手机可以从正常系统重启进 fastboot（序列号不变、
+     * {@code adb devices} 里消失、{@code fastboot devices} 里出现）。只查 adb 那桶
+     * 会把「正在进 fastboot」误判成「掉线」，页面直接弹回本机 ——
+     * 而用户刚点的就是这个动作。
+     */
+    private boolean containsCurrent(AdbBridge.Snapshot snapshot, String serial, boolean fastboot) {
+        if (serial == null) {
+            return false;
+        }
+        if (fastboot) {
+            for (AdbBridge.FastbootDevice device : snapshot.fastboot) {
+                if (serial.equals(device.serial)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return containsOnline(snapshot, serial);
+    }
+
+    /**
      * 下拉里的外接项与这次查到的结果是否完全一致。
      *
      * <p>比的是「序列号 + 是否就绪」而不是只比序列号：USB 首次插上时是 {@code unauthorized}，
@@ -653,18 +729,27 @@ public class DeviceFragment extends Fragment {
     private boolean sameSources(AdbBridge.Snapshot snapshot) {
         List<String> current = new ArrayList<>();
         for (DeviceSourceDropdown.Source source : lastSources) {
-            if (!source.action && source.serial != null) {
-                current.add(source.serial + (source.ready ? "#1" : "#0"));
+            if (source.action || source.serial == null) {
+                continue;
             }
+            current.add(keyOf(source.serial, source.fastboot, source.ready));
         }
         List<String> next = new ArrayList<>();
         for (AdbBridge.Device device : snapshot.online) {
-            next.add(device.serial + "#1");
+            next.add(keyOf(device.serial, false, true));
         }
         for (AdbBridge.Device device : snapshot.pending) {
-            next.add(device.serial + "#0");
+            next.add(keyOf(device.serial, false, false));
+        }
+        for (AdbBridge.FastbootDevice device : snapshot.fastboot) {
+            next.add(keyOf(device.serial, true, true));
         }
         return current.equals(next);
+    }
+
+    /** 下拉项的唯一键：序列号 + 通道 + 是否就绪。三者任一变化都要重建下拉。 */
+    private String keyOf(String serial, boolean fastboot, boolean ready) {
+        return serial + (fastboot ? "#fb" : (ready ? "#1" : "#0"));
     }
 
     private void onSourceSelected(DeviceSourceDropdown.Source source) {
@@ -680,10 +765,11 @@ public class DeviceFragment extends Fragment {
             return;
         }
         String serial = source.serial;
-        if (Objects.equals(serial, sourceSerial)) {
+        if (Objects.equals(serial, sourceSerial) && sourceFastboot == source.fastboot) {
             return;
         }
         sourceSerial = serial;
+        sourceFastboot = source.fastboot;
         if (sourceDropdown != null) {
             // 胶囊上的字得跟着换：它就是「现在看的是哪台」的唯一提示
             sourceDropdown.setSources(lastSources, sourceSerial);

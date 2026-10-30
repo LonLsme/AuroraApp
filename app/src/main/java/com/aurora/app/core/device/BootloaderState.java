@@ -90,6 +90,49 @@ public enum BootloaderState {
         return UNKNOWN;
     }
 
+    /**
+     * 从 {@code fastboot getvar all} 的几个变量判解锁状态。
+     *
+     * <p>设备在 <b>fastboot 模式</b>时 Android 没启动，{@code ro.boot.*} 全读不到，
+     * 只能问 bootloader 自己。三个变量的覆盖情况按厂商分布：
+     * <table border="1">
+     *   <tr><th>变量</th><th>取值</th><th>谁有</th></tr>
+     *   <tr><td>{@code unlocked}</td><td>{@code yes} / {@code no}</td>
+     *       <td>最直接。高通/联发科公版、多数国产机</td></tr>
+     *   <tr><td>{@code device-state}</td><td>{@code unlocked} / {@code locked}</td>
+     *       <td>Google 系与部分 A/B 机型</td></tr>
+     *   <tr><td>{@code secure}</td><td>{@code yes} / {@code no}</td>
+     *       <td>兜底。{@code no} 通常意味着验证已关（等于已解锁），但语义不如前两个硬</td></tr>
+     * </table>
+     *
+     * <p>顺序同理：前一个给出确定结论就不再往后看。三点都读不到返回 {@link #UNKNOWN}，
+     * 页面显示「—」—— 不猜。
+     */
+    public static BootloaderState fromFastboot(String unlocked, String deviceState, String secure) {
+        String u = normalize(unlocked);
+        if ("yes".equals(u) || "true".equals(u)) {
+            return UNLOCKED;
+        }
+        if ("no".equals(u) || "false".equals(u)) {
+            return LOCKED;
+        }
+
+        String d = normalize(deviceState);
+        if ("unlocked".equals(d)) {
+            return UNLOCKED;
+        }
+        if ("locked".equals(d)) {
+            return LOCKED;
+        }
+
+        // secure 只当最后一道：它的语义是「安全启动是否启用」，不是「解锁状态」，
+        // 只在 no 时才敢判解锁（secure=no 意味着验证被关掉了）
+        if ("no".equals(normalize(secure))) {
+            return UNLOCKED;
+        }
+        return UNKNOWN;
+    }
+
     /** {@code getprop} 输出带换行与空格，统一成小写去空白后再比。 */
     private static String normalize(String raw) {
         return raw == null ? "" : raw.trim().toLowerCase(Locale.US);

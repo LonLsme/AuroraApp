@@ -169,5 +169,50 @@ public class DeviceReaderTest {
         DeviceSnapshot snapshot = new DeviceSnapshot();
         assertEquals(0, snapshot.cores.length);
         assertNull(snapshot.title);
+        assertEquals(DeviceSnapshot.Transport.ADB, snapshot.transport);
+    }
+
+    // ───────────────── fastboot getvar all 解析 ─────────────────
+
+    @Test
+    public void parseFastbootVars_readsBootloaderPrefixedLines() {
+        Map<String, String> kv = DeviceReader.parseFastbootVars(
+                "(bootloader) product:violet\n"
+                        + "(bootloader) unlocked:yes\n");
+        assertEquals("violet", kv.get("product"));
+        assertEquals("yes", kv.get("unlocked"));
+    }
+
+    @Test
+    public void parseFastbootVars_ignoresFinishedLine() {
+        // "Finished. Total time: 0.050s" 也含冒号，不设 (…) 前缀门槛会解析出假键
+        Map<String, String> kv = DeviceReader.parseFastbootVars(
+                "(bootloader) product:violet\nFinished. Total time: 0.050s\n");
+        assertEquals(1, kv.size());
+        assertNull(kv.get("finished. total time"));
+    }
+
+    @Test
+    public void parseFastbootVars_keepsFirstValueOnDuplicateKeys() {
+        // partition-size:xxx 会重复几十次，留第一条即可，后面的覆盖没意义
+        Map<String, String> kv = DeviceReader.parseFastbootVars(
+                "(bootloader) product:violet\n"
+                        + "(bootloader) partition-size:boot: 67108864\n"
+                        + "(bootloader) partition-size:system: 3221225472\n");
+        assertEquals("violet", kv.get("product"));
+        // 键在第一个冒号处切开，值里保留剩下的部分
+        assertEquals("boot: 67108864", kv.get("partition-size"));
+    }
+
+    @Test
+    public void parseFastbootVars_handlesEmptyAndNull() {
+        assertTrue(DeviceReader.parseFastbootVars("").isEmpty());
+        assertTrue(DeviceReader.parseFastbootVars(null).isEmpty());
+    }
+
+    @Test
+    public void parseFastbootVars_normalizesKeyCase() {
+        Map<String, String> kv = DeviceReader.parseFastbootVars("(bootloader) Product:Violet\n");
+        assertEquals("Violet", kv.get("product"));
     }
 }

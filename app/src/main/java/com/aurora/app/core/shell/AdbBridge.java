@@ -82,14 +82,29 @@ public final class AdbBridge {
 
     /** 跑一条 adb 子命令（{@code args} 不含 adb 自身路径）。 */
     public static ShellManager.Result run(Context context, long timeoutMs, String... args) {
-        File bin = FlashToolchain.adb(context);
+        return runBinary(context, FlashToolchain.adb(context), false, timeoutMs, args);
+    }
+
+    /**
+     * 跑一条 fastboot 子命令。
+     *
+     * <p><b>stderr 必须合并</b>：{@code fastboot getvar} 的结果全部打在 stderr 上
+     * （{@code (bootloader) product:xxx}），只读 stdout 会拿到空串，
+     * 表现就是「识别到了设备但一个字段都没有」。
+     */
+    public static ShellManager.Result runFastboot(Context context, long timeoutMs, String... args) {
+        return runBinary(context, FlashToolchain.fastboot(context), true, timeoutMs, args);
+    }
+
+    private static ShellManager.Result runBinary(Context context, File bin, boolean mergeStderr,
+                                                 long timeoutMs, String... args) {
         if (!bin.isFile()) {
             return ShellManager.Result.unavailable();
         }
         // 直接问 RootShell 而不是读 ShellManager 的缓存状态：首帧它还停在 DETECTING，
         // 那一刻按缓存判断会把 root 用户降级成应用身份，ad 设备表就少一半。
         if (RootShell.get().isRootAvailable()) {
-            return runAsRoot(context, bin, timeoutMs, args);
+            return runAsRoot(context, bin, mergeStderr, timeoutMs, args);
         }
         return runAsApp(context, bin, timeoutMs, args);
     }
@@ -100,7 +115,8 @@ public final class AdbBridge {
      * <p>走 {@link ShellManager#exec} 而不是自己起 {@code su}：那里已经维护着一条
      * 持久会话，反复 fork {@code su} 每次都要几百毫秒。
      */
-    private static ShellManager.Result runAsRoot(Context context, File bin, long timeoutMs, String... args) {
+    private static ShellManager.Result runAsRoot(Context context, File bin, boolean mergeStderr,
+                                                 long timeoutMs, String... args) {
         StringBuilder cmd = new StringBuilder();
         cmd.append("mkdir -p ").append(rootHomeDir()).append("; ");
         // 环境变量前缀只能作用于紧随其后的那条命令，所以 mkdir 必须放在前缀外面
@@ -112,6 +128,9 @@ public final class AdbBridge {
                 .append(RootShell.escape(bin.getAbsolutePath()));
         for (String arg : args) {
             cmd.append(' ').append(RootShell.escape(arg));
+        }
+        if (mergeStderr) {
+            cmd.append(" 2>&1");
         }
         return ShellManager.get().exec(cmd.toString(), timeoutMs);
     }
@@ -220,7 +239,83 @@ public final class AdbBridge {
         }
     }
 
-    /** 一次 {@code adb devices} 的完整结果：能用的与「看得到但还用不了」的分开。 */
+    /** {@code fastboot devices} 的一行。 */
+    public static final class FastbootDevice {
+        public final String serial;
+        /** {@code fastboot}（bootloader）或 {@code fastbootd}（用户空间的那个 fastboot）。 */
+        public final String mode;
+
+        FastbootDevice(String serial, String mode) {
+            this.serial = serial;
+            this.mode = mode;
+        }
+
+        /**
+         * 是不是 {@code fastbootd}。
+         *
+         * <p>两者必须分开：{@code fastboot devices} 会把它们都列出来，第二列不同。
+         * {@code fastbootd} 是跑在 Android 用户空间的快刷服务，只能动逻辑分区，
+         * 拿不到 {@code unlocked} 这类 bootloader 变量。
+         */
+        public boolean userspace() {
+            return "fastbootd".equals(mode);
+        }
+    }
+
+    /**
+     * 解析 {@code fastboot devices} 的输出。
+     *
+     * <p>只看第二列是不是 {@code fastboot} / {@code fastbootd}：这条命令在等设备时
+     * 会打印 {@code < waiting for any device >}，没权限时会打印
+     * {@code no permissions (udev rules?)...}，两者都不是设备行。
+     */
+    static List<FastbootDevice> parseFastbootDevices(String output) {
+        List<FastbootDevice> result = new ArrayList<>();
+        if (output == null || output.isEmpty()) {
+            return result;
+        }
+        for (String raw : output.split("\n")) {
+            String line = raw.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            String[] parts = line.split("\\s+");
+            if (parts.length < 2) {
+                continue;
+            }
+            String mode = parts[1].toLowerCase(Locale.US);
+            if (!"fastboot".equals(mode) && !"fastbootd".equals(mode)) {
+                continue;
+            }
+            result.add(new FastbootDevice(parts[0], mode));
+        }
+        return result;
+    }
+
+    /** 列全部处于 fastboot / fastbootd 的设备。 */
+    public static List<FastbootDevice> fastbootDevices(Context context, long timeoutMs) {
+        ShellManager.Result r = runFastboot(context, timeoutMs, "devices");
+        if (!r.hasOutput()) {
+            return new ArrayList<>();
+        }
+        return parseFastbootDevices(r.out);
+    }
+
+    /**
+     * {@code fastboot -s <serial> getvar all}，原始文本交回去由调用方解析。
+     *
+     * <p>不用 {@link #runFastboot} 的 args 形式拼 {@code -s}：两者等价，
+     * 抽成方法只是为了让「读一台 fastboot 设备」这件事有个名字，
+     * 也让 {@code 2>&1} 这类细节只出现在一个地方。
+     */
+    public static ShellManager.Result fastbootGetvarAll(Context context, String serial, long timeoutMs) {
+        if (serial == null || serial.isEmpty()) {
+            return ShellManager.Result.unavailable();
+        }
+        return runFastboot(context, timeoutMs, "-s", serial, "getvar", "all");
+    }
+
+    /** 一次「外接设备全景」：adb 的能用/待授权两桶，外加 fastboot 那一批。 */
     public static final class Snapshot {
         /** 状态为 {@code device}，可以真正读数据。 */
         public final List<Device> online = new ArrayList<>();
@@ -232,9 +327,18 @@ public final class AdbBridge {
          * 用户看到的是「插了没反应」，而实际上那台设备已经在提示他点允许了。
          */
         public final List<Device> pending = new ArrayList<>();
+        /**
+         * 处于 fastboot / fastbootd 的设备。
+         *
+         * <p>这类设备<b>系统没启动</b>：{@code adb devices} 看不到它，
+         * 只能靠 {@code fastboot devices}；读出来的也只有 bootloader 变量
+         * （产品代号、序列号、BL 解锁状态、当前槽位、电池电压），
+         * CPU 频率与 Android 版本一概没有。
+         */
+        public final List<FastbootDevice> fastboot = new ArrayList<>();
 
         public boolean isEmpty() {
-            return online.isEmpty() && pending.isEmpty();
+            return online.isEmpty() && pending.isEmpty() && fastboot.isEmpty();
         }
     }
 
@@ -309,6 +413,11 @@ public final class AdbBridge {
             } else {
                 snapshot.pending.add(d);
             }
+        }
+        // fastboot 也只有 root 身份跑得起来（同样要读 /dev/bus/usb 节点），
+        // 无 root 时不必多起一个进程白等 15 秒。
+        if (RootShell.get().isRootAvailable()) {
+            snapshot.fastboot.addAll(fastbootDevices(context, DEFAULT_TIMEOUT_MS));
         }
         return snapshot;
     }
