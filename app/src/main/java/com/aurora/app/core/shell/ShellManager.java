@@ -158,6 +158,9 @@ public final class ShellManager {
     /** 防止同一时刻排进多次检测（页面 onResume 与权限回调常常同时触发）。 */
     private final AtomicBoolean detecting = new AtomicBoolean(false);
 
+    /** 检测进行中被要求重测时置位：这一轮的结果可能是授权前的旧值，跑完立刻再来一轮。 */
+    private final AtomicBoolean redetect = new AtomicBoolean(false);
+
     private volatile State state = new State(Mode.DETECTING, null, false);
 
     private ShellManager() {
@@ -181,12 +184,15 @@ public final class ShellManager {
     /**
      * 后台检测一次通道，结果回主线程。
      *
-     * <p>已在检测中时<b>直接返回</b>（不发回调）：调用方都是「页面变可见了，重测一下」，
-     * 排队重测没有意义，反而会让刚拿到手的结果被另一份更旧的结果覆盖。
+     * <p>已在检测中时<b>不并发再跑</b>，只记一个「待重测」标记：并发重测没有意义，反而会让
+     * 刚拿到手的结果被另一份更旧的结果覆盖。但标记不能丢 —— 典型场景是「用户点了授权，
+     * 回调到达时上一轮检测还没跑完」，那一轮读的是授权前的状态，丢掉标记就等于把授权结果扔了。
+     * 所以当前这轮跑完后，若标记还在就立刻补一轮。
      */
     public void detectAsync(Context context, Callback callback) {
         final Context app = context.getApplicationContext();
         if (!detecting.compareAndSet(false, true)) {
+            redetect.set(true);
             return;
         }
         worker.execute(() -> {
@@ -201,9 +207,13 @@ public final class ShellManager {
             }
             final State finalResult = result;
             state = finalResult;
-            Log.i(TAG, "通道: " + finalResult.mode + (finalResult.adbSerial == null ? "" : " / " + finalResult.adbSerial));
+            Log.i(TAG, "通道: " + finalResult.mode
+                    + (finalResult.adbSerial == null ? "" : " / " + finalResult.adbSerial));
             if (callback != null) {
                 mainHandler.post(() -> callback.onState(finalResult));
+            }
+            if (redetect.compareAndSet(true, false)) {
+                detectAsync(app, callback);
             }
         });
     }
