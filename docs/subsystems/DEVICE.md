@@ -152,6 +152,48 @@ crw-rw---- 1 root usb 189, 0 /dev/bus/usb/001/001
 是哪来的，而两者的权限要求完全不同。判据只看序列号里有没有冒号 —— USB 报设备自身序列号
 （`45850c2f`），网络连接一定带 `ip:端口`（`192.168.1.23:37105`）。
 
+### 3.1.2 fastboot 模式的外接设备
+
+对方手机停在 bootloader 里时，**Android 没启动**：`adb devices` 看不到它，
+只能靠 `fastboot devices`。这条链路能读的东西和 adb 那条<b>完全不同</b>：
+
+| 字段 | adb 外接 | fastboot 外接 |
+| --- | --- | --- |
+| 产品代号 / 序列号 | ✅ | ✅ `product` / `variant` |
+| **BL 解锁状态** | ✅ | ✅ `unlocked` / `device-state` / `secure` |
+| 当前槽位 | ✅ | ✅ `current-slot` |
+| Android 版本 / 指纹 / 安全补丁 / 基带 / SELinux / 安卓 ID | ✅ | ❌ 物理上没有 |
+| CPU 各核频率 / 电池循环 | ✅ | ❌ 物理上没有 |
+
+> [!warning] stderr 必须合并
+> `fastboot getvar` 的结果**全部打在 stderr**（`(bootloader) product:xxx`）。
+> 只读 stdout 会拿到空串，表现是「识别到了设备但一个字段都没有」。
+> `AdbBridge.runFastboot()` 因此在 root 路径的命令末尾追加 `2>&1`。
+
+**只发一条 `getvar all`**：所有变量一次吐回来。逐条 `getvar` 要几十次 USB 往返
+（每次 50~150ms），光读个解锁状态就得等好几秒。
+
+**解析只看 `(xxx) key:value` 行**：`Finished. Total time: 0.050s` 也含冒号，
+不设这道前缀门槛会解析出一条 `finished. total time` 的假键。
+
+**BL 三级回退**（`BootloaderState.fromFastboot`）：`unlocked`（yes/no）
+→ `device-state`（unlocked/locked）→ `secure`（只认 no）。三个都没有就是 `UNKNOWN`。
+
+**UI 上必须说清「系统没启动」**：`android` 字段写死成
+`Fastboot 模式 · 系统未启动` —— 否则整屏「—」会被当成读取失败。
+
+**切换数据源要清 CPU 圆环**：`ensureCpuCoreRings()` 只在核数变化时重建，
+核数「变成 0」它看不见，旧圆环（通常是本机的 8 核）会留在屏幕上假装是对方的数据。
+
+> [!warning] 进 fastboot 不等于掉线
+> 一台手机从正常系统重启进 fastboot 时，**序列号不变、`adb devices` 里消失、
+> `fastboot devices` 里出现**。掉线判断如果只查 adb 那一桶，会把「正在进 fastboot」
+> 误判成掉线，页面直接弹回本机 —— 而用户刚点的就是这个动作。
+> `containsCurrent(snapshot, serial, sourceFastboot)` 因此按通道分开比。
+
+**前提与 adb 一样**：`fastboot` 也要读 `/dev/bus/usb`，所以同样**只有 root 身份跑得起来**；
+无 root 时连 `fastboot devices` 都起不来，这一桶直接为空。
+
 ### 3.2 「添加设备…」怎么用
 
 点下拉末尾那一行，输入 `ip:端口`，走 `adb connect`。对话框里写清了三件事：
@@ -191,6 +233,9 @@ crw-rw---- 1 root usb 189, 0 /dev/bus/usb/001/001
 | 插了 USB 外接却不出现 | 无 root 时应用身份读不到 `/dev/bus/usb`，属平台边界 | `AdbBridge.runAsApp()` |
 | 插了线、下拉里那条写着「未授权」 | 目标机屏幕上等着点「允许 USB 调试」（RSA key 交换） | `DeviceFragment.showPendingDeviceDialog()` |
 | 对方点了允许，那一项还是「未授权」 | 之前只比序列号，状态变化被判成「没变化」 | `sameSources()` 比的是「序列号 + 是否就绪」 |
+| fastboot 设备识别到了但字段全「—」 | 只读 stdout，而 `getvar` 的结果全在 stderr | `AdbBridge.runFastboot()` 的 `2>&1` |
+| 切到 fastboot 设备后 CPU 圆环还是本机的 8 个 | 核数变 0 时 `ensureCpuCoreRings` 不重建 | `DeviceFragment.clearCpuCoreRings()` |
+| 手机一进 fastboot 页面就弹回本机 | 掉线判断只查 adb 那一桶 | `containsCurrent()` 按通道分流 |
 | 下拉正展开时突然被关掉 | `setSources()` 一律 `dismiss()` | `refreshSources()` 里先比列表 |
 | 外接设备读不到任何值 | 内置 adb 未解压（首次要读 9.9MB assets） | `AdbBridge.externalSerials()` 里 `ensureReady` |
 | BL 状态恒为「—」 | 三个属性都读不到（个别 ROM 收紧了 `bootloader_prop`，属少数）；先看 `adb logcat -s DeviceReader` 里 `BL 应用身份直读` 那行 | `BootloaderState.of()` 逐级回退，判不出时回退 root 再读 |
