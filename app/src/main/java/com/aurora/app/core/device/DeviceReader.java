@@ -122,7 +122,8 @@ public final class DeviceReader {
                 systemProperty("ro.boot.slot", "")));
 
         // BL 三个属性不需要 root：它们在 AOSP 里标成 bootloader_prop，应用身份
-        // 就有 get 权限（本机实测 uid 10490 直读得到 green / 1 / locked）。
+        // 就有 get 权限（真机 Redmi 23117RK66C / A16 / 无 root 上以应用身份实测直读得到
+        // green / 1 / locked）。
         // 所以放走私路，走属性服务读 —— 无 root 设备上这是 BL 唯一能出值的路径，
         // 混进下面那条 root shell 里的话，无 root 会整条返回空，格子只能显示「—」。
         s.bootloader = BootloaderState.of(
