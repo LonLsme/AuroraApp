@@ -43,8 +43,8 @@ public final class DeviceReader {
     /** 外接设备一次读取的上限：刚连上时首次 shell 会慢一拍。 */
     private static final long REMOTE_TIMEOUT_MS = 8000L;
 
-    /** 本机拿特权字段的一次调用：两条命令合成一次，省掉一次 su/Shizuku 往返。 */
-    private static final long LOCAL_SHELL_TIMEOUT_MS = 2500L;
+    /** 本机拿特权字段的一次调用：五条命令合成一次，省掉四次 su/Shizuku 往返。 */
+    private static final long LOCAL_SHELL_TIMEOUT_MS = 3000L;
 
     /**
      * {@code BATTERY_PROPERTY_CYCLE_COUNT}。
@@ -117,18 +117,28 @@ public final class DeviceReader {
         s.bootSlot = bootSlotLabel(systemProperty("ro.boot.slot_suffix",
                 systemProperty("ro.boot.slot", "")));
 
-        // getenforce 与 android_id 一次拿回：Android 12 起三方应用读不到真实 SELinux 状态，
-        // android_id 也可能被 ROM 改写，两个都得靠 shell 身份才可信。
+        // 一次 shell 拿回 5 个字段：getenforce、android_id 与 BL 的三个属性。
+        // Android 12 起三方应用读不到真实 SELinux 状态，android_id 也可能被 ROM 改写，
+        // BL 属性则是 application 域拿不全 —— 三个都得靠 shell 身份才可信。
+        // 合并成一次调用，省掉 4 次 su/Shizuku 往返（单次约 60~150ms）。
         String dump = ShellManager.get().execOrEmpty(context,
-                "getenforce; echo '##AURORA##'; settings get secure android_id",
+                "getenforce; echo '##AURORA##'; settings get secure android_id; "
+                        + "echo '##AURORA##'; getprop ro.boot.verifiedbootstate; "
+                        + "echo '##AURORA##'; getprop ro.boot.flash.locked; "
+                        + "echo '##AURORA##'; getprop ro.boot.vbmeta.device_state",
                 LOCAL_SHELL_TIMEOUT_MS);
         if (!dump.isEmpty()) {
-            String[] parts = dump.split("##AURORA##");
+            // 必须传 -1：属性不存在时 getprop 输出空行，尾部空段会被默认的 split 丢掉，
+            // 那样 parts.length 小于 5，按固定下标取值就会错位
+            String[] parts = dump.split("##AURORA##", -1);
             if (parts.length > 0) {
                 s.selinux = emptyToNull(parts[0]);
             }
             if (parts.length > 1) {
                 s.androidId = emptyToNull(parts[1]);
+            }
+            if (parts.length > 4) {
+                s.bootloader = BootloaderState.of(parts[2], parts[3], parts[4]);
             }
         }
         if (s.androidId == null) {
@@ -197,6 +207,9 @@ public final class DeviceReader {
                 + "echo \"AID=$(settings get secure android_id)\"; "
                 + "echo \"FP=$(getprop ro.build.fingerprint)\"; "
                 + "echo \"CYCLE=$(cat /sys/class/power_supply/battery/cycle_count 2>/dev/null)\"; "
+                + "echo \"VB=$(getprop ro.boot.verifiedbootstate)\"; "
+                + "echo \"FL=$(getprop ro.boot.flash.locked)\"; "
+                + "echo \"VBM=$(getprop ro.boot.vbmeta.device_state)\"; "
                 + CPU_LOOP;
 
         ShellManager.Result result = AdbBridge.shell(context, serial, cmd, REMOTE_TIMEOUT_MS);
@@ -220,8 +233,13 @@ public final class DeviceReader {
         return s;
     }
 
-    /** 把 {@code KEY=VALUE} 行铺进快照；缺的字段留 {@code null}。 */
-    private static void applyFields(DeviceSnapshot s, Map<String, String> kv) {
+    /**
+     * 把 {@code KEY=VALUE} 行铺进快照；缺的字段留 {@code null}。
+     *
+     * <p>包内可见是为了单测能直接喂一段假输出进来 —— 外接设备那条链路在真机上
+     * 才有素材，但「解析有没有把 BL 三个属性接对」不需要真机就能验。
+     */
+    static void applyFields(DeviceSnapshot s, Map<String, String> kv) {
         String manufacturer = kvGet(kv, "MAN");
         String model = kvGet(kv, "MODEL");
         s.title = ((manufacturer == null ? "" : manufacturer) + " " + (model == null ? "" : model)).trim();
@@ -236,6 +254,7 @@ public final class DeviceReader {
         s.kernel = kvGet(kv, "KERNEL");
         s.selinux = kvGet(kv, "SE");
         s.bootSlot = bootSlotLabel(kvGet(kv, "SLOT"));
+        s.bootloader = BootloaderState.of(kvGet(kv, "VB"), kvGet(kv, "FL"), kvGet(kv, "VBM"));
         s.buildDisplay = kvGet(kv, "DISPLAY");
         s.securityPatch = kvGet(kv, "PATCH");
         s.radio = kvGet(kv, "RADIO");

@@ -46,11 +46,18 @@ public final class DeviceSourceDropdown {
         public final String detail;
         /** 外接设备的序列号；本机为 {@code null}。 */
         public final String serial;
+        /** {@code true} 表示这不是数据源，而是一个动作（「添加设备…」），点它弹输入框。 */
+        public final boolean action;
 
         public Source(String label, String detail, String serial) {
+            this(label, detail, serial, false);
+        }
+
+        public Source(String label, String detail, String serial, boolean action) {
             this.label = label;
             this.detail = detail;
             this.serial = serial;
+            this.action = action;
         }
 
         /** 本机数据源。 */
@@ -60,6 +67,18 @@ public final class DeviceSourceDropdown {
 
         static Source external(String serial) {
             return new Source(serial, "已连接 · ADB", serial);
+        }
+
+        /**
+         * 列表末尾的「添加设备…」。
+         *
+         * <p>存在的理由：USB 插着的那台手机只有 root 身份的内置 adb 才枚举得到
+         * （应用身份进不去 {@code /dev/bus/usb}），没有 root 时「另一台手机」
+         * 只能靠 {@code adb connect ip:端口} 拉进来，否则下拉里永远是空的、
+         * 用户还以为功能没做。
+         */
+        public static Source addDevice() {
+            return new Source("添加设备…", "输入 ip:端口，连接无线调试", null, true);
         }
     }
 
@@ -134,7 +153,9 @@ public final class DeviceSourceDropdown {
             View row = activity.getLayoutInflater().inflate(R.layout.item_flash_device_status, list, false);
             TextView name = row.findViewById(R.id.tvSlotName);
             TextView detail = row.findViewById(R.id.tvSlotStatus);
-            boolean selected = source.serial == null ? selectedSerial == null : source.serial.equals(selectedSerial);
+            // 动作项不参与「当前选中」的比较 —— 它没有 serial，比出 null == null 会显示成「当前」
+            boolean selected = !source.action
+                    && (source.serial == null ? selectedSerial == null : source.serial.equals(selectedSerial));
             if (name != null) {
                 name.setText(source.label);
             }

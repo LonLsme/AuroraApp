@@ -5,7 +5,7 @@
   结构只有两块 + 一块条件块：
     ① cardDeviceOverview —— 设备概览卡片（本机与外接设备共用这一张，靠标题右侧的下拉换数据源）
     ② cardCpu            —— CPU 状态卡片
-    ③ cardAuthGuide      —— Root / Shizuku / 无线调试都没有时的授权引导，平时 GONE
+    ③ cardAuthGuide      —— Root / Shizuku 都没有时的授权引导，平时 GONE
 
   为什么外接设备不另开一张卡片：两者字段完全一样，摆两套视图会让同一屏出现两份
   「设备概览」，还要各自刷新、各自处理读不到的情况。共用一套、只换数据源，
@@ -153,7 +153,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16dp"
                             android:columnCount="2"
-                            android:rowCount="2">
+                            android:rowCount="3">
 
                             <LinearLayout
                                 android:layout_width="0dp"
@@ -268,7 +268,40 @@
                                     android:textColor="@color/fluent_on_surface"
                                     android:textSize="14sp"
                                     android:textStyle="bold"
-                                    tools:text="Slot B" />
+                                    tools:text="A 槽位" />
+                            </LinearLayout>
+
+                            <!--
+                              BL 状态：跨两列单独占一行。
+                              它和「当前 Slot」是一组（都在讲分区与启动），放一行里并排会把
+                              「已锁定 · 自签名」这种较长的值挤成两行，所以给满宽。
+                            -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_columnSpan="2"
+                                android:layout_columnWeight="1"
+                                android:layout_gravity="fill_horizontal"
+                                android:layout_marginTop="12dp"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="BL 状态"
+                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textSize="11sp" />
+
+                                <TextView
+                                    android:id="@+id/tvBootloaderState"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:maxLines="1"
+                                    android:ellipsize="end"
+                                    android:textColor="@color/fluent_on_surface"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold"
+                                    tools:text="已解锁" />
                             </LinearLayout>
                         </GridLayout>
 
@@ -542,7 +575,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- ═══════ ③ 授权引导（Root / Shizuku / 无线 ADB 全都没有时才出现） ═══════ -->
+            <!-- ═══════ ③ 授权引导（Root / Shizuku 都没有时才出现） ═══════ -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardAuthGuide"
                 android:layout_width="match_parent"
@@ -579,57 +612,30 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
-                        android:text="需要Shizuku授权或者开启无线调试，才能读取设备信息"
+                        android:text="需要 Shizuku 授权才能读取设备信息"
                         android:textColor="@color/fluent_on_surface"
                         android:textSize="15sp"
                         android:textStyle="bold" />
 
-                    <!-- 两个按钮横向并排，不要上下叠 -->
-                    <LinearLayout
+                    <!--
+                      只有一颗按钮。以前这里是「去激活Shizuku / 打开无线调试设置」两颗并排，
+                      无线调试那条通道已经整体拿掉了（端口每次都变、首次必须手动抄配对码，
+                      而它能给的身份和 Shizuku 完全一样），留着只是多一个更麻烦的选项。
+                    -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnActivateShizuku"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:baselineAligned="false"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnActivateShizuku"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:maxLines="2"
-                            android:minHeight="44dp"
-                            android:text="去激活Shizuku"
-                            android:textAllCaps="false"
-                            android:textColor="?attr/auroraOnAccent"
-                            android:textSize="12sp"
-                            app:backgroundTint="?attr/auroraAccent"
-                            app:cornerRadius="14dp" />
-
-                        <Space
-                            android:layout_width="10dp"
-                            android:layout_height="1dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnWirelessDebug"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:maxLines="2"
-                            android:minHeight="44dp"
-                            android:text="打开无线调试设置"
-                            android:textAllCaps="false"
-                            android:textColor="@color/ios_text_primary"
-                            android:textSize="12sp"
-                            app:backgroundTint="?attr/auroraBackgroundElevated"
-                            app:cornerRadius="14dp"
-                            app:strokeColor="@color/ios_separator"
-                            app:strokeWidth="1dp" />
-                    </LinearLayout>
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minHeight="46dp"
+                        android:text="去授权 Shizuku"
+                        android:textAllCaps="false"
+                        android:textColor="?attr/auroraOnAccent"
+                        android:textSize="13sp"
+                        app:backgroundTint="?attr/auroraAccent"
+                        app:cornerRadius="14dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

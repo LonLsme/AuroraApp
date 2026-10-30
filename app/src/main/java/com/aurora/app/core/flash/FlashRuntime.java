@@ -44,8 +44,14 @@ public final class FlashRuntime {
 
     private static final String TAG = "FlashRuntime";
 
-    /** adb / fastboot 的共享 HOME 与 TMPDIR（shell 与 root 都可写）。 */
-    private static final String RUNTIME_ROOT = "/data/local/tmp/aurora_flash";
+    /**
+     * adb / fastboot 的共享 HOME 与 TMPDIR（shell 与 root 都可写）。
+     *
+     * <p>对外可见：设备页的 {@code AdbBridge} 要以 root 身份跑 adb，必须和刷机页用
+     * <b>同一个 HOME</b>，否则两边各起一个 adb server、各自维护设备表，会出现
+     * 「刷机页连上了、设备页看不到」这种互相矛盾的现象。
+     */
+    public static final String RUNTIME_ROOT = "/data/local/tmp/aurora_flash";
 
     private static final FlashRuntime INSTANCE = new FlashRuntime();
 

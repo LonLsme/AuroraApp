@@ -1,10 +1,11 @@
 package com.aurora.app.core.shell;
 
 import android.content.Context;
-import android.provider.Settings;
 import android.util.Log;
 
+import com.aurora.app.core.flash.FlashRuntime;
 import com.aurora.app.core.flash.FlashToolchain;
+import com.aurora.app.core.root.RootShell;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -21,75 +22,61 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * 无线调试（adb over Wi-Fi）通道，用的是项目里已经内置的那份 aarch64 {@code adb}。
+ * 外接设备通道：用项目里内置的那份 aarch64 {@code adb} 去看「另一台手机」。
  *
- * <h3>为什么手机要自己连自己</h3>
- * 没有 root 时，三方应用想拿到 shell 身份只有两条路：Shizuku，或者系统的
- * 「无线调试」。后者在系统里就是一个跑 adbd 的 TCP 端口 —— 本机同样能当客户端连上去，
- * 连上以后 {@code adb shell} 拿到的就是 shell（uid 2000）身份。Shizuku 的免 root 模式
- * 走的也是这套机制，区别只是它把连接藏在了自己的服务里。
+ * <h3>它不再是本机的权限通道</h3>
+ * 以前无线调试（连自己）也算一条能读本机信息的通道，现在不是了 —— 本机信息只走
+ * Root 或 Shizuku（见 {@link ShellManager}）。本类只服务一件事：
+ * <b>把外接设备的列表读出来、把命令发到外接设备上</b>。
  *
- * <h3>连接要过两道门</h3>
- * <ol>
- *   <li><b>配对</b>：Android 11 起无线调试用 TLS，首次连接必须先用 6 位配对码交换证书
- *       （{@code adb pair}）。配对用的端口与连接用的端口<b>不是同一个</b>，
- *       各自通过 mDNS 广播（{@code _adb-tls-pairing._tcp} / {@code _adb-tls-connect._tcp}）。</li>
- *   <li><b>连接</b>：配对之后 {@code adb connect <ip>:<port>}。这个端口每次开关无线调试、
- *       甚至每次重启都会变，所以只能靠 mDNS 现查，不能写死。</li>
- * </ol>
- * adbkey 存在应用私有的 {@code files/adb_home/.android} 下，配对一次就长期有效。
+ * <h3>为什么身份不同能看到的东西不同</h3>
+ * 内置 adb 靠扫 {@code /dev/bus/usb/*} 发现 USB 上插着的手机，而这些节点是
+ * {@code root:usb 0660}。普通应用（uid ≥ 10000）连目录都进不去，所以
+ * <b>以应用身份跑的 adb 永远列不到 USB 外接设备</b> —— 这不是代码写错，是沙箱边界。
+ * <table border="1">
+ *   <tr><th>身份</th><th>USB 外接</th><th>无线（{@code adb connect}）</th></tr>
+ *   <tr><td>root</td><td>能枚举</td><td>能</td></tr>
+ *   <tr><td>应用（无通道 / Shizuku）</td><td><b>不能</b></td><td>能</td></tr>
+ * </table>
+ * 所以有 root 时一切走 root；没有 root 时仍允许 {@code adb connect}，
+ * 让用户把「开着无线调试的另一台手机」接进来。
  *
- * <h3>只认「连到自己」</h3>
- * 无线调试既可能连本机，也可能连同一局域网里的另一台手机。设备页的授权判断只接受
- * <b>对端地址等于本机某个网卡地址</b>（含回环）的连接 —— 连着别人的手机并不代表
- * 我们有权限读本机信息，把它算成「已授权」是错的。外接设备是另一回事，见
- * {@link #externalSerials}。
+ * <h3>adb server 端口</h3>
+ * root 身份与刷机页<b>共用</b>一个 server（同一个 HOME、同一个默认端口），
+ * 这样刷机页刚连上的设备在设备页立刻能看到，不会出现两套互相看不见的设备表。
+ * 应用身份则改用 5038：它和 root 的 5037 是两个进程，同端口会互相抢 bind 而启动失败。
  */
 public final class AdbBridge {
 
     private static final String TAG = "AdbBridge";
 
-    /** 无线调试的连接服务名（mDNS）。 */
-    private static final String SERVICE_CONNECT = "_adb-tls-connect._tcp";
-    /** 无线调试的配对服务名（mDNS）。 */
-    private static final String SERVICE_PAIRING = "_adb-tls-pairing._tcp";
+    /** 一次 adb 调用的默认上限：首次起 server + 扫 USB 会慢一拍。 */
+    private static final long DEFAULT_TIMEOUT_MS = 15_000L;
 
-    /** 一次 adb 调用的默认上限：起 server 那次可能慢，给足。 */
-    private static final long DEFAULT_TIMEOUT_MS = 12_000L;
-
-    /** Settings.Global 里无线调试的开关名（Android 11+）。 */
-    private static final String SETTING_WIFI_ADB = "adb_wifi_enabled";
+    /** 应用身份专用的 server 端口，避免与 root/刷机页的 5037 抢 bind。 */
+    private static final String APP_SERVER_PORT = "5038";
 
     private AdbBridge() {
     }
 
     // ───────────────── 环境 ─────────────────
 
-    /** 内置 adb 的 HOME/TMPDIR：应用私有目录，非 root 下唯一能写 adbkey 的地方。 */
-    private static File homeDir(Context context) {
+    /** 应用身份的 HOME：非 root 下唯一能写 adbkey 的地方。 */
+    private static File appHomeDir(Context context) {
         File dir = new File(context.getFilesDir(), "adb_home");
         //noinspection ResultOfMethodCallIgnored
         dir.mkdirs();
         return dir;
     }
 
+    /** root 身份的 HOME：与刷机页共用，adbkey 只需配对/授权一次。 */
+    private static String rootHomeDir() {
+        return FlashRuntime.RUNTIME_ROOT + "/home";
+    }
+
     /** 工具链是否已解压（未解压时任何 adb 调用都无从谈起）。 */
     public static boolean isReady(Context context) {
         return FlashToolchain.isReady(context);
-    }
-
-    /**
-     * 系统的「无线调试」开关是否打开。
-     *
-     * <p>这个 key 属于 {@code Settings.Global}，个别 ROM 会把读取拦掉（抛异常）；
-     * 读不到时返回 false —— 与其瞎猜，不如让调用方当成「没开」。
-     */
-    public static boolean wirelessSettingsEnabled(Context context) {
-        try {
-            return Settings.Global.getInt(context.getContentResolver(), SETTING_WIFI_ADB, 0) == 1;
-        } catch (Throwable t) {
-            return false;
-        }
     }
 
     // ───────────────── 执行 ─────────────────
@@ -100,6 +87,36 @@ public final class AdbBridge {
         if (!bin.isFile()) {
             return ShellManager.Result.unavailable();
         }
+        if (ShellManager.get().state().mode == ShellManager.Mode.ROOT) {
+            return runAsRoot(context, bin, timeoutMs, args);
+        }
+        return runAsApp(context, bin, timeoutMs, args);
+    }
+
+    /**
+     * 以 root 身份跑：{@code HOME} 指向刷机页那个目录，端口用默认值。
+     *
+     * <p>走 {@link ShellManager#exec} 而不是自己起 {@code su}：那里已经维护着一条
+     * 持久会话，反复 fork {@code su} 每次都要几百毫秒。
+     */
+    private static ShellManager.Result runAsRoot(Context context, File bin, long timeoutMs, String... args) {
+        StringBuilder cmd = new StringBuilder();
+        cmd.append("mkdir -p ").append(rootHomeDir()).append("; ");
+        // 环境变量前缀只能作用于紧随其后的那条命令，所以 mkdir 必须放在前缀外面
+        cmd.append("HOME=").append(rootHomeDir())
+                .append(" TMPDIR=").append(rootHomeDir())
+                .append(" LD_LIBRARY_PATH=")
+                .append(RootShell.escape(FlashToolchain.binDir(context).getAbsolutePath()))
+                .append(' ')
+                .append(RootShell.escape(bin.getAbsolutePath()));
+        for (String arg : args) {
+            cmd.append(' ').append(RootShell.escape(arg));
+        }
+        return ShellManager.get().exec(context, cmd.toString(), timeoutMs);
+    }
+
+    /** 以应用身份跑：能 {@code connect} 网络设备，但枚举不到 USB。 */
+    private static ShellManager.Result runAsApp(Context context, File bin, long timeoutMs, String... args) {
         List<String> command = new ArrayList<>(args.length + 1);
         command.add(bin.getAbsolutePath());
         Collections.addAll(command, args);
@@ -107,11 +124,13 @@ public final class AdbBridge {
         Process process = null;
         try {
             ProcessBuilder builder = new ProcessBuilder(command);
-            File home = homeDir(context);
+            File home = appHomeDir(context);
             builder.directory(home);
-            // adb 会在 HOME 下建 .android 存 adbkey；TMPDIR 同理。非 root 只能落在应用私有目录。
+            // adb 在 HOME 下建 .android 存 adbkey；非 root 只能落在应用私有目录。
+            // 端口与 root 的 5037 分开，否则两个进程抢同一个 bind 会双双起不来。
             builder.environment().put("HOME", home.getAbsolutePath());
             builder.environment().put("TMPDIR", home.getAbsolutePath());
+            builder.environment().put("ANDROID_ADB_SERVER_PORT", APP_SERVER_PORT);
             builder.environment().put("LD_LIBRARY_PATH",
                     FlashToolchain.binDir(context).getAbsolutePath());
             // adb 的 daemon 启动信息混在 stdout 里，合并流最省事
@@ -229,6 +248,10 @@ public final class AdbBridge {
      *
      * <p>工具链没解压时会先解压：下拉里能不能列出外接设备，取决于内置 adb 在不在。
      * 这一步读 9.9MB assets，<b>只能在后台线程调用</b>（设备页把它放在读取线程上）。
+     *
+     * <p>无 root 时这里只会出现「用 {@link #connect} 主动连过的网络设备」。
+     * USB 插着的那台看不到 —— 应用身份读不到 {@code /dev/bus/usb}，
+     * 原因见类注释里的表。
      */
     public static List<String> externalSerials(Context context) {
         List<String> serials = new ArrayList<>();
@@ -245,104 +268,18 @@ public final class AdbBridge {
     }
 
     /**
-     * 找到「连到本机自己」的无线调试地址；没有就返回 {@code null}。
+     * 通过 TCP 连接一台开着「无线调试」的手机（{@code ip:port}）。
      *
-     * <p>顺序：先看 {@code adb devices} 里是不是已经连着（上次配对留下的），
-     * 没有再靠 mDNS 发现端口并 {@code adb connect}。工具链没解压时会先解压 ——
-     * 这一步要读 9.9MB assets，必须在后台线程调用。
+     * <p>这是无 root 时唯一能把另一台手机拉进列表的办法：走网络，不碰 USB 节点。
+     * 端口由对方手机的无线调试页给出（每台每次都不一样，没有可写死的值）。
+     * 首次连接需要先配对，配对在对方手机上做，配对完成后这边才能 connect。
      */
-    public static String findSelfWirelessSerial(Context context) {
-        if (!wirelessSettingsEnabled(context)) {
-            return null;
-        }
-        if (!isReady(context)) {
-            Log.i(TAG, "工具链未就绪，先解压（无线调试需要内置 adb）");
-            if (!FlashToolchain.ensureReady(context)) {
-                return null;
-            }
-        }
-
-        for (Device d : devices(context, 5000L)) {
-            if (d.online() && isSelfAddress(d.serial)) {
-                return d.serial;
-            }
-        }
-
-        for (String address : mdnsAddresses(context, SERVICE_CONNECT)) {
-            if (!isSelfAddress(address)) {
-                continue;
-            }
-            run(context, 8000L, "connect", address);
-            for (Device d : devices(context, 5000L)) {
-                if (address.equals(d.serial) && d.online()) {
-                    return d.serial;
-                }
-            }
-        }
-        return null;
-    }
-
-    /** mDNS 上广播出来的配对端口（{@code ip:port}）；没有返回 {@code null}。 */
-    public static String findPairingAddress(Context context) {
-        List<String> addresses = mdnsAddresses(context, SERVICE_PAIRING);
-        for (String address : addresses) {
-            if (isSelfAddress(address)) {
-                return address;
-            }
-        }
-        return addresses.isEmpty() ? null : addresses.get(0);
-    }
-
-    /** 用 6 位配对码完成配对。 */
-    public static boolean pair(Context context, String address, String code) {
-        if (address == null || code == null) {
-            return false;
-        }
-        ShellManager.Result r = run(context, 15_000L, "pair", address, code.trim());
-        // 成功时 adb 输出 "Successfully paired to <addr>"
-        return r.hasOutput() && r.out.toLowerCase(Locale.US).contains("successfully paired");
-    }
-
-    /** 主动 connect（配对完成后调用）。 */
     public static boolean connect(Context context, String address) {
-        if (address == null || address.isEmpty()) {
+        if (address == null || address.trim().isEmpty()) {
             return false;
         }
-        ShellManager.Result r = run(context, 8000L, "connect", address);
+        ShellManager.Result r = run(context, 10_000L, "connect", address.trim());
         return r.hasOutput() && r.out.toLowerCase(Locale.US).contains("connected to");
-    }
-
-    /**
-     * 解析 {@code adb mdns services}，取出指定服务对应的 {@code ip:port}。
-     *
-     * <p>输出形如（列之间是制表符）：
-     * <pre>
-     * adb-R5CT30XXXX-YYYYYY  _adb-tls-connect._tcp  192.168.1.7:39301
-     * </pre>
-     * 不同版本列数会变（有时前面还多一列实例名），所以按「含服务名的那一行的最后一个
-     * 带冒号的字段」取地址，不做位置假设。
-     */
-    public static List<String> mdnsAddresses(Context context, String service) {
-        Set<String> addresses = new LinkedHashSet<>();
-        ShellManager.Result r = run(context, 6000L, "mdns", "services");
-        if (!r.hasOutput()) {
-            return new ArrayList<>(addresses);
-        }
-        for (String raw : r.out.split("\n")) {
-            String line = raw.trim();
-            if (line.isEmpty() || !line.contains(service)) {
-                continue;
-            }
-            String[] parts = line.split("\\s+");
-            for (int i = parts.length - 1; i >= 0; i--) {
-                String candidate = parts[i].trim();
-                if (candidate.contains(":") && !candidate.startsWith("_")) {
-                    addresses.add(candidate);
-                    break;
-                }
-            }
-        }
-        return new ArrayList<>(addresses);
     }
 
     // ───────────────── 地址判定 ─────────────────

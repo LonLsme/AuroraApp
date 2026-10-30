@@ -29,6 +29,8 @@ public final class DeviceSnapshot {
     public String selinux;
     /** 如 {@code A 槽位} / {@code 未启用 A/B 分区}。 */
     public String bootSlot;
+    /** 引导加载器解锁状态；三个属性都读不到时是 {@link BootloaderState#UNKNOWN}。 */
+    public BootloaderState bootloader = BootloaderState.UNKNOWN;
     /** {@code ro.build.display.id}。 */
     public String buildDisplay;
     /** 安全补丁日期。 */

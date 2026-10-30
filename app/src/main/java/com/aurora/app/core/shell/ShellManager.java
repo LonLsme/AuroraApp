@@ -28,22 +28,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 收成一块授权引导。这条产品规则落在 {@code DeviceFragment.applyGate()}，
  * 本类只负责<b>老实回答「哪条通道能用」</b>。
  *
- * <h3>优先级：Root → Shizuku → 无线 ADB</h3>
- * 顺序不是随手排的，三条通道的能力与代价都是递减的：
+ * <h3>优先级：Root → Shizuku</h3>
+ * 只有两条通道，顺序不是随手排的：
  * <table border="1">
  *   <tr><th>通道</th><th>身份</th><th>代价</th></tr>
  *   <tr><td>{@link Mode#ROOT}</td><td>uid 0</td><td>用户已经装好 root，零额外操作</td></tr>
- *   <tr><td>{@link Mode#SHIZUKU}</td><td>2000 (shell) / root 授权</td><td>需要装 Shizuku 并授权一次</td></tr>
- *   <tr><td>{@link Mode#WIRELESS_ADB}</td><td>2000 (shell)</td><td>要连无线调试，端口每次重启都变</td></tr>
+ *   <tr><td>{@link Mode#SHIZUKU}</td><td>2000 (shell)</td><td>需要装 Shizuku 并在里面勾选本应用</td></tr>
  * </table>
  * 有 root 时<b>绝不</b>提示 Shizuku 授权 —— 那是在让用户为已经拥有的能力再装一个 App。
  * 这条由 {@link #detectAsync} 的短路顺序保证：一旦 {@code root} 命中就直接返回，
- * 后面两条连探测都不做（探测 Shizuku 要跨进程、探测无线 ADB 要起 adb，都省掉）。
+ * 后面那条连探测都不做（探测 Shizuku 要跨进程）。
+ *
+ * <h3>「无线调试」已经拿掉了</h3>
+ * 它曾经是第三条通道（让内置 adb 连自己的无线调试端口）。删掉的原因：端口每次开关
+ * 都会变、首次必须 TLS 配对、配对码只能手输，三步里有两步必须用户手动抄一串数字；
+ * 而 Shizuku 只要在它自己的界面里勾一下。功能上两者能给的身份完全一样（都是 uid 2000），
+ * 所以留着只是把一个更麻烦的选项摆在用户面前。adb 本身没删 —— 它还在给设备页读
+ * <b>外接设备</b>用，见 {@link AdbBridge}。
  *
  * <h3>线程</h3>
  * 检测与执行<b>全部在后台单线程</b>串行跑：{@code su} 首次调用要等授权弹窗（实测
- * 可达 1 秒以上），Shizuku 要跨进程，无线 ADB 要起进程 —— 任何一条进主线程都会
- * 让设备页卡在首屏。回调统一切回主线程。
+ * 可达 1 秒以上），Shizuku 要跨进程 —— 任何一条进主线程都会让设备页卡在首屏。
+ * 回调统一切回主线程。
  */
 public final class ShellManager {
 
@@ -60,40 +66,30 @@ public final class ShellManager {
         ROOT,
         /** Shizuku 服务在跑且已授权。 */
         SHIZUKU,
-        /** 内置 adb 已与本机建立无线调试连接。 */
-        WIRELESS_ADB,
-        /** 三条都不通 —— 设备页只剩授权引导。 */
+        /** 都不通 —— 设备页只剩授权引导。 */
         NONE
     }
 
     /** 一次检测的结果。不可变，可安全地跨线程传递。 */
     public static final class State {
         public final Mode mode;
-        /** 无线 ADB 已连时对端的 {@code ip:port}；其它通道为 {@code null}。 */
-        public final String adbSerial;
-        /** 系统的「无线调试」开关是否开着（用于决定要不要提示配对）。 */
-        public final boolean wirelessEnabled;
 
-        State(Mode mode, String adbSerial, boolean wirelessEnabled) {
+        State(Mode mode) {
             this.mode = mode;
-            this.adbSerial = adbSerial;
-            this.wirelessEnabled = wirelessEnabled;
         }
 
         /** 有任意一条通道，设备信息可以完整读取。 */
         public boolean hasShell() {
-            return mode == Mode.ROOT || mode == Mode.SHIZUKU || mode == Mode.WIRELESS_ADB;
+            return mode == Mode.ROOT || mode == Mode.SHIZUKU;
         }
 
-        /** 页面上用的短标签（引导页/下拉里的小字）。 */
+        /** 页面上用的短标签（引导卡 / 调试日志里的小字）。 */
         public String label() {
             switch (mode) {
                 case ROOT:
                     return "Root";
                 case SHIZUKU:
                     return "Shizuku";
-                case WIRELESS_ADB:
-                    return "无线调试";
                 case NONE:
                     return "未授权";
                 default:
@@ -161,7 +157,7 @@ public final class ShellManager {
     /** 检测进行中被要求重测时置位：这一轮的结果可能是授权前的旧值，跑完立刻再来一轮。 */
     private final AtomicBoolean redetect = new AtomicBoolean(false);
 
-    private volatile State state = new State(Mode.DETECTING, null, false);
+    private volatile State state = new State(Mode.DETECTING);
 
     private ShellManager() {
     }
@@ -201,14 +197,13 @@ public final class ShellManager {
                 result = detect(app);
             } catch (Throwable t) {
                 Log.w(TAG, "通道检测异常，按未授权处理", t);
-                result = new State(Mode.NONE, null, false);
+                result = new State(Mode.NONE);
             } finally {
                 detecting.set(false);
             }
             final State finalResult = result;
             state = finalResult;
-            Log.i(TAG, "通道: " + finalResult.mode
-                    + (finalResult.adbSerial == null ? "" : " / " + finalResult.adbSerial));
+            Log.i(TAG, "通道: " + finalResult.mode);
             if (callback != null) {
                 mainHandler.post(() -> callback.onState(finalResult));
             }
@@ -222,19 +217,13 @@ public final class ShellManager {
     public State detect(Context context) {
         // ① Root 优先，命中就短路 —— 有 root 时不允许走到 Shizuku 那条分支
         if (RootShell.get().isRootAvailable()) {
-            return new State(Mode.ROOT, null, false);
+            return new State(Mode.ROOT);
         }
-        // ② Shizuku：服务在跑 + 已授权
+        // ② Shizuku：服务在跑 + 本应用已在 Shizuku 里被勾选
         if (ShizukuBridge.hasPermission()) {
-            return new State(Mode.SHIZUKU, null, false);
+            return new State(Mode.SHIZUKU);
         }
-        // ③ 无线 ADB：只认「连到自己」的连接，连别人的手机不算本机通道
-        boolean wirelessEnabled = AdbBridge.wirelessSettingsEnabled(context);
-        String serial = wirelessEnabled ? AdbBridge.findSelfWirelessSerial(context) : null;
-        if (serial != null) {
-            return new State(Mode.WIRELESS_ADB, serial, true);
-        }
-        return new State(Mode.NONE, null, wirelessEnabled);
+        return new State(Mode.NONE);
     }
 
     // ───────────────── 命令执行 ─────────────────
@@ -247,7 +236,8 @@ public final class ShellManager {
     /**
      * 用当前最优通道执行一条命令。
      *
-     * <p>{@code context} 只在无线 ADB 分支里用到（要定位内置 adb 与它的 HOME）。
+     * <p>{@code context} 目前只有 {@link AdbBridge} 会传（它要定位内置 adb 与 HOME），
+     * 本类自身不再需要 —— 留着是为了调用点统一，也方便以后加需要 Context 的通道。
      * 通道不可用时返回 {@link Result#unavailable()}，调用方据此显示「—」而不是报错。
      */
     public Result exec(Context context, String command, long timeoutMs) {
@@ -259,8 +249,6 @@ public final class ShellManager {
             }
             case SHIZUKU:
                 return ShizukuBridge.exec(command, timeoutMs);
-            case WIRELESS_ADB:
-                return AdbBridge.shell(context, current.adbSerial, command, timeoutMs);
             default:
                 return Result.unavailable();
         }

@@ -2,7 +2,6 @@ package com.aurora.app.ui.device;
 
 import android.content.ClipData;
 import android.content.ClipboardManager;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -27,6 +26,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.aurora.app.R;
+import com.aurora.app.core.device.BootloaderState;
 import com.aurora.app.core.device.DeviceReader;
 import com.aurora.app.core.device.DeviceSnapshot;
 import com.aurora.app.core.shell.AdbBridge;
@@ -52,16 +52,18 @@ import rikka.shizuku.Shizuku;
  * <ol>
  *   <li>{@link ShellManager.Mode#ROOT} —— 有 root 就直接进内容，<b>绝不</b>出现
  *       Shizuku 引导（用户已经拥有更高权限，再引导他去激活一个免 root 工具是荒谬的）；</li>
- *   <li>{@link ShellManager.Mode#SHIZUKU} 或 {@link ShellManager.Mode#WIRELESS_ADB} ——
- *       有一个就进内容；</li>
+ *   <li>{@link ShellManager.Mode#SHIZUKU} —— 服务在跑且本应用已在 Shizuku 里被勾选，进内容；</li>
  *   <li>{@link ShellManager.Mode#NONE} —— 收起设备卡与 CPU 卡，只留授权引导
- *       （{@code cardAuthGuide}）：一句说明 + 两颗并列按钮。</li>
+ *       （{@code cardAuthGuide}）：一句说明 + 一颗「去授权 Shizuku」。</li>
  * </ol>
  * 检测与数据读取全在后台单线程，主线程只做「把文字贴上去」。
  *
  * <h3>数据源</h3>
  * 本机与外接设备<b>共用同一套卡片</b>，靠标题右侧的胶囊下拉切换 —— 不摆两套视图。
  * 切换时整份快照重读，卡片结构完全不动，所以不存在「两张卡片各自显示一半」的中间态。
+ * 下拉里常驻一行「添加设备…」：无 root 时内置 adb 枚举不到 USB 上的那台手机
+ * （应用身份进不去 {@code /dev/bus/usb}，见 {@link AdbBridge}），
+ * 只能靠 {@code adb connect ip:端口} 把它拉进来。
  */
 public class DeviceFragment extends Fragment {
 
@@ -74,11 +76,32 @@ public class DeviceFragment extends Fragment {
     /** 外接设备刷新间隔：每次都要一次 adb 往返，2 秒是「看起来实时」与「别把 adb 打通」的折中。 */
     private static final long TICK_REMOTE_MS = 2000L;
 
-    /** 「有哪些外接设备」不用秒级刷新 —— 每次都要起一个 adb 进程。 */
+    /** 外接设备的轮询间隔（有 root）：每轮要起一次 adb，5 秒是「插上就能看见」与别太费的折中。 */
     private static final long SOURCES_REFRESH_MS = 5000L;
+
+    /** 无 root 但列表里已有外接设备：还查，只是放慢 —— 只为反映掉线，不指望能发现新设备。 */
+    private static final long SOURCES_REFRESH_MS_HAS_REMOTE = 8000L;
+
+    /**
+     * 无 root 且列表里没有外接设备：几乎不用查。
+     *
+     * <p>这种状态下轮询是纯浪费 —— 应用身份的 adb 本来就看<b>不</b>到 USB 上的那台，
+     * 唯一的入口是用户手动 {@code connect}，而那一步会强制刷新（{@code force}）。
+     * 30 秒只是留一个兜底，防止用户在外面 connect 过、回到页面看不到。
+     */
+    private static final long SOURCES_REFRESH_MS_IDLE = 30_000L;
 
     /** Shizuku 官方下载页 —— 没装 Shizuku 时唯一的去处。 */
     private static final String SHIZUKU_DOWNLOAD_URL = "https://shizuku.rikka.app/download/";
+
+    /**
+     * 点「去授权 Shizuku」后等多久再判断权限框有没有出现。
+     *
+     * <p>Shizuku 的授权框是它自己的 Activity，弹出来会让我们 {@code onPause}。
+     * 所以「1.2 秒后页面仍在前台且仍未授权」等价于「框没弹出来」——
+     * 那通常意味着用户之前拒绝过，只能带他去 Shizuku 的应用列表里手动勾选。
+     */
+    private static final long SHIZUKU_GRANT_RECHECK_MS = 1200L;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -96,6 +119,7 @@ public class DeviceFragment extends Fragment {
     private TextView tvAndroidVersion;
     private TextView tvKernelVersion;
     private TextView tvSelinuxStatus;
+    private TextView tvBootloaderState;
     private TextView tvBootSlot;
     private TextView tvRadioVersion;
     private TextView tvBuildDisplay;
@@ -116,15 +140,15 @@ public class DeviceFragment extends Fragment {
     /** 当前数据源序列号；{@code null} 表示本机。 */
     private String sourceSerial;
 
+    /** 刚 connect 上的设备：等它出现在 {@code adb devices} 里就自动切过去。 */
+    private String pendingSelectSerial;
+
     /** 已经贴到界面上的那份数据来自哪个数据源 / 哪条通道 —— 用来决定要不要重读。 */
     private String loadedSerial;
     private ShellManager.Mode loadedMode;
 
     /** 每次整份重读自增，晚到的旧结果直接丢掉（快速切数据源时会发生）。 */
     private final AtomicInteger loadToken = new AtomicInteger(0);
-
-    /** 本轮页面可见期内是否已经弹过配对框，避免每次 onResume 都顶一个对话框。 */
-    private boolean pairingPrompted;
 
     /** 上次查外接设备列表的时间戳（毫秒），用于限流。 */
     private long lastSourcesRefresh;
@@ -137,6 +161,9 @@ public class DeviceFragment extends Fragment {
                 return;
             }
             refreshDynamic();
+            // 插拔外接设备不会发广播，只能顺手轮询。放这里而不是只在 gate 刷新时查，
+            // 是为了让「页面开着、现在插上线」这种最常见的动作能被看到。
+            refreshSources(false);
             mainHandler.postDelayed(this, sourceSerial == null ? TICK_LOCAL_MS : TICK_REMOTE_MS);
         }
     };
@@ -191,11 +218,10 @@ public class DeviceFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // root 可能刚授权、Shizuku 可能刚激活、无线调试可能刚连上 —— 这些都没有系统广播，
+        // root 可能刚授权、Shizuku 可能刚被勾选 —— 这些都没有系统广播，
         // 只能在页面回到前台时重测一次。
         ShellManager.get().invalidate();
         detect();
-        mainHandler.postDelayed(this::maybePromptPairing, 600L);
     }
 
     @Override
@@ -239,6 +265,7 @@ public class DeviceFragment extends Fragment {
         tvAndroidVersion = view.findViewById(R.id.tvAndroidVersion);
         tvKernelVersion = view.findViewById(R.id.tvKernelVersion);
         tvSelinuxStatus = view.findViewById(R.id.tvSelinuxStatus);
+        tvBootloaderState = view.findViewById(R.id.tvBootloaderState);
         tvBootSlot = view.findViewById(R.id.tvBootSlot);
         tvRadioVersion = view.findViewById(R.id.tvRadioVersion);
         tvBuildDisplay = view.findViewById(R.id.tvBuildDisplay);
@@ -256,6 +283,7 @@ public class DeviceFragment extends Fragment {
         enableCopyOnClick(tvAndroidVersion, "系统版本");
         enableCopyOnClick(tvKernelVersion, "内核版本");
         enableCopyOnClick(tvSelinuxStatus, "SELinux");
+        enableCopyOnClick(tvBootloaderState, "BL 状态");
         enableCopyOnClick(tvBootSlot, "当前 Slot");
         enableCopyOnClick(tvBuildDisplay, "系统版本");
         enableCopyOnClick(tvSecurityPatch, "安全补丁日期");
@@ -279,6 +307,7 @@ public class DeviceFragment extends Fragment {
                 this::onSourceSelected);
         List<DeviceSourceDropdown.Source> initial = new ArrayList<>();
         initial.add(DeviceSourceDropdown.Source.local());
+        initial.add(DeviceSourceDropdown.Source.addDevice());
         lastSources = initial;
         sourceDropdown.setSources(initial, sourceSerial);
     }
@@ -287,15 +316,6 @@ public class DeviceFragment extends Fragment {
         View activate = root.findViewById(R.id.btnActivateShizuku);
         if (activate != null) {
             activate.setOnClickListener(v -> onActivateShizuku());
-        }
-        View wireless = root.findViewById(R.id.btnWirelessDebug);
-        if (wireless != null) {
-            wireless.setOnClickListener(v -> {
-                // 点这颗按钮意味着「我要去开无线调试」——回来时自动弹配对框，否则用户
-                // 开完开关还得自己猜下一步该干嘛。
-                pairingPrompted = false;
-                openWirelessDebuggingSettings();
-            });
         }
     }
 
@@ -350,11 +370,10 @@ public class DeviceFragment extends Fragment {
 
         if (!open) {
             mainHandler.removeCallbacks(tickRunnable);
-            maybePromptPairing();
             return;
         }
 
-        refreshSources();
+        refreshSources(false);
         loadStatic(false);
 
         mainHandler.removeCallbacks(tickRunnable);
@@ -435,6 +454,7 @@ public class DeviceFragment extends Fragment {
         setText(tvAndroidId, s.androidId);
         setText(tvBuildFingerprint, s.fingerprint);
         applySelinuxLabel(s.selinux);
+        applyBootloaderLabel(s.bootloader);
         bindDynamic(s);
         // 循环次数在静态读里也一并带回来；读不到就写「—」，
         // 不能留着上一台设备（或上一轮）的数字假装还准
@@ -563,8 +583,9 @@ public class DeviceFragment extends Fragment {
         }
     }
 
-    // ───────────────── SELinux ─────────────────
+    // ───────────────── 状态标签 ─────────────────
 
+    /** 与玩机「SELinux 管理」一致：严格模式 / 宽容模式 / 关闭状态 / 未知 */
     private void applySelinuxLabel(@Nullable String raw) {
         if (tvSelinuxStatus == null || getContext() == null) {
             return;
@@ -588,6 +609,36 @@ public class DeviceFragment extends Fragment {
         tvSelinuxStatus.setTextColor(ContextCompat.getColor(getContext(), colorRes));
     }
 
+    /**
+     * BL 状态的标签与配色。
+     *
+     * <p>配色与 SELinux 那格保持一致：需要动手关注的（已解锁 / 验证失败）用橙色，
+     * 出厂状态用绿色，读不到用次要色。解锁本身不算错事 —— 玩机的人本来就要解锁，
+     * 所以这里只说事实，不加「不安全」之类的判断。
+     */
+    private void applyBootloaderLabel(@Nullable BootloaderState state) {
+        if (tvBootloaderState == null || getContext() == null) {
+            return;
+        }
+        BootloaderState value = state == null ? BootloaderState.UNKNOWN : state;
+        tvBootloaderState.setText(value.label);
+        int colorRes;
+        switch (value) {
+            case UNLOCKED:
+            case VERIFY_FAILED:
+                colorRes = R.color.fluent_orange;
+                break;
+            case LOCKED:
+            case LOCKED_SELF_SIGNED:
+                colorRes = R.color.fluent_green_600;
+                break;
+            default:
+                colorRes = R.color.fluent_on_surface_variant;
+                break;
+        }
+        tvBootloaderState.setTextColor(ContextCompat.getColor(getContext(), colorRes));
+    }
+
     private boolean isPermissive(String shortStatus) {
         if (shortStatus == null) {
             return false;
@@ -596,7 +647,6 @@ public class DeviceFragment extends Fragment {
                 || shortStatus.contains("宽容");
     }
 
-    /** 与玩机「SELinux 管理」一致：严格模式 / 宽容模式 / 关闭状态 / 未知 */
     private String formatSelinuxShort(String raw) {
         String r = raw.toLowerCase(Locale.US);
         if (r.contains("严格") || r.contains("强制") || r.contains("enforcing")) {
@@ -613,18 +663,32 @@ public class DeviceFragment extends Fragment {
 
     // ───────────────── 数据源 ─────────────────
 
-    /** 后台列一遍外接设备，回来更新下拉。 */
-    private void refreshSources() {
+    /**
+     * 后台列一遍外接设备，回来更新下拉。
+     *
+     * @param force 跳过 5 秒限流（刚 connect 成功时用，要让新设备立刻出现）
+     */
+    private void refreshSources(boolean force) {
         final ExecutorService executor = worker;
         final Context ctx = appContext;
         if (executor == null || ctx == null) {
             return;
         }
-        // 每开一次 gate 都会走到这里，而列设备要起一次 adb 进程 —— 5 秒内不重复查，
-        // 插拔设备本来也不会快到秒级
         long now = System.currentTimeMillis();
-        if (now - lastSourcesRefresh < SOURCES_REFRESH_MS) {
-            return;
+        if (!force) {
+            boolean hasRemote = false;
+            for (DeviceSourceDropdown.Source source : lastSources) {
+                if (!source.action && source.serial != null) {
+                    hasRemote = true;
+                    break;
+                }
+            }
+            long interval = ShellManager.get().state().mode == ShellManager.Mode.ROOT
+                    ? SOURCES_REFRESH_MS
+                    : (hasRemote ? SOURCES_REFRESH_MS_HAS_REMOTE : SOURCES_REFRESH_MS_IDLE);
+            if (now - lastSourcesRefresh < interval) {
+                return;
+            }
         }
         lastSourcesRefresh = now;
         executor.execute(() -> {
@@ -633,16 +697,29 @@ public class DeviceFragment extends Fragment {
                 if (!isAdded()) {
                     return;
                 }
+                boolean changed = !sameSerials(serials);
+                if (!changed && pendingSelectSerial == null) {
+                    // 列表没变就不碰下拉：setSources 会把正在展开的弹窗关掉
+                    return;
+                }
                 List<DeviceSourceDropdown.Source> next = new ArrayList<>();
                 next.add(DeviceSourceDropdown.Source.local());
                 for (String serial : serials) {
                     next.add(DeviceSourceDropdown.Source.external(serial));
                 }
-                // 当前选中的外接设备掉线了：退回本机，别让页面停在读不到的快照上
-                if (sourceSerial != null && !serials.contains(sourceSerial)) {
+                next.add(DeviceSourceDropdown.Source.addDevice());
+
+                // 刚 connect 上的设备出现了：自动切过去，省掉用户再点一次下拉
+                if (pendingSelectSerial != null && serials.contains(pendingSelectSerial)) {
+                    sourceSerial = pendingSelectSerial;
+                    pendingSelectSerial = null;
+                    loadStatic(true);
+                } else if (sourceSerial != null && !serials.contains(sourceSerial)) {
+                    // 当前选中的外接设备掉线了：退回本机，别让页面停在读不到的快照上
                     sourceSerial = null;
                     loadStatic(true);
                 }
+
                 lastSources = next;
                 if (sourceDropdown != null) {
                     sourceDropdown.setSources(next, sourceSerial);
@@ -651,8 +728,26 @@ public class DeviceFragment extends Fragment {
         });
     }
 
+    /** 序列号列表与当前下拉里的外接项是否完全一致。 */
+    private boolean sameSerials(List<String> serials) {
+        List<String> current = new ArrayList<>();
+        for (DeviceSourceDropdown.Source source : lastSources) {
+            if (!source.action && source.serial != null) {
+                current.add(source.serial);
+            }
+        }
+        return current.equals(serials);
+    }
+
     private void onSourceSelected(DeviceSourceDropdown.Source source) {
-        String serial = source == null ? null : source.serial;
+        if (source == null) {
+            return;
+        }
+        if (source.action) {
+            showAddDeviceDialog();
+            return;
+        }
+        String serial = source.serial;
         if (Objects.equals(serial, sourceSerial)) {
             return;
         }
@@ -668,10 +763,83 @@ public class DeviceFragment extends Fragment {
         }
     }
 
+    /**
+     * 「添加设备…」：手动 {@code adb connect ip:端口}。
+     *
+     * <p>说明都放这个对话框里，不放页面上 —— 页面只摆控件和状态。
+     */
+    private void showAddDeviceDialog() {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        int pad = dp(20);
+        LinearLayout box = new LinearLayout(ctx);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(pad, dp(8), pad, 0);
+
+        EditText etAddress = new EditText(ctx);
+        etAddress.setHint("192.168.1.23:37105");
+        etAddress.setSingleLine(true);
+        etAddress.setInputType(InputType.TYPE_CLASS_TEXT);
+        box.addView(etAddress);
+
+        new AlertDialog.Builder(ctx)
+                .setTitle("连接另一台手机")
+                .setMessage("在那台手机的「无线调试」页里可以看到 ip 与端口。\n"
+                        + "首次连接需要先在那台手机上完成配对；\n"
+                        + "USB 数据线连的那台，只有 Root 才能自动列出来。")
+                .setView(box)
+                .setPositiveButton("连接", (dialog, which) ->
+                        doConnect(etAddress.getText().toString().trim()))
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void doConnect(String address) {
+        final ExecutorService executor = worker;
+        final Context ctx = appContext;
+        if (executor == null || ctx == null) {
+            return;
+        }
+        if (TextUtils.isEmpty(address)) {
+            toast("地址不能为空");
+            return;
+        }
+        executor.execute(() -> {
+            boolean connected = AdbBridge.connect(ctx, address);
+            mainHandler.post(() -> {
+                if (!isAdded()) {
+                    return;
+                }
+                if (connected) {
+                    toast("已连接");
+                    // adb 里那条设备的 serial 就是 ip:端口，直接认它；万一格式对不上，
+                    // refreshSources 拿到的列表里包含了也会自动切过去
+                    pendingSelectSerial = address;
+                    refreshSources(true);
+                } else {
+                    toast("连接失败，检查地址、端口，以及是否已配对");
+                }
+            });
+        });
+    }
+
     // ───────────────── 授权引导 ─────────────────
 
     /**
-     * 「去激活Shizuku」：按当前状态决定这声点击是「去下载」「去启动」还是「去授权」。
+     * 「去授权 Shizuku」：按当前状态决定这声点击是「去下载」「去启动」还是「去授权」。
+     *
+     * <p>授权这一步做了两层：
+     * <ol>
+     *   <li>先 {@code requestPermission} —— 这一步不只是弹框，它同时让本应用
+     *       <b>出现在 Shizuku 的「使用中的应用」列表里</b>。不请求过的应用，
+     *       用户在 Shizuku 里根本找不到它，也就谈不上「勾选」。</li>
+     *   <li>延时复查：Shizuku 的授权框是它自己的 Activity，弹出来会让我们
+     *       {@code onPause}。所以 1.2 秒后「页面仍在前台 + 仍未授权」等价于
+     *       「框没弹出来」（用户之前点过拒绝），这时直接把人送到 Shizuku，
+     *       让他在应用列表里勾选。</li>
+     * </ol>
      */
     private void onActivateShizuku() {
         Context ctx = appContext;
@@ -685,6 +853,7 @@ public class DeviceFragment extends Fragment {
         if (!ShizukuBridge.pingBinder()) {
             // 装是装了，但服务没跑：只能把 Shizuku 拉起来，由它自己去做启动引导
             launchShizukuApp(ctx);
+            toast("请先在 Shizuku 里启动服务");
             return;
         }
         if (ShizukuBridge.hasPermission()) {
@@ -694,6 +863,26 @@ public class DeviceFragment extends Fragment {
             return;
         }
         ShizukuBridge.requestPermission(REQ_SHIZUKU_PERMISSION);
+        mainHandler.postDelayed(this::openShizukuIfStillDenied, SHIZUKU_GRANT_RECHECK_MS);
+    }
+
+    /** 授权框没出现（或被拒）时的兜底：把人送到 Shizuku 的应用列表。 */
+    private void openShizukuIfStillDenied() {
+        if (!isAdded() || !isResumed()) {
+            // 页面不在前台 = 授权框正开着，交给回调处理
+            return;
+        }
+        if (ShizukuBridge.hasPermission()) {
+            ShellManager.get().invalidate();
+            detect();
+            return;
+        }
+        Context ctx = appContext;
+        if (ctx == null) {
+            return;
+        }
+        launchShizukuApp(ctx);
+        toast("在 Shizuku 的「使用中的应用」里勾选 Aurora");
     }
 
     private void launchShizukuApp(Context ctx) {
@@ -710,41 +899,6 @@ public class DeviceFragment extends Fragment {
         }
     }
 
-    /**
-     * 「打开无线调试设置」。
-     *
-     * <p>三级回落：先点名系统设置里的无线调试页（各家 ROM 的类名不统一，命中率最高的是
-     * AOSP 那个），失败退到「开发者选项」，再退到设置首页 —— 不能让用户点了没反应。
-     */
-    private void openWirelessDebuggingSettings() {
-        if (!isAdded()) {
-            return;
-        }
-        Intent direct = new Intent();
-        direct.setComponent(new ComponentName("com.android.settings",
-                "com.android.settings.Settings$WirelessDebuggingActivity"));
-        direct.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        try {
-            requireContext().startActivity(direct);
-            return;
-        } catch (Throwable ignored) {
-        }
-        try {
-            Intent dev = new Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS);
-            dev.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            requireContext().startActivity(dev);
-            return;
-        } catch (Throwable ignored) {
-        }
-        try {
-            Intent all = new Intent(android.provider.Settings.ACTION_SETTINGS);
-            all.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            requireContext().startActivity(all);
-        } catch (Throwable t) {
-            toast("打不开系统设置");
-        }
-    }
-
     private void openUrl(String url) {
         Context ctx = appContext;
         if (ctx == null) {
@@ -757,101 +911,6 @@ public class DeviceFragment extends Fragment {
         } catch (Throwable t) {
             toast("没有可用的浏览器");
         }
-    }
-
-    // ───────────────── 无线调试配对 ─────────────────
-
-    /**
-     * 无线调试开着却没连上时，弹一次配对框。
-     *
-     * <p>Android 11 起无线调试必须先用 6 位配对码换证书，配对的端口和连接的端口还不是同一个。
-     * 那对端口只有「配对」这个页面开着的时候才在 mDNS 上广播，所以能自动填就自动填，
-     * 填不上就让用户照着设置页手输 —— 各家的免 root 工具都是这个流程，没有更省的办法。
-     */
-    private void maybePromptPairing() {
-        if (!isAdded() || pairingPrompted) {
-            return;
-        }
-        ShellManager.State state = ShellManager.get().state();
-        if (state.mode != ShellManager.Mode.NONE || !state.wirelessEnabled) {
-            return;
-        }
-        final ExecutorService executor = worker;
-        final Context ctx = appContext;
-        if (executor == null || ctx == null) {
-            return;
-        }
-        pairingPrompted = true;
-        executor.execute(() -> {
-            String address = AdbBridge.findPairingAddress(ctx);
-            mainHandler.post(() -> {
-                if (isAdded()) {
-                    showPairingDialog(address);
-                }
-            });
-        });
-    }
-
-    private void showPairingDialog(@Nullable String address) {
-        Context ctx = getContext();
-        if (ctx == null) {
-            return;
-        }
-        int pad = dp(20);
-        LinearLayout box = new LinearLayout(ctx);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(pad, dp(8), pad, 0);
-
-        EditText etAddress = new EditText(ctx);
-        etAddress.setHint("配对地址，如 192.168.1.7:37231");
-        etAddress.setSingleLine(true);
-        etAddress.setInputType(InputType.TYPE_CLASS_TEXT);
-        if (!TextUtils.isEmpty(address)) {
-            etAddress.setText(address);
-        }
-
-        EditText etCode = new EditText(ctx);
-        etCode.setHint("6 位配对码");
-        etCode.setSingleLine(true);
-        etCode.setInputType(InputType.TYPE_CLASS_NUMBER);
-
-        box.addView(etAddress);
-        box.addView(etCode);
-
-        new AlertDialog.Builder(ctx)
-                .setTitle("无线调试配对")
-                .setView(box)
-                .setPositiveButton("配对", (dialog, which) ->
-                        doPair(etAddress.getText().toString().trim(), etCode.getText().toString().trim()))
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    private void doPair(String address, String code) {
-        final ExecutorService executor = worker;
-        final Context ctx = appContext;
-        if (executor == null || ctx == null) {
-            return;
-        }
-        if (TextUtils.isEmpty(address) || TextUtils.isEmpty(code)) {
-            toast("地址和配对码都要填");
-            return;
-        }
-        executor.execute(() -> {
-            boolean paired = AdbBridge.pair(ctx, address, code);
-            mainHandler.post(() -> {
-                if (!isAdded()) {
-                    return;
-                }
-                if (paired) {
-                    toast("配对成功");
-                    ShellManager.get().invalidate();
-                    detect();
-                } else {
-                    toast("配对失败，检查地址与配对码");
-                }
-            });
-        });
     }
 
     // ───────────────── 杂项 ─────────────────

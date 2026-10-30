@@ -38,21 +38,34 @@
 | 通道 | 判定 | 页面表现 |
 | --- | --- | --- |
 | `ROOT` | `su` 可用（**优先级最高，命中就短路**） | 直接进内容，**绝不出现 Shizuku 引导** |
-| `SHIZUKU` | 服务在跑 + 已授权 | 进内容 |
-| `WIRELESS_ADB` | 内置 adb 已连到本机自己的无线调试 | 进内容 |
+| `SHIZUKU` | 服务在跑 + 本应用已在 Shizuku 里勾选 | 进内容 |
 | `NONE` | 以上全无 | 收起设备卡与 CPU 卡，只留授权引导卡 |
 
-授权引导卡：一句 `需要Shizuku授权或者开启无线调试，才能读取设备信息`，
-下面是**横向并排**两颗按钮 —— `去激活Shizuku` · `打开无线调试设置`。
+授权引导卡：一句 `需要 Shizuku 授权才能读取设备信息`，下面一颗满宽按钮
+`去授权 Shizuku`。点它按状态分三种行为：未安装 → 开官方下载页；装了但服务没跑 →
+拉起 Shizuku；服务在跑但没授权 → `requestPermission`（这一步也让本应用进入 Shizuku
+的「使用中的应用」列表），若授权框没弹出来（之前拒绝过）则自动打开 Shizuku 让人勾选。
 
-**① 设备概览**卡片（`cardDeviceOverview`）—— 12 个字段：
+> 「无线调试」曾经是第三条通道，已整体移除：端口每次开关都变、首次必须手抄配对码，
+> 而它能给的身份（uid 2000）和 Shizuku 完全一样。详见 [`subsystems/DEVICE.md`](subsystems/DEVICE.md) 2.1。
 
-设备名称、设备代号、Android 版本、内核版本、SELinux 状态、当前 Slot、
+**① 设备概览**卡片（`cardDeviceOverview`）—— 13 个字段：
+
+设备名称、设备代号、Android 版本、内核版本、SELinux 状态、**BL 状态**、当前 Slot、
 系统版本（Build Display）、安全补丁日期、基带版本、安卓 ID、电池循环次数、构建指纹。
 
+> BL 状态由 `ro.boot.verifiedbootstate` / `ro.boot.flash.locked` /
+> `ro.boot.vbmeta.device_state` 三个属性按优先级回退判定，判定表见
+> `core/device/BootloaderState.java`。已解锁显示橙色（与 SELinux 宽容一致）、
+> 已锁定显示绿色 —— 解锁不算错事，所以只报事实，不加「不安全」之类的判断。
+
 右上角（标题右侧）是**数据源胶囊**（`btnDeviceSource` / `tvDeviceSource`）：
-`本机` ↔ 外接设备二选一。本机与外接设备**共用这一张卡片**，不摆两套视图；
-切换时整份快照重读，卡片结构不动。
+`本机` ↔ 外接设备二选一，末尾常驻一行 **`添加设备…`**（手动 `adb connect ip:端口`）。
+本机与外接设备**共用这一张卡片**，不摆两套视图；切换时整份快照重读，卡片结构不动。
+
+> 没有 Root 时内置 adb 枚举不到 USB 上插着的那台手机（应用身份进不去 `/dev/bus/usb`，
+> 属平台边界），只能手动 `connect` 那台手机开着无线调试的地址。原因与修法见
+> [`subsystems/DEVICE.md`](subsystems/DEVICE.md) 3.1。
 
 **② CPU 状态**（`cardCpu`）—— `llCpuCoreRings`，按核心渲染环形仪表
 （`ui/widget/CpuRingGaugeView.java`）。环心百分比是**当前频率 / 最大频率**，
