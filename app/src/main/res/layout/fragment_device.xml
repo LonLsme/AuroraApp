@@ -2,10 +2,11 @@
 <!--
   设备概览页。
 
-  结构只有两块 + 一块条件块：
+  结构只有两块：
     ① cardDeviceOverview —— 设备概览卡片（本机与外接设备共用这一张，靠标题右侧的下拉换数据源）
     ② cardCpu            —— CPU 状态卡片
-    ③ cardAuthGuide      —— Root / Shizuku 都没有时的授权引导，平时 GONE
+
+  没有「去授权」之类的引导卡：特权字段读不到就显示「—」，页面照常展示能读到的部分。
 
   为什么外接设备不另开一张卡片：两者字段完全一样，摆两套视图会让同一屏出现两份
   「设备概览」，还要各自刷新、各自处理读不到的情况。共用一套、只换数据源，
@@ -572,70 +573,6 @@
                             android:orientation="horizontal"
                             android:useDefaultMargins="false" />
                     </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- ═══════ ③ 授权引导（Root / Shizuku 都没有时才出现） ═══════ -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardAuthGuide"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:visibility="gone"
-                app:cardBackgroundColor="@color/fluent_glass_card"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp"
-                app:cardMaxElevation="0dp"
-                app:cardUseCompatPadding="false"
-                app:strokeColor="@color/fluent_card_stroke"
-                app:strokeWidth="1dp"
-                tools:visibility="gone">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:letterSpacing="0.06"
-                        android:text="设备概览"
-                        android:textAllCaps="true"
-                        android:textColor="@color/fluent_on_surface_variant"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvAuthGuideTitle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:text="需要 Shizuku 授权才能读取设备信息"
-                        android:textColor="@color/fluent_on_surface"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                    <!--
-                      只有一颗按钮。以前这里是「去激活Shizuku / 打开无线调试设置」两颗并排，
-                      无线调试那条通道已经整体拿掉了（端口每次都变、首次必须手动抄配对码，
-                      而它能给的身份和 Shizuku 完全一样），留着只是多一个更麻烦的选项。
-                    -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnActivateShizuku"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:minHeight="46dp"
-                        android:text="去授权 Shizuku"
-                        android:textAllCaps="false"
-                        android:textColor="?attr/auroraOnAccent"
-                        android:textSize="13sp"
-                        app:backgroundTint="?attr/auroraAccent"
-                        app:cornerRadius="14dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

@@ -1,15 +1,15 @@
-# 子系统：设备页 —— 权限通道与双数据源
+# 子系统：设备页 —— Root 通道与双数据源
 
-> 设备页（tab 0）是**唯一一个「能不能显示」取决于权限**的页面。
-> 遇到「整页只剩一句授权提示」「有 Root 还提示装 Shizuku」「切了外接设备但显示本机数据」
-> 「插了另一台手机却没出现在下拉里」，先看这篇。
+> 设备页（tab 0）的数据分成「普通 API 能读」和「必须 root 才能读」两种。
+> 遇到「SELinux 一片 `—`」「插了另一台手机没出现在下拉里」「切了数据源但显示本机数据」
+> 「CPU 只显示 1 个核」，先看这篇。
 
 ---
 
 ## 一、一句话结论
 
-**这一页的数据分两种：普通 API 就能读的，和必须有 shell 身份才能读的。
-后者读不到时，页面不留一片「—」，而是整页收成一块授权引导。**
+**特权字段读不到就显示「—」，页面照常展示能读到的部分 —— 不收起、不替换成引导页。**
+`ShellManager` 只回答一个问题：现在有没有 root。
 
 | 字段 | 普通应用可读 | 说明 |
 | --- | --- | --- |
@@ -18,70 +18,55 @@
 | 当前 Slot | ✅ | 反射 `ro.boot.slot_suffix` |
 | 各核频率 | ✅ | `/sys/devices/system/cpu/cpu*/cpufreq/*`（Android 12+ 仍开放） |
 | 电池循环次数 | ✅ / ⚠️ | Android 14+ 走 `BatteryManager`，更早只能读 sysfs `cycle_count`，多数机型没有 |
-| **SELinux** | ❌ | `getenforce` 需要 shell 身份；Android 12 起三方应用读 `/sys/fs/selinux/enforce` 也被拒 |
-| **BL 状态** | ⚠️ | 属性本身可读，但 `ro.boot.*` 在 application 域常被 SELinux 过滤，**只信 shell 身份读到的值** |
+| **SELinux** | ❌ | `getenforce` 需要 root；Android 12 起三方应用读 `/sys/fs/selinux/enforce` 也被拒 |
+| **BL 状态** | ⚠️ | 属性本身可读，但 `ro.boot.*` 在 application 域常被 SELinux 过滤，**只信 root 身份读到的值** |
 | **安卓 ID（可信值）** | ⚠️ | `Settings.Secure.ANDROID_ID` 能读，但国产 ROM 可能改写；`settings get secure android_id` 才是系统真值 |
 
 ---
 
-## 二、通道优先级
+## 二、为什么只剩 Root 一条通道
 
-`core/shell/ShellManager.detect()` 按固定顺序探测，**命中即短路**：
+`core/shell/ShellManager.detect()` 现在只判 `RootShell.isRootAvailable()`：
 
-| 顺序 | 通道 | 判定 | 身份 | 代价 |
-| --- | --- | --- | --- | --- |
-| 1 | `ROOT` | `su -c id -u` 拿到 uid 0 | root | 用户已有 |
-| 2 | `SHIZUKU` | `Shizuku.pingBinder()` + `checkSelfPermission() == GRANTED` | shell | 装 Shizuku 并在里面勾选本应用 |
-| 3 | `NONE` | 以上全无 | — | — |
+| 结果 | 含义 |
+| --- | --- |
+| `ROOT` | `su` 可用，特权字段全部可读 |
+| `NONE` | 没有 root，特权字段写「—」 |
 
-> [!warning] 有 Root 时绝不出现 Shizuku 引导
-> 不是「引导页被隐藏了」，而是路由顺序上就短路了：`detect()` 第一步命中 root 就直接
-> `return`，后面那条连探测都不做（探测 Shizuku 要跨进程）。
-> 这条约束写在 `ShellManager` 的类注释里，改动时别把 `su` 判定挪到后面。
+### 2.1 免 root 通道（Shizuku / 无线调试）为什么被整体移除
 
-### 2.1 「无线调试」为什么不作为通道了
+两条通道能给的身份都是 **uid 2000（shell）**。它确实能补上几个只读字段，但本项目真正要
+动手的地方 —— CPU 调频写 `/sys/devices/system/cpu/.../scaling_setspeed`、温控阈值、
+部分 sysfs 节点 —— 属主是 root，**shell 写不进去**。
 
-它曾经是第三条通道：让内置 adb 连上**本机自己**的无线调试端口，借 adbd 拿到 shell 身份。
-整条链路是这样：
+结果是用户多装一个 App、多授权一次，换来一半功能「能看不能改」。与其把两把权限不同的
+钥匙摆在用户面前，不如让「能看到什么」和「能改什么」共用同一把。
 
-```
-mDNS 查 `_adb-tls-connect._tcp` 拿端口   ← 端口每次开关都换，绝不能写死 5555
-首次还要 `_adb-tls-pairing._tcp` + 6 位配对码   ← 配对端口与连接端口不是同一个
-配对成功后 adbkey 落盘，此后才能 connect
-```
+被删掉的东西（别再自作主张加回来）：
 
-**三步里有两步必须用户手抄一串数字**，而它能给的身份和 Shizuku 完全一样（都是 uid 2000）。
-所以整条通道被拿掉了：端口发现、配对对话框、`mdns` / `pair` / `findSelfWirelessSerial`
-全部删除，页面只剩一颗「去授权 Shizuku」。
+| 删掉的 | 原来在哪 |
+| --- | --- |
+| `ShizukuBridge`（binder / 授权 / `IRemoteProcess`） | `core/shell/` |
+| `Mode.SHIZUKU` 与对应路由分支 | `ShellManager` |
+| `dev.rikka.shizuku:api` + `:provider` 依赖 | `libs.versions.toml` / `app/build.gradle.kts` |
+| `ShizukuProvider` 清单声明 | `AndroidManifest.xml` |
+| 授权引导卡 `cardAuthGuide` + 权限监听回调 | `fragment_device.xml` / `DeviceFragment` |
+| 无线调试通道（mDNS / 配对 / `findSelfWirelessSerial`） | 更早一轮已删 |
 
-**adb 本体没删。** 它还在，只是不再服务本机 —— 它现在唯一的职责是读**外接设备**，见下一节。
+> [!note] 刷机页的「免 root 启动 Shizuku」不是一回事
+> `AppCommands.ACTIVATE_TARGETS` 里那条命令是**给被刷的那台手机**跑的激活脚本
+> （让目标机上的 Shizuku / 小黑屋 / 冰箱起来），属于刷机页的「免 root 激活」功能。
+> 它跟本 App 自己要不要提权无关，所以保留。
 
-### 2.2 两条通道各自怎么执行命令
+### 2.2 命令怎么执行
 
 | 通道 | 实现 | 关键点 |
 | --- | --- | --- |
 | Root | `RootShell.exec()` | 持久化 `su` 会话，单条命令毫秒级；超时销毁会话 |
-| Shizuku | `ShizukuBridge.exec()` | `Shizuku.getBinder()` → `IShizukuService.newProcess()` → `IRemoteProcess`；轮询 `alive()` 收尾，超时 `destroy()` |
+| 无 root | `ShellManager.exec()` 直接返回 `unavailable` | 调用方据此显示「—」，不当失败处理 |
 
-**为什么 Shizuku 不用 `Shizuku.newProcess`**：API 13 把它从 `Shizuku` 类移出（官方已宣布
-「准备移除」，改为 UserService）。为了跑几条 `getprop` 打一个 UserService dex 不值得，
-所以直接调用它内部同一套 AIDL。反编译核对过 13.1.5 的 `onBinderReceived`：
-服务端给回的 binder 是裸 binder（没有再包 `ShizukuBinderWrapper`），外部直接调是安全的。
-
-### 2.3 授权只有一步：在 Shizuku 里勾选
-
-用户侧看到的是一次点击。代码上分两步，缺一不可：
-
-1. `Shizuku.requestPermission(REQ_SHIZUKU_PERMISSION)`
-   —— **这一步不只是弹框**，它同时让本应用出现在 Shizuku 的「使用中的应用」列表里。
-   从没请求过权限的应用，用户在 Shizuku 里根本找不到，也就谈不上勾选。
-2. 延时 1.2 秒复查（`openShizukuIfStillDenied`）
-   —— Shizuku 的授权框是它自己的 Activity，弹出来会让我们 `onPause`。
-   所以「1.2 秒后仍在 `onResume` 且仍未授权」等价于「框没弹出来」（用户之前点过拒绝），
-   这时直接拉起 Shizuku，让人去应用列表里勾选。
-
-结果通过 `addRequestPermissionResultListener` 回来后再重测一次；
-`addBinderReceivedListenerSticky` 负责「页面先开着、Shizuku 后才起来」的补测。
+`Result.unavailable`（通道不可用，命令根本没执行）与「执行了但失败」必须分开 ——
+前者是正常的「没权限」，后者才需要看日志。
 
 ---
 
@@ -102,7 +87,7 @@ mDNS 查 `_adb-tls-connect._tcp` 拿端口   ← 端口每次开关都换，绝�
 | --- | --- | --- |
 | 静态信息 | `Build.*` + 一次 shell（`getenforce` / `android_id` / BL 三属性） | 一条 `adb shell`：`echo KEY=$(...)` 十几项 |
 | 动态信息 | sysfs 直读，**1 秒**刷 | 每次一次 adb 往返，**2 秒**刷 |
-| 刷新暂停 | `onPause` 移除 tick；门控关闭时也不 tick | 同左 |
+| 刷新暂停 | `onPause` 移除 tick | 同左 |
 
 > [!warning] 外接设备绝不逐字段发命令
 > 每次 adb 往返 50~150ms，十几个字段就是一两秒。所有字段合并成一条 shell：
@@ -112,26 +97,28 @@ mDNS 查 `_adb-tls-connect._tcp` 拿端口   ← 端口每次开关都换，绝�
 
 ### 3.1 外接设备为什么可能「插了也不出现」
 
-这是被问得最多的一条，原因分两层。
-
-**第一层是平台边界，不是 bug：**
+这是被问得最多的一条。根因是平台边界，不是代码写错：
 
 | 内置 adb 的身份 | USB 外接（OTG 线） | 网络设备（`adb connect`） |
 | --- | --- | --- |
 | root | **能枚举** | 能 |
-| 应用（含 Shizuku 模式下的页面） | **枚举不到** | 能 |
+| 应用（无 root） | **枚举不到** | 能 |
 
-内置 adb 靠扫 `/dev/bus/usb/*` 发现 USB 上的手机，而这些节点是 `root:usb 0660`。
-普通应用（uid ≥ 10000）连目录都进不去 —— 所以**以应用身份跑的 adb 永远列不到 USB 外接设备**。
+内置 adb 靠扫 `/dev/bus/usb/*` 发现 USB 上的手机，这些节点是 `root:usb 0660`：
+
+```
+crw-rw---- 1 root usb 189, 0 /dev/bus/usb/001/001
+```
+
+- root（uid 0）直接能开；
+- 应用（uid ≥ 10000）连 `/dev/bus/usb` 目录都进不去；
+- shell（uid 2000）也**不在 `usb` 组**里 —— 所以即便换了 shell 身份，这条路仍然走不通。
+
 `AdbBridge.run()` 因此在有 root 时以 root 身份执行，没有 root 时退到应用身份（只够 `connect`）。
+**判断身份时直接问 `RootShell.isRootAvailable()`，不要读 `ShellManager.state()` 的缓存** ——
+首帧它还停在 `DETECTING`，按缓存判断会把 root 用户降级成应用身份，设备表少一半。
 
-> [!note] 为什么 Shizuku 模式下也不行
-> Shizuku 给的身份是 shell（uid 2000），而内置 adb 二进制位于应用私有目录
-> （`/data/user/0/com.aurora.app/files/...`，owner 是应用 uid、目录 0700）。
-> shell 身份既进不去这个目录、也读不到那个二进制，所以**没法用 Shizuku 身份跑内置 adb**。
-> 这不是没实现，是权限模型上走不通。
-
-**第二层是代码里的三个刷新时机问题（已修）：**
+**代码层还有三个刷新时机问题（已修）：**
 
 1. 列表原来只在门控状态变化时查一次 —— 页面开着插上线，下拉永远不更新。
    现在跟着 tick 一起轮询（root 5 秒 / 有外接 8 秒 / 都没有 30 秒）。
@@ -153,30 +140,19 @@ mDNS 查 `_adb-tls-connect._tcp` 拿端口   ← 端口每次开关都换，绝�
 
 ---
 
-## 四、页面状态机
+## 四、root 状态怎么影响页面
 
-`DeviceFragment.applyGate()` 只有两个分支：
+**只影响字段，不影响布局。** 两张卡片恒定显示，`DeviceFragment` 里没有「隐藏卡片」的分支。
 
-| 通道状态 | 设备卡 | CPU 卡 | 授权引导卡 |
-| --- | --- | --- | --- |
-| `DETECTING` | 显示 | 显示 | GONE |
-| `ROOT` / `SHIZUKU` | 显示 | 显示 | GONE |
-| `NONE` | **GONE** | **GONE** | 显示 |
+| 时机 | 行为 |
+| --- | --- |
+| `onViewCreated` | 先读一遍（`Build.*` 与 sysfs 不需要权限，首屏立刻有内容），再异步测 root |
+| `detect()` 结果回来 | 若 root 状态与上次不同，`loadStatic(false)` 自己会重读一遍（缓存键含 `Mode`） |
+| `onResume` | 必重测：root 刚授权完没有系统广播，只能主动查 |
+| `onPause` | 移除 tick、关掉下拉 |
 
-- `DETECTING` 按**放行**处理：首次进页面检测要几十毫秒到一秒（`su` 可能要等授权弹窗），
-  这期间先摆出已经能读到的机型/系统信息，比先给空页再跳成内容稳；真没通道时检测一结束就收起。
-- 同一进程内第二次进页面时 `ShellManager.state()` 还留着上次结果，`onViewCreated` 先按它铺一次，
-  不会出现「已授权用户每次进来先闪一下引导页」。
-- 检测与读取全在后台单线程（`aurora-device`），主线程只贴文字。
-- `onResume` 必重测：root 刚授权、Shizuku 刚被勾选都没有系统广播，只能主动查。
-
-授权引导卡内容（`cardAuthGuide`）：
-
-```
-设备概览
-需要 Shizuku 授权才能读取设备信息
-[          去授权 Shizuku          ]      ← 单颗，满宽；不再有「打开无线调试设置」
-```
+- 检测与读取全在后台单线程（`aurora-shell` / `aurora-device`），主线程只贴文字。
+- `su` 首次调用要等授权弹窗（可达 1 秒以上），所以首帧不能等它。
 
 ---
 
@@ -186,14 +162,12 @@ mDNS 查 `_adb-tls-connect._tcp` 拿端口   ← 端口每次开关都换，绝�
 | --- | --- | --- |
 | 8 核只显示 1 核 | 输出 key 写成 `CPU=`，后一个核心覆盖前一个 | `DeviceReader.CPU_LOOP` |
 | `BATTERY_PROPERTY_CYCLE_COUNT` 找不到符号 | 该字段 API 34 才有，本机 `android.jar` 存根里没有 | `DeviceReader.batteryPropertyId()` 反射 |
-| 装完依赖编译报 `INTERACT_ACROSS_USERS_FULL` 相关 | 忘了在 Manifest 声明 `ShizukuProvider` | `AndroidManifest.xml` |
-| 点了「去授权」却没有任何反应 | 从没调过 `requestPermission`，本应用不在 Shizuku 的应用列表里 | `onActivateShizuku()` |
-| 授权完回到页面还是引导页 | 回调比上一次检测晚，被 `detecting` 挡掉了 | `ShellManager.detectAsync()` 的 `redetect` 标记 |
 | 切到外接设备后表格还是本机数据 | 忘了 `loadStatic(true)`；`sourceSerial` 只在 dropdown 回调里改 | `onSourceSelected()` |
 | 插了 USB 外接却不出现 | 无 root 时应用身份读不到 `/dev/bus/usb`，属平台边界 | `AdbBridge.runAsApp()` |
 | 下拉正展开时突然被关掉 | `setSources()` 一律 `dismiss()` | `refreshSources()` 里先比列表 |
 | 外接设备读不到任何值 | 内置 adb 未解压（首次要读 9.9MB assets） | `AdbBridge.externalSerials()` 里 `ensureReady` |
-| BL 状态恒为「—」 | 三个属性都被 SELinux 过滤，或通道刚好不可用 | `BootloaderState.of()` 逐级回退 |
+| BL 状态恒为「—」 | 三个属性都被 SELinux 过滤，或没有 root | `BootloaderState.of()` 逐级回退 |
+| 本机多段输出切完后下标错位 | `split` 没传 `-1`，尾部空段被丢掉 | `DeviceReader` 里 `split("##AURORA##", -1)` |
 
 ---
 
@@ -201,14 +175,13 @@ mDNS 查 `_adb-tls-connect._tcp` 拿端口   ← 端口每次开关都换，绝�
 
 | 文件 | 职责 |
 | --- | --- |
-| `core/shell/ShellManager.java` | 通道探测（优先级 + 短路）、命令路由、`Result` 语义 |
-| `core/shell/ShizukuBridge.java` | Shizuku binder / 授权 / `IRemoteProcess` 执行 |
+| `core/shell/ShellManager.java` | root 判定、命令路由、`Result` 语义 |
 | `core/shell/AdbBridge.java` | 内置 adb：devices / connect / shell，root 与应用双身份，外接设备列表 |
 | `core/device/DeviceReader.java` | 本机与外接两条读取链路 + 解析 |
 | `core/device/DeviceSnapshot.java` | 快照值对象（静态字段 + `cores` + `batteryCycles` + `bootloader`） |
 | `core/device/BootloaderState.java` | BL 三属性 → 解锁状态的优先级判定 |
-| `ui/device/DeviceFragment.java` | 门控状态机、数据源切换、定时刷新、添加设备对话框 |
+| `ui/device/DeviceFragment.java` | root 检测、数据源切换、定时刷新、添加设备对话框 |
 | `ui/device/DeviceSourceDropdown.java` | 标题右侧胶囊 + 数据源弹窗（含「添加设备…」动作项） |
-| `res/layout/fragment_device.xml` | 两张内容卡 + 一张授权引导卡 |
+| `res/layout/fragment_device.xml` | 两张内容卡（设备概览 + CPU 状态） |
 | `app/src/test/.../core/device/DeviceReaderTest.java` | 解析与本机地址判定的纯 JVM 用例 |
 | `app/src/test/.../core/device/BootloaderStateTest.java` | BL 判定与优先级回退的纯 JVM 用例 |

@@ -43,7 +43,7 @@ public final class DeviceReader {
     /** 外接设备一次读取的上限：刚连上时首次 shell 会慢一拍。 */
     private static final long REMOTE_TIMEOUT_MS = 8000L;
 
-    /** 本机拿特权字段的一次调用：五条命令合成一次，省掉四次 su/Shizuku 往返。 */
+    /** 本机拿特权字段的一次调用：五条命令合成一次，省掉四次 su 往返。 */
     private static final long LOCAL_SHELL_TIMEOUT_MS = 3000L;
 
     /**
@@ -120,8 +120,8 @@ public final class DeviceReader {
         // 一次 shell 拿回 5 个字段：getenforce、android_id 与 BL 的三个属性。
         // Android 12 起三方应用读不到真实 SELinux 状态，android_id 也可能被 ROM 改写，
         // BL 属性则是 application 域拿不全 —— 三个都得靠 shell 身份才可信。
-        // 合并成一次调用，省掉 4 次 su/Shizuku 往返（单次约 60~150ms）。
-        String dump = ShellManager.get().execOrEmpty(context,
+        // 合并成一次调用，省掉 4 次 su 往返（单次约 60~150ms）。
+        String dump = ShellManager.get().execOrEmpty(
                 "getenforce; echo '##AURORA##'; settings get secure android_id; "
                         + "echo '##AURORA##'; getprop ro.boot.verifiedbootstate; "
                         + "echo '##AURORA##'; getprop ro.boot.flash.locked; "

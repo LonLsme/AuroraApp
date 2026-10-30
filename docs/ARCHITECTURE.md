@@ -15,7 +15,7 @@
 | minSdk / targetSdk | **24** / **36** | 同上 |
 | compileSdk | 36（`minorApiLevel = 1`） | 同上 |
 | Java 语言级别 | 11（`sourceCompatibility` / `targetCompatibility`） | 同上 |
-| 源码规模 | **132 个源文件 / 40,885 行**（124 `.java` + 8 `.kt`） | 实测统计 |
+| 源码规模 | **131 个源文件 / 40,426 行**（123 `.java` + 8 `.kt`） | 实测统计 |
 | 布局文件 | 61 个（`res/layout/`） | 实测统计 |
 | Activity | **35 个** | 实测统计 |
 | 上游 | [violet_Box](https://github.com/Smart-Paocai/violet_Box)（GPL-3.0），二次开发 | `README.md` / `LICENSE` |
@@ -33,7 +33,6 @@
 
 **第三方依赖**（版本一律写在 `gradle/libs.versions.toml`）：
 `com.scottyab:rootbeer-lib:0.1.0`（Root 检测）、
-`dev.rikka.shizuku:api` + `:provider` 13.1.5（免 root 提权，MIT；本体由用户自己安装）、
 `com.squareup.okhttp3:okhttp:4.12.0`（OTA 云提取）、
 `org.apache.commons:commons-compress:1.27.1` + `org.tukaani:xz:1.10` + `commons-io:commons-io:2.18.0`（OTA payload 解析）。
 
@@ -78,7 +77,7 @@
 | 包 | 职责 | 代表类 |
 | --- | --- | --- |
 | `ui/main` | 主框架：Activity、ViewPager2、底栏 | `MainActivity`(1794) · `FloatingBottomBarCompose.kt`(534) · `BottomBarState.kt` |
-| `ui/device` | 「设备」页（tab 0） | `DeviceFragment`(970) · `DeviceSourceDropdown`(188) |
+| `ui/device` | 「设备」页（tab 0） | `DeviceFragment`(778) · `DeviceSourceDropdown`(188) |
 | `ui/flash` | 「刷机」页（tab 1）与全部刷机子页 | `FlashPage`(516) · `FlashConsoleActivity`(417) · `QdlActivity`(610) · `FlashFilePicker`(309) |
 | `ui/update` | 检查更新：结果对话框（三种形态共用一套控件） | `UpdateDialog` |
 | `ui/settings` | 「设置」页（tab 3）与主题设置 | `SettingsFragment` · `ThemeActivity.kt` · `ThemeScreen.kt`(864) |
@@ -106,7 +105,7 @@
 | --- | --- | --- |
 | `core/flash` | 11 | 刷机链路全套，详见 [`subsystems/FLASH.md`](subsystems/FLASH.md) |
 | `core/monitor` | 12 | 12 个指标采集器，详见 [`subsystems/MONITOR.md`](subsystems/MONITOR.md) |
-| `core/shell` | 3 | 特权通道（Root / Shizuku）探测与命令路由 + 内置 adb（外接设备），详见 [`subsystems/DEVICE.md`](subsystems/DEVICE.md) |
+| `core/shell` | 2 | root 判定与命令路由 + 内置 adb（外接设备），详见 [`subsystems/DEVICE.md`](subsystems/DEVICE.md) |
 | `core/device` | 3 | `DeviceReader` —— 本机与外接两条读取链路 · `DeviceSnapshot` —— 快照值对象 · `BootloaderState` —— BL 解锁状态判定 |
 | `core/util` | 7 | 系统节点读取工具（`NodeReader` · `CpuStatReader` · `BatterySysFiles` · `SelinuxStatusReader` …） |
 | `core/display` | 3 | `DisplayController`(710) · `DisplayGuard` · `DisplayRestoreJobService` |
@@ -373,7 +372,7 @@ AuroraApp/
 │       ├── assets/
 │       │   ├── flash_tools.zip     刷机工具链（5 个可执行文件，见 FLASH.md）
 │       │   └── aurora_box_module.zip  Aurora 核心扩展模块（Magisk / KernelSU）
-│       ├── java/com/aurora/app/    132 个源文件
+│       ├── java/com/aurora/app/    131 个源文件
 │       └── res/
 │           ├── layout/             59 个布局
 │           ├── values/             attrs / colors / dimens / strings / themes

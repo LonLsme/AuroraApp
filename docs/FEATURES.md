@@ -33,21 +33,17 @@
 `res/layout/fragment_device.xml`，容器 id `deviceContentContainer`。
 权限通道与双数据源的完整说明见 [`subsystems/DEVICE.md`](subsystems/DEVICE.md)。
 
-**权限门控** —— 页面能不能显示数据，取决于有没有一条能读系统信息的通道：
+**权限** —— 只有 root 一条通道：
 
-| 通道 | 判定 | 页面表现 |
+| 状态 | SELinux / 安卓 ID / BL 状态 | 其余字段与各核频率 |
 | --- | --- | --- |
-| `ROOT` | `su` 可用（**优先级最高，命中就短路**） | 直接进内容，**绝不出现 Shizuku 引导** |
-| `SHIZUKU` | 服务在跑 + 本应用已在 Shizuku 里勾选 | 进内容 |
-| `NONE` | 以上全无 | 收起设备卡与 CPU 卡，只留授权引导卡 |
+| 有 root | 正常读取 | 正常 |
+| 无 root | 显示「—」 | 正常读取（`Build.*` 与 sysfs 不需要权限） |
 
-授权引导卡：一句 `需要 Shizuku 授权才能读取设备信息`，下面一颗满宽按钮
-`去授权 Shizuku`。点它按状态分三种行为：未安装 → 开官方下载页；装了但服务没跑 →
-拉起 Shizuku；服务在跑但没授权 → `requestPermission`（这一步也让本应用进入 Shizuku
-的「使用中的应用」列表），若授权框没弹出来（之前拒绝过）则自动打开 Shizuku 让人勾选。
-
-> 「无线调试」曾经是第三条通道，已整体移除：端口每次开关都变、首次必须手抄配对码，
-> 而它能给的身份（uid 2000）和 Shizuku 完全一样。详见 [`subsystems/DEVICE.md`](subsystems/DEVICE.md) 2.1。
+页面不收起、也不摆「去授权」引导：能读多少显示多少。
+免 root 通道（Shizuku / 无线调试）已**整体移除**，原因见
+[`subsystems/DEVICE.md`](subsystems/DEVICE.md) 第二节 —— 它们给的身份都是 uid 2000，
+补得上只读字段，补不上本项目真正要写的 sysfs 节点。
 
 **① 设备概览**卡片（`cardDeviceOverview`）—— 13 个字段：
 

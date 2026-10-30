@@ -24,9 +24,8 @@ import java.util.Set;
 /**
  * 外接设备通道：用项目里内置的那份 aarch64 {@code adb} 去看「另一台手机」。
  *
- * <h3>它不再是本机的权限通道</h3>
- * 以前无线调试（连自己）也算一条能读本机信息的通道，现在不是了 —— 本机信息只走
- * Root 或 Shizuku（见 {@link ShellManager}）。本类只服务一件事：
+ * <h3>它只是外接设备的工具，不是本机的权限通道</h3>
+ * 本机信息只走 Root（见 {@link RootShell}）。本类只服务一件事：
  * <b>把外接设备的列表读出来、把命令发到外接设备上</b>。
  *
  * <h3>为什么身份不同能看到的东西不同</h3>
@@ -36,7 +35,7 @@ import java.util.Set;
  * <table border="1">
  *   <tr><th>身份</th><th>USB 外接</th><th>无线（{@code adb connect}）</th></tr>
  *   <tr><td>root</td><td>能枚举</td><td>能</td></tr>
- *   <tr><td>应用（无通道 / Shizuku）</td><td><b>不能</b></td><td>能</td></tr>
+ *   <tr><td>应用（无 root）</td><td><b>不能</b></td><td>能</td></tr>
  * </table>
  * 所以有 root 时一切走 root；没有 root 时仍允许 {@code adb connect}，
  * 让用户把「开着无线调试的另一台手机」接进来。
@@ -87,7 +86,9 @@ public final class AdbBridge {
         if (!bin.isFile()) {
             return ShellManager.Result.unavailable();
         }
-        if (ShellManager.get().state().mode == ShellManager.Mode.ROOT) {
+        // 直接问 RootShell 而不是读 ShellManager 的缓存状态：首帧它还停在 DETECTING，
+        // 那一刻按缓存判断会把 root 用户降级成应用身份，ad 设备表就少一半。
+        if (RootShell.get().isRootAvailable()) {
             return runAsRoot(context, bin, timeoutMs, args);
         }
         return runAsApp(context, bin, timeoutMs, args);
@@ -112,7 +113,7 @@ public final class AdbBridge {
         for (String arg : args) {
             cmd.append(' ').append(RootShell.escape(arg));
         }
-        return ShellManager.get().exec(context, cmd.toString(), timeoutMs);
+        return ShellManager.get().exec(cmd.toString(), timeoutMs);
     }
 
     /** 以应用身份跑：能 {@code connect} 网络设备，但枚举不到 USB。 */

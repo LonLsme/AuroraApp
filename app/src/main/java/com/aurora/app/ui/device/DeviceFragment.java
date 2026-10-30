@@ -3,8 +3,6 @@ package com.aurora.app.ui.device;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -31,7 +29,6 @@ import com.aurora.app.core.device.DeviceReader;
 import com.aurora.app.core.device.DeviceSnapshot;
 import com.aurora.app.core.shell.AdbBridge;
 import com.aurora.app.core.shell.ShellManager;
-import com.aurora.app.core.shell.ShizukuBridge;
 import com.aurora.app.ui.widget.CpuRingGaugeView;
 
 import java.util.ArrayList;
@@ -42,33 +39,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import rikka.shizuku.Shizuku;
-
 /**
  * 设备概览页。
  *
- * <h3>权限门控</h3>
- * 页面能不能显示数据，取决于有没有一条能读系统信息的通道，优先级固定：
- * <ol>
- *   <li>{@link ShellManager.Mode#ROOT} —— 有 root 就直接进内容，<b>绝不</b>出现
- *       Shizuku 引导（用户已经拥有更高权限，再引导他去激活一个免 root 工具是荒谬的）；</li>
- *   <li>{@link ShellManager.Mode#SHIZUKU} —— 服务在跑且本应用已在 Shizuku 里被勾选，进内容；</li>
- *   <li>{@link ShellManager.Mode#NONE} —— 收起设备卡与 CPU 卡，只留授权引导
- *       （{@code cardAuthGuide}）：一句说明 + 一颗「去授权 Shizuku」。</li>
- * </ol>
- * 检测与数据读取全在后台单线程，主线程只做「把文字贴上去」。
+ * <h3>权限</h3>
+ * 只有一条通道：Root。有 root 时多读出 SELinux、安卓 ID、BL 状态这几个特权字段；
+ * 没有 root 时它们显示「—」，其余（机型、系统版本、内核、CPU 频率）照常 ——
+ * 页面不摆「去授权」之类的引导，能显示多少显示多少。
  *
  * <h3>数据源</h3>
  * 本机与外接设备<b>共用同一套卡片</b>，靠标题右侧的胶囊下拉切换 —— 不摆两套视图。
  * 切换时整份快照重读，卡片结构完全不动，所以不存在「两张卡片各自显示一半」的中间态。
- * 下拉里常驻一行「添加设备…」：无 root 时内置 adb 枚举不到 USB 上的那台手机
- * （应用身份进不去 {@code /dev/bus/usb}，见 {@link AdbBridge}），
- * 只能靠 {@code adb connect ip:端口} 把它拉进来。
+ * 下拉里常驻一行「添加设备…」：内置 adb 靠扫描 {@code /dev/bus/usb} 找 OTG 上的手机，
+ * 那需要 root 身份（见 {@link AdbBridge}）；没有 root 时只能靠
+ * {@code adb connect ip:端口} 手动把它拉进来。
  */
 public class DeviceFragment extends Fragment {
-
-    /** Shizuku 授权请求码，回调里用它认领自己那次请求。 */
-    private static final int REQ_SHIZUKU_PERMISSION = 4401;
 
     /** 本机刷新间隔：sysfs 直读，1 秒不心疼。 */
     private static final long TICK_LOCAL_MS = 1000L;
@@ -91,27 +77,10 @@ public class DeviceFragment extends Fragment {
      */
     private static final long SOURCES_REFRESH_MS_IDLE = 30_000L;
 
-    /** Shizuku 官方下载页 —— 没装 Shizuku 时唯一的去处。 */
-    private static final String SHIZUKU_DOWNLOAD_URL = "https://shizuku.rikka.app/download/";
-
-    /**
-     * 点「去授权 Shizuku」后等多久再判断权限框有没有出现。
-     *
-     * <p>Shizuku 的授权框是它自己的 Activity，弹出来会让我们 {@code onPause}。
-     * 所以「1.2 秒后页面仍在前台且仍未授权」等价于「框没弹出来」——
-     * 那通常意味着用户之前拒绝过，只能带他去 Shizuku 的应用列表里手动勾选。
-     */
-    private static final long SHIZUKU_GRANT_RECHECK_MS = 1200L;
-
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private ExecutorService worker;
     private Context appContext;
-
-    // ── 卡片
-    private View cardOverview;
-    private View cardCpu;
-    private View cardGuide;
 
     // ── 文本
     private TextView tvDeviceName;
@@ -157,7 +126,7 @@ public class DeviceFragment extends Fragment {
     private final Runnable tickRunnable = new Runnable() {
         @Override
         public void run() {
-            if (!isAdded() || !ShellManager.get().state().hasShell()) {
+            if (!isAdded()) {
                 return;
             }
             refreshDynamic();
@@ -166,24 +135,6 @@ public class DeviceFragment extends Fragment {
             refreshSources(false);
             mainHandler.postDelayed(this, sourceSerial == null ? TICK_LOCAL_MS : TICK_REMOTE_MS);
         }
-    };
-
-    // ── Shizuku 状态回调：授权结果 / 服务连上，两个都要触发重测
-    private final Shizuku.OnRequestPermissionResultListener permissionListener =
-            (requestCode, grantResult) -> {
-                if (requestCode != REQ_SHIZUKU_PERMISSION) {
-                    return;
-                }
-                ShellManager.get().invalidate();
-                detect();
-            };
-
-    private final Shizuku.OnBinderReceivedListener binderReceivedListener = () -> {
-        if (!ShizukuBridge.hasPermission()) {
-            return;
-        }
-        ShellManager.get().invalidate();
-        detect();
     };
 
     @Nullable
@@ -206,20 +157,19 @@ public class DeviceFragment extends Fragment {
         bindViews(view);
         setCopyOnClick();
         setupSourceDropdown(view);
-        setupGuideButtons(view);
-        registerShizukuListeners();
 
-        // 先用上次的检测结果铺一次界面（同一个进程内第二次进页面时这里就是「已知状态」），
-        // 免得已授权用户每次进来都先闪一下引导页；随后 detect() 再按真实情况校正。
-        applyGate(ShellManager.get().state());
+        // 先把不需要权限的部分摆出来（Build.* 与 sysfs 都读得到），别等 su 回来才显示首屏；
+        // detect() 结束若发现 root 状态与上次不同，会自己触发一次整份重读。
+        refreshSources(false);
+        loadStatic(false);
+        mainHandler.post(tickRunnable);
         detect();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        // root 可能刚授权、Shizuku 可能刚被勾选 —— 这些都没有系统广播，
-        // 只能在页面回到前台时重测一次。
+        // root 可能刚授权完 —— 这没有系统广播，只能在页面回到前台时重测一次。
         ShellManager.get().invalidate();
         detect();
     }
@@ -237,7 +187,6 @@ public class DeviceFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         mainHandler.removeCallbacksAndMessages(null);
-        unregisterShizukuListeners();
         if (sourceDropdown != null) {
             sourceDropdown.dismiss();
             sourceDropdown = null;
@@ -256,10 +205,6 @@ public class DeviceFragment extends Fragment {
     // ───────────────── 视图绑定 ─────────────────
 
     private void bindViews(View view) {
-        cardOverview = view.findViewById(R.id.cardDeviceOverview);
-        cardCpu = view.findViewById(R.id.cardCpu);
-        cardGuide = view.findViewById(R.id.cardAuthGuide);
-
         tvDeviceName = view.findViewById(R.id.tvDeviceName);
         tvDeviceCode = view.findViewById(R.id.tvDeviceCode);
         tvAndroidVersion = view.findViewById(R.id.tvAndroidVersion);
@@ -312,81 +257,34 @@ public class DeviceFragment extends Fragment {
         sourceDropdown.setSources(initial, sourceSerial);
     }
 
-    private void setupGuideButtons(View root) {
-        View activate = root.findViewById(R.id.btnActivateShizuku);
-        if (activate != null) {
-            activate.setOnClickListener(v -> onActivateShizuku());
-        }
-    }
-
-    private void registerShizukuListeners() {
-        try {
-            Shizuku.addRequestPermissionResultListener(permissionListener);
-            // Sticky：注册时 binder 已经在就立刻回调一次，省掉「页面先开着、Shizuku 后才起来」的漏判
-            Shizuku.addBinderReceivedListenerSticky(binderReceivedListener);
-        } catch (Throwable ignored) {
-            // 没装 Shizuku 时这些调用本身不会抛，抛了也只是少了自动刷新，不影响手动重测
-        }
-    }
-
-    private void unregisterShizukuListeners() {
-        try {
-            Shizuku.removeRequestPermissionResultListener(permissionListener);
-        } catch (Throwable ignored) {
-        }
-        try {
-            Shizuku.removeBinderReceivedListener(binderReceivedListener);
-        } catch (Throwable ignored) {
-        }
-    }
-
-    // ───────────────── 权限门控 ─────────────────
+    // ───────────────── root 检测 ─────────────────
 
     private void detect() {
         if (appContext == null) {
             return;
         }
-        ShellManager.get().detectAsync(appContext, state -> {
+        ShellManager.get().detectAsync(state -> {
             if (!isAdded()) {
                 return;
             }
-            applyGate(state);
+            onRootStateChanged();
         });
     }
 
     /**
-     * 按通道状态决定「显示卡片」还是「显示授权引导」。
+     * root 状态变了就整份重读。
      *
-     * <p>{@link ShellManager.Mode#DETECTING} 按<b>放行</b>处理：首次进页面时检测要跑几十毫秒到
-     * 一秒（{@code su} 可能要等授权弹窗），这期间先摆出已经能读到的机型/系统信息，
-     * 比先给一个空页再跳成内容要稳。真没有通道时，检测一结束就收起卡片。
+     * <p>只有 SELinux、安卓 ID、BL 状态这几个特权字段受它影响，<b>布局不受影响</b> ——
+     * 没有 root 时页面照常展示能读到的部分，不收起、也不替换成引导页。
+     * 读什么由 {@link DeviceReader} 按当前通道自己决定，这里只需要让它重跑一遍。
      */
-    private void applyGate(ShellManager.State state) {
-        boolean open = state.mode == ShellManager.Mode.DETECTING || state.hasShell();
-
-        setVisible(cardGuide, !open);
-        setVisible(cardOverview, open);
-        setVisible(cardCpu, open);
-
-        if (!open) {
-            mainHandler.removeCallbacks(tickRunnable);
-            return;
-        }
-
-        refreshSources(false);
+    private void onRootStateChanged() {
         loadStatic(false);
-
+        refreshSources(false);
         mainHandler.removeCallbacks(tickRunnable);
-        if (state.hasShell()) {
-            mainHandler.post(tickRunnable);
-        }
+        mainHandler.post(tickRunnable);
     }
 
-    private static void setVisible(@Nullable View view, boolean visible) {
-        if (view != null) {
-            view.setVisibility(visible ? View.VISIBLE : View.GONE);
-        }
-    }
 
     // ───────────────── 数据读取 ─────────────────
 
@@ -758,9 +656,7 @@ public class DeviceFragment extends Fragment {
         }
         mainHandler.removeCallbacks(tickRunnable);
         loadStatic(true);
-        if (ShellManager.get().state().hasShell()) {
-            mainHandler.postDelayed(tickRunnable, 200L);
-        }
+        mainHandler.postDelayed(tickRunnable, 200L);
     }
 
     /**
@@ -823,94 +719,6 @@ public class DeviceFragment extends Fragment {
                 }
             });
         });
-    }
-
-    // ───────────────── 授权引导 ─────────────────
-
-    /**
-     * 「去授权 Shizuku」：按当前状态决定这声点击是「去下载」「去启动」还是「去授权」。
-     *
-     * <p>授权这一步做了两层：
-     * <ol>
-     *   <li>先 {@code requestPermission} —— 这一步不只是弹框，它同时让本应用
-     *       <b>出现在 Shizuku 的「使用中的应用」列表里</b>。不请求过的应用，
-     *       用户在 Shizuku 里根本找不到它，也就谈不上「勾选」。</li>
-     *   <li>延时复查：Shizuku 的授权框是它自己的 Activity，弹出来会让我们
-     *       {@code onPause}。所以 1.2 秒后「页面仍在前台 + 仍未授权」等价于
-     *       「框没弹出来」（用户之前点过拒绝），这时直接把人送到 Shizuku，
-     *       让他在应用列表里勾选。</li>
-     * </ol>
-     */
-    private void onActivateShizuku() {
-        Context ctx = appContext;
-        if (ctx == null) {
-            return;
-        }
-        if (!ShellManager.get().isShizukuInstalled(ctx)) {
-            openUrl(SHIZUKU_DOWNLOAD_URL);
-            return;
-        }
-        if (!ShizukuBridge.pingBinder()) {
-            // 装是装了，但服务没跑：只能把 Shizuku 拉起来，由它自己去做启动引导
-            launchShizukuApp(ctx);
-            toast("请先在 Shizuku 里启动服务");
-            return;
-        }
-        if (ShizukuBridge.hasPermission()) {
-            // 已经授权了却没进内容页：很可能刚刚授权完，重测一次即可
-            ShellManager.get().invalidate();
-            detect();
-            return;
-        }
-        ShizukuBridge.requestPermission(REQ_SHIZUKU_PERMISSION);
-        mainHandler.postDelayed(this::openShizukuIfStillDenied, SHIZUKU_GRANT_RECHECK_MS);
-    }
-
-    /** 授权框没出现（或被拒）时的兜底：把人送到 Shizuku 的应用列表。 */
-    private void openShizukuIfStillDenied() {
-        if (!isAdded() || !isResumed()) {
-            // 页面不在前台 = 授权框正开着，交给回调处理
-            return;
-        }
-        if (ShizukuBridge.hasPermission()) {
-            ShellManager.get().invalidate();
-            detect();
-            return;
-        }
-        Context ctx = appContext;
-        if (ctx == null) {
-            return;
-        }
-        launchShizukuApp(ctx);
-        toast("在 Shizuku 的「使用中的应用」里勾选 Aurora");
-    }
-
-    private void launchShizukuApp(Context ctx) {
-        try {
-            Intent intent = ctx.getPackageManager()
-                    .getLaunchIntentForPackage(ShellManager.SHIZUKU_PACKAGE);
-            if (intent == null) {
-                throw new IllegalStateException("no launch intent");
-            }
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            ctx.startActivity(intent);
-        } catch (Throwable t) {
-            toast("打不开 Shizuku，请手动启动");
-        }
-    }
-
-    private void openUrl(String url) {
-        Context ctx = appContext;
-        if (ctx == null) {
-            return;
-        }
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            ctx.startActivity(intent);
-        } catch (Throwable t) {
-            toast("没有可用的浏览器");
-        }
     }
 
     // ───────────────── 杂项 ─────────────────

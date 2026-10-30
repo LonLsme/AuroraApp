@@ -16,33 +16,31 @@
 
 - **设备概览新增「BL 状态」**：由 `ro.boot.verifiedbootstate` → `ro.boot.flash.locked` →
   `ro.boot.vbmeta.device_state` 逐级回退判定，区分已解锁 / 已锁定 / 已锁定·自签名 / 验证失败。
-  与已有的 `getenforce`、`android_id` 合并进同一次 shell 调用，不增加通道往返；
+  与已有的 `getenforce`、`android_id` 合并进同一次 shell 调用，不增加往返；
   外接设备那条批量 dump 里也一并取回。
-- **设备页改由「权限通道」门控**。Root / Shizuku 按优先级探测，命中即短路：
-  - 有 Root → 直接进内容，**绝不出现 Shizuku 引导**（用户已有更高权限）；
-  - 没有 Root 但 Shizuku 可用 → 同样进内容；
-  - 都没有 → 收起设备卡与 CPU 卡，只留一块授权引导：一句说明 + 一颗「去授权 Shizuku」。
 - **设备概览支持切换数据源**：本机与外接设备**共用同一张卡片**，靠「设备概览」标题右侧的
-  胶囊下拉切换，不再摆两套视图。切换时整份快照重读，卡片结构不动。
+  胶囊下拉切换，不摆两套视图。切换时整份快照重读，卡片结构不动。
 - 下拉里新增 **「添加设备…」**：手动 `adb connect ip:端口`，用于把开着无线调试的另一台手机
   接进来。连上后自动切到那台、自动读取。
-- 新增 `core/shell`（`ShellManager` / `ShizukuBridge` / `AdbBridge`）与 `core/device`
-  （`DeviceReader` / `DeviceSnapshot` / `BootloaderState`）：通道统一成一个命令入口，
-  外接设备的十几个字段由**一条** `adb shell` 批量取回（逐字段发命令要一两秒）。
+- 新增 `core/shell`（`ShellManager` / `AdbBridge`）与 `core/device`
+  （`DeviceReader` / `DeviceSnapshot` / `BootloaderState`）：外接设备的十几个字段由
+  **一条** `adb shell` 批量取回（逐字段发命令就是一两秒）。
 
 ### 变更
 
-- **「无线调试」通道整体移除**。它曾是第三条能读本机信息的通道，但端口每次开关都变、
-  首次必须 TLS 配对、配对码只能手输，三步里两步要用户抄一串数字；而它能给的身份
-  （uid 2000）与 Shizuku 完全一样。一并删除 `mdns` 发现、配对对话框与 `findSelfWirelessSerial`。
-  内置 adb 保留 —— 它现在只负责读**外接设备**。
-- **外接设备的 adb 改为按通道身份执行**：有 Root 时以 root 跑（与刷机页共用 HOME 与
-  adb server，两边看到同一份设备表），没有 Root 时退到应用身份并改用 5038 端口，
+- **免 root 提权通道整体移除（Shizuku + 无线调试）**。两者能给的身份都是 uid 2000（shell），
+  补得上几个只读字段，补不上本项目真正要写的 sysfs 节点（CPU 调频、温控阈值属 root）。
+  让用户多装一个 App、多授权一次，换来一半功能「能看不能改」，不如把权限收成一把钥匙。
+  一并删除：`ShizukuBridge`、`Mode.SHIZUKU` 与路由分支、`dev.rikka.shizuku:api` + `:provider`
+  依赖、`ShizukuProvider` 清单声明、授权引导卡与权限监听回调。
+  > 刷机页的「免 root 启动 Shizuku」是给**被刷的那台设备**跑的激活命令，与此无关，保留。
+- **设备页不再按通道门控**：没有 root 时 SELinux / 安卓 ID / BL 状态显示「—」，
+  其余字段与各核频率照常读取。不收起卡片，也不摆「去授权」引导。
+- **外接设备的 adb 改为按 root 身份判定**：有 root 时以 root 跑（与刷机页共用 HOME 与
+  adb server，两边看到同一份设备表），没有 root 时退到应用身份并改用 5038 端口，
   避免与 root 的 5037 抢 bind。**应用身份枚举不到 USB 外接设备是平台边界**
   （`/dev/bus/usb` 是 `root:usb 0660`），所以无 root 时的入口是「添加设备…」。
-- SELinux、安卓 ID 与 BL 状态不再只认 root：通过当前最优通道读取，读不到显示「—」而不是猜。
-- 首帧不再空等检测：`DETECTING` 阶段按放行处理，先摆出已经能读到的机型/系统信息，
-  真没有通道时检测一结束就收起。
+- 首帧不再空等检测：先摆出 `Build.*` 与 sysfs 能读到的部分，root 探测结束若状态有变化再重读。
 - 删掉 `DeviceFragment` 里从未被调用的电池电流 / 设计容量 / 充电状态格式化代码（约 200 行）。
 
 ### 修复
@@ -50,14 +48,6 @@
 - 外接设备列表原来只在门控状态变化时查一次，**页面开着插上线、下拉永远不更新**。
   现在跟着刷新 tick 一起轮询（root 5 秒 / 有外接 8 秒 / 都没有 30 秒）。
 - 列表刷新会无条件重建下拉，**正展开的弹窗被自己关掉**。现在先比序列号，没变化就不动。
-- Shizuku 授权回调早于上一轮检测结束时会被丢掉，导致「授权完回到页面还是引导页」。
-  `detectAsync` 改为记一个待重测标记，当前这轮跑完立刻补一轮。
-
-### 依赖
-
-- 新增 `dev.rikka.shizuku:api` + `:provider` 13.1.5（MIT），Manifest 声明 `ShizukuProvider`
-  （authorities = `${applicationId}.shizuku`，`INTERACT_ACROSS_USERS_FULL` 保护）。
-  Shizuku 本体不由本应用分发，用户需自行安装。
 
 ---
 
