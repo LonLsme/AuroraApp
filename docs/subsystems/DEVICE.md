@@ -127,13 +127,38 @@ crw-rw---- 1 root usb 189, 0 /dev/bus/usb/001/001
 3. 连上以后没有「自动切过去」，用户还得自己再点一次下拉。
    现在 `pendingSelectSerial` 在设备出现时自动切换。
 
+### 3.1.1 USB 直连的三条前提（不是「只能无线」）
+
+`adb devices` 的输出里本来就同时有 USB 与网络两种 transport，代码从不区分来源，
+所以 **USB 插上就能用，无线只是补充**。三条前提缺一不可：
+
+| 前提 | 说明 |
+| --- | --- |
+| 本机有 root | 见上表：无 root 时应用身份进不去 `/dev/bus/usb` |
+| 目标机开「USB 调试」+ OTG 线 | 本机当 host |
+| **首次必须在目标机上点「允许」** | RSA key 交换绕不过。`adb devices` 先报 `unauthorized`，点了才变 `device` |
+
+第三条是「插了没反应」的真正原因，所以下拉会**保留 `unauthorized` / `offline` / `authorizing`**
+这些待就绪项（`AdbBridge.Snapshot.pending`），并在行下方写明「未授权，去对方手机上点「允许」」。
+选中它只弹说明框、不切数据源 —— 只过滤 `device` 的话列表是空的，用户没有任何线索。
+
+> [!warning] fastboot 为什么不能用来做设备概览
+> fastboot 也是 USB，同样受 `/dev/bus/usb` 权限约束，但更根本的问题是**它不能读系统信息**：
+> fastboot 模式下 Android 根本没启动，`fastboot getvar` 只能拿到产品代号、序列号、
+> BL 解锁状态、分区大小。CPU 频率、电池、指纹、系统版本全都读不到。
+> 它属于刷机页（`docs/subsystems/FLASH.md`），不属于设备概览。
+
+**USB 与无线必须在 UI 上分开**：同一个下拉里两种连接并存，用户插线后分不清多出来的那条
+是哪来的，而两者的权限要求完全不同。判据只看序列号里有没有冒号 —— USB 报设备自身序列号
+（`45850c2f`），网络连接一定带 `ip:端口`（`192.168.1.23:37105`）。
+
 ### 3.2 「添加设备…」怎么用
 
 点下拉末尾那一行，输入 `ip:端口`，走 `adb connect`。对话框里写清了三件事：
 
 - 端口在那台手机的「无线调试」页里看得到，每台每次都不一样；
 - 首次连接要**先在那台手机上完成配对**（配对在对方系统里做，这边只负责 `connect`）；
-- USB 线连的那台只有 Root 才自动列出来。
+- USB 线连的那台只有 Root 才自动列出来 —— 有 root 时直接插线即可，不必用这个对话框。
 
 成功后会：`pendingSelectSerial` 记下地址 → `refreshSources(true)` 跳过限流 →
 列表里出现就自动切过去 → `loadStatic(true)` 读那台的快照。
@@ -164,6 +189,8 @@ crw-rw---- 1 root usb 189, 0 /dev/bus/usb/001/001
 | `BATTERY_PROPERTY_CYCLE_COUNT` 找不到符号 | 该字段 API 34 才有，本机 `android.jar` 存根里没有 | `DeviceReader.batteryPropertyId()` 反射 |
 | 切到外接设备后表格还是本机数据 | 忘了 `loadStatic(true)`；`sourceSerial` 只在 dropdown 回调里改 | `onSourceSelected()` |
 | 插了 USB 外接却不出现 | 无 root 时应用身份读不到 `/dev/bus/usb`，属平台边界 | `AdbBridge.runAsApp()` |
+| 插了线、下拉里那条写着「未授权」 | 目标机屏幕上等着点「允许 USB 调试」（RSA key 交换） | `DeviceFragment.showPendingDeviceDialog()` |
+| 对方点了允许，那一项还是「未授权」 | 之前只比序列号，状态变化被判成「没变化」 | `sameSources()` 比的是「序列号 + 是否就绪」 |
 | 下拉正展开时突然被关掉 | `setSources()` 一律 `dismiss()` | `refreshSources()` 里先比列表 |
 | 外接设备读不到任何值 | 内置 adb 未解压（首次要读 9.9MB assets） | `AdbBridge.externalSerials()` 里 `ensureReady` |
 | BL 状态恒为「—」 | 三个属性都读不到（个别 ROM 收紧了 `bootloader_prop`，属少数）；先看 `adb logcat -s DeviceReader` 里 `BL 应用身份直读` 那行 | `BootloaderState.of()` 逐级回退，判不出时回退 root 再读 |
@@ -186,3 +213,4 @@ crw-rw---- 1 root usb 189, 0 /dev/bus/usb/001/001
 | `res/layout/fragment_device.xml` | 两张内容卡（设备概览 + CPU 状态） |
 | `app/src/test/.../core/device/DeviceReaderTest.java` | 解析与本机地址判定的纯 JVM 用例 |
 | `app/src/test/.../core/device/BootloaderStateTest.java` | BL 判定与优先级回退的纯 JVM 用例 |
+| `app/src/test/.../core/shell/AdbBridgeTest.java` | `adb devices` 输出解析（表头/daemon 噪声/版本告警/待就绪状态）与 USB 判定 |

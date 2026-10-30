@@ -590,30 +590,34 @@ public class DeviceFragment extends Fragment {
         }
         lastSourcesRefresh = now;
         executor.execute(() -> {
-            List<String> serials = AdbBridge.externalSerials(ctx);
+            AdbBridge.Snapshot snapshot = AdbBridge.externalDevices(ctx);
             mainHandler.post(() -> {
                 if (!isAdded()) {
                     return;
                 }
-                boolean changed = !sameSerials(serials);
+                boolean changed = !sameSources(snapshot);
                 if (!changed && pendingSelectSerial == null) {
                     // 列表没变就不碰下拉：setSources 会把正在展开的弹窗关掉
                     return;
                 }
                 List<DeviceSourceDropdown.Source> next = new ArrayList<>();
                 next.add(DeviceSourceDropdown.Source.local());
-                for (String serial : serials) {
-                    next.add(DeviceSourceDropdown.Source.external(serial));
+                for (AdbBridge.Device device : snapshot.online) {
+                    next.add(DeviceSourceDropdown.Source.external(device));
+                }
+                for (AdbBridge.Device device : snapshot.pending) {
+                    next.add(DeviceSourceDropdown.Source.external(device));
                 }
                 next.add(DeviceSourceDropdown.Source.addDevice());
 
                 // 刚 connect 上的设备出现了：自动切过去，省掉用户再点一次下拉
-                if (pendingSelectSerial != null && serials.contains(pendingSelectSerial)) {
+                if (pendingSelectSerial != null && containsOnline(snapshot, pendingSelectSerial)) {
                     sourceSerial = pendingSelectSerial;
                     pendingSelectSerial = null;
                     loadStatic(true);
-                } else if (sourceSerial != null && !serials.contains(sourceSerial)) {
-                    // 当前选中的外接设备掉线了：退回本机，别让页面停在读不到的快照上
+                } else if (sourceSerial != null && !containsOnline(snapshot, sourceSerial)) {
+                    // 当前选中的外接设备掉线了（或被撤销授权变回 unauthorized）：
+                    // 退回本机，别让页面停在读不到的快照上
                     sourceSerial = null;
                     loadStatic(true);
                 }
@@ -626,15 +630,41 @@ public class DeviceFragment extends Fragment {
         });
     }
 
-    /** 序列号列表与当前下拉里的外接项是否完全一致。 */
-    private boolean sameSerials(List<String> serials) {
+    /** 某个序列号是否在「已就绪」那一批里。 */
+    private boolean containsOnline(AdbBridge.Snapshot snapshot, String serial) {
+        if (serial == null) {
+            return false;
+        }
+        for (AdbBridge.Device device : snapshot.online) {
+            if (serial.equals(device.serial)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 下拉里的外接项与这次查到的结果是否完全一致。
+     *
+     * <p>比的是「序列号 + 是否就绪」而不是只比序列号：USB 首次插上时是 {@code unauthorized}，
+     * 用户去对方手机上点了「允许」之后还是同一个序列号，只比序列号会认为「没变化」，
+     * 那一项就永远停在「未授权」上。
+     */
+    private boolean sameSources(AdbBridge.Snapshot snapshot) {
         List<String> current = new ArrayList<>();
         for (DeviceSourceDropdown.Source source : lastSources) {
             if (!source.action && source.serial != null) {
-                current.add(source.serial);
+                current.add(source.serial + (source.ready ? "#1" : "#0"));
             }
         }
-        return current.equals(serials);
+        List<String> next = new ArrayList<>();
+        for (AdbBridge.Device device : snapshot.online) {
+            next.add(device.serial + "#1");
+        }
+        for (AdbBridge.Device device : snapshot.pending) {
+            next.add(device.serial + "#0");
+        }
+        return current.equals(next);
     }
 
     private void onSourceSelected(DeviceSourceDropdown.Source source) {
@@ -643,6 +673,10 @@ public class DeviceFragment extends Fragment {
         }
         if (source.action) {
             showAddDeviceDialog();
+            return;
+        }
+        if (!source.ready) {
+            showPendingDeviceDialog(source);
             return;
         }
         String serial = source.serial;
@@ -657,6 +691,31 @@ public class DeviceFragment extends Fragment {
         mainHandler.removeCallbacks(tickRunnable);
         loadStatic(true);
         mainHandler.postDelayed(tickRunnable, 200L);
+    }
+
+    /**
+     * 点了「还没就绪」的外接设备。
+     *
+     * <p>最常见的场景就是 USB 首次插上：内置 adb 已经在那条 USB 总线上看到了对方，
+     * 但对方手机屏幕上正等着一个「允许 USB 调试吗？」的确认 —— 这是 RSA key 交换，
+     * 绕不过去。这一屏必须存在：没有它，用户看到的就是「插了没反应」，
+     * 而且没有任何线索指向「去对方手机上点允许」。
+     */
+    private void showPendingDeviceDialog(DeviceSourceDropdown.Source source) {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        String serial = source.serial == null ? "那台设备" : source.serial;
+        new AlertDialog.Builder(ctx)
+                .setTitle("这台设备还没就绪")
+                .setMessage("已经通过 USB 找到 " + serial + "，但还读不了数据。\n\n"
+                        + "① 对方手机屏幕上应有「允许 USB 调试吗？」弹窗 —— 点允许。\n"
+                        + "② 没出现弹窗：那台手机进「开发者选项 → 撤销 USB 调试授权」，再重新插线。\n"
+                        + "③ 数据线要能传数据，纯充电线只能供电。\n\n"
+                        + "对方允许之后，这一项会自己变成「已连接」，不需要退出重进。")
+                .setPositiveButton("知道了", null)
+                .show();
     }
 
     /**
@@ -682,9 +741,13 @@ public class DeviceFragment extends Fragment {
 
         new AlertDialog.Builder(ctx)
                 .setTitle("连接另一台手机")
-                .setMessage("在那台手机的「无线调试」页里可以看到 ip 与端口。\n"
-                        + "首次连接需要先在那台手机上完成配对；\n"
-                        + "USB 数据线连的那台，只有 Root 才能自动列出来。")
+                .setMessage("两种接法：\n\n"
+                        + "① USB 数据线：本机有 Root 时直接插线 —— 对方开「USB 调试」、"
+                        + "在屏幕上点「允许」，这台设备会自己出现在下拉里，不用在这里填任何东西。\n\n"
+                        + "② 无线调试：在那台手机的「无线调试」页里看 ip 与端口，"
+                        + "首次连接要先在那台手机上完成配对。\n\n"
+                        + "没有 Root 时 USB 那台枚举不到（系统只允许 root 身份读 USB 设备节点），"
+                        + "只能走 ②。")
                 .setView(box)
                 .setPositiveButton("连接", (dialog, which) ->
                         doConnect(etAddress.getText().toString().trim()))

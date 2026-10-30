@@ -207,6 +207,35 @@ public final class AdbBridge {
         public boolean online() {
             return "device".equals(state);
         }
+
+        /**
+         * 是不是 USB 有线连接。
+         *
+         * <p>判据只看序列号里有没有冒号：USB 连接报的是设备自身序列号（{@code 45850c2f}），
+         * 网络连接一定带 {@code ip:端口}（{@code 192.168.1.23:37105}）。这不是猜格式 ——
+         * adb 的 transport 类型在 {@code devices} 输出里不体现，序列号是唯一可用于区分的字段。
+         */
+        public boolean usb() {
+            return serial != null && !serial.contains(":");
+        }
+    }
+
+    /** 一次 {@code adb devices} 的完整结果：能用的与「看得到但还用不了」的分开。 */
+    public static final class Snapshot {
+        /** 状态为 {@code device}，可以真正读数据。 */
+        public final List<Device> online = new ArrayList<>();
+        /**
+         * 看得到但读不了：{@code unauthorized}（等对方点「允许」）、{@code offline}、
+         * {@code authorizing}。
+         *
+         * <p>必须单独留下来 —— 只过滤 {@code device} 的话，USB 首次插入时列表是空的，
+         * 用户看到的是「插了没反应」，而实际上那台设备已经在提示他点允许了。
+         */
+        public final List<Device> pending = new ArrayList<>();
+
+        public boolean isEmpty() {
+            return online.isEmpty() && pending.isEmpty();
+        }
     }
 
     /** {@code adb devices} 里出现过的合法状态词。不在这张表里的行一律当噪声丢掉。 */
@@ -214,14 +243,19 @@ public final class AdbBridge {
             "device", "offline", "unauthorized", "recovery", "sideload", "bootloader",
             "host", "no", "authorizing"));
 
-    /** 列全部已连接设备（含无线与 USB）。 */
-    public static List<Device> devices(Context context, long timeoutMs) {
+    /**
+     * 解析 {@code adb devices} 的输出。
+     *
+     * <p>抽成静态方法只为可测：真实输出里混着 {@code "List of devices attached"}、
+     * {@code "* daemon not running..."}、以及 adb server 与 client 版本不一致时的告警，
+     * 那些行同样有好几段，只能靠「第二段是不是合法状态词」剔掉。
+     */
+    static List<Device> parseDevices(String output) {
         List<Device> result = new ArrayList<>();
-        ShellManager.Result r = run(context, timeoutMs, "devices");
-        if (!r.hasOutput()) {
+        if (output == null || output.isEmpty()) {
             return result;
         }
-        for (String raw : r.out.split("\n")) {
+        for (String raw : output.split("\n")) {
             String line = raw.trim();
             // 跳过 "List of devices attached"、空行、以及 "* daemon not running..." 这类噪声
             if (line.isEmpty() || line.startsWith("List of") || line.startsWith("*")) {
@@ -231,8 +265,6 @@ public final class AdbBridge {
             if (parts.length < 2) {
                 continue;
             }
-            // adb 有时把 "adb server version (41) doesn't match this client" 也打进同一路输出，
-            // 那一行同样有两段以上，只能靠「状态词是否合法」把它剔掉
             if (!KNOWN_STATES.contains(parts[1].toLowerCase(Locale.US))) {
                 continue;
             }
@@ -241,8 +273,17 @@ public final class AdbBridge {
         return result;
     }
 
+    /** 列全部已连接设备（含无线与 USB）。 */
+    public static List<Device> devices(Context context, long timeoutMs) {
+        ShellManager.Result r = run(context, timeoutMs, "devices");
+        if (!r.hasOutput()) {
+            return new ArrayList<>();
+        }
+        return parseDevices(r.out);
+    }
+
     /**
-     * 外接设备序列号（供设备页下拉切换数据源）。
+     * 外接设备全景：可用的与待授权的分开返回（供设备页下拉切换数据源）。
      *
      * <p>排除「连到本机自己」的那条 —— 它属于本机数据源，出现在外接列表里会让
      * 同一台设备在页面上出现两次。
@@ -250,19 +291,32 @@ public final class AdbBridge {
      * <p>工具链没解压时会先解压：下拉里能不能列出外接设备，取决于内置 adb 在不在。
      * 这一步读 9.9MB assets，<b>只能在后台线程调用</b>（设备页把它放在读取线程上）。
      *
-     * <p>无 root 时这里只会出现「用 {@link #connect} 主动连过的网络设备」。
-     * USB 插着的那台看不到 —— 应用身份读不到 {@code /dev/bus/usb}，
-     * 原因见类注释里的表。
+     * <p>无 root 时 {@code online} 里只会有「用 {@link #connect} 主动连过的网络设备」，
+     * USB 插着的那台看不到 —— 应用身份读不到 {@code /dev/bus/usb}，原因见类注释里的表。
      */
-    public static List<String> externalSerials(Context context) {
-        List<String> serials = new ArrayList<>();
+    public static Snapshot externalDevices(Context context) {
+        Snapshot snapshot = new Snapshot();
         if (!isReady(context) && !FlashToolchain.ensureReady(context)) {
-            return serials;
+            return snapshot;
         }
         for (Device d : devices(context, DEFAULT_TIMEOUT_MS)) {
-            if (!d.online() || isSelfAddress(d.serial)) {
+            // USB 序列号过 isSelfAddress 会走「主机部分 = 整串」那条，与网卡地址比不可能相等
+            if (isSelfAddress(d.serial)) {
                 continue;
             }
+            if (d.online()) {
+                snapshot.online.add(d);
+            } else {
+                snapshot.pending.add(d);
+            }
+        }
+        return snapshot;
+    }
+
+    /** 只要「能用」的那批序列号。 */
+    public static List<String> externalSerials(Context context) {
+        List<String> serials = new ArrayList<>();
+        for (Device d : externalDevices(context).online) {
             serials.add(d.serial);
         }
         return serials;

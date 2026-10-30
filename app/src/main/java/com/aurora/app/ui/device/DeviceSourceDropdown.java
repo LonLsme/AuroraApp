@@ -11,6 +11,7 @@ import android.widget.TextView;
 import androidx.core.content.ContextCompat;
 
 import com.aurora.app.R;
+import com.aurora.app.core.shell.AdbBridge;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,16 +49,28 @@ public final class DeviceSourceDropdown {
         public final String serial;
         /** {@code true} 表示这不是数据源，而是一个动作（「添加设备…」），点它弹输入框。 */
         public final boolean action;
+        /**
+         * 外接设备是否已就绪（{@code adb} 状态为 {@code device}）。
+         *
+         * <p>未就绪的项也留在列表里：USB 首次插入时对方手机上正等着点「允许 USB 调试」，
+         * 这时候列表若是空的，用户看到的就是「插了没反应」。选中它只弹说明、不切数据源。
+         */
+        public final boolean ready;
 
         public Source(String label, String detail, String serial) {
-            this(label, detail, serial, false);
+            this(label, detail, serial, false, true);
         }
 
         public Source(String label, String detail, String serial, boolean action) {
+            this(label, detail, serial, action, true);
+        }
+
+        public Source(String label, String detail, String serial, boolean action, boolean ready) {
             this.label = label;
             this.detail = detail;
             this.serial = serial;
             this.action = action;
+            this.ready = ready;
         }
 
         /** 本机数据源。 */
@@ -67,6 +80,41 @@ public final class DeviceSourceDropdown {
 
         static Source external(String serial) {
             return new Source(serial, "已连接 · ADB", serial);
+        }
+
+        /**
+         * 外接设备一行。
+         *
+         * <p><b>USB / 无线必须标出来</b>：同一个下拉里两种连接方式并存，用户插了线之后
+         * 分不清多出来的那条是插上去的还是之前无线连过的 —— 这两者的能力和限制完全不同
+         * （USB 要 root 才枚举得到，无线不要）。
+         */
+        public static Source external(AdbBridge.Device device) {
+            String link = device.usb() ? "USB" : "无线";
+            boolean ready = device.online();
+            String detail;
+            if (ready) {
+                detail = link + " · 已连接";
+            } else {
+                switch (device.state) {
+                    case "unauthorized":
+                    case "authorizing":
+                        detail = link + " · 未授权，去对方手机上点「允许」";
+                        break;
+                    case "offline":
+                        detail = link + " · 离线";
+                        break;
+                    case "recovery":
+                    case "sideload":
+                    case "bootloader":
+                        detail = link + " · " + device.state + " 模式，读不到系统信息";
+                        break;
+                    default:
+                        detail = link + " · " + device.state;
+                        break;
+                }
+            }
+            return new Source(device.serial, detail, device.serial, false, ready);
         }
 
         /**
