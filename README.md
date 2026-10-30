@@ -28,6 +28,8 @@
 
 - 设备概览：型号与代号、Android 版本、内核版本、SELinux 状态、当前 Slot、安全补丁、基带、构建指纹
 - CPU 状态：按核心渲染的环形仪表盘
+- **权限通道**：Root 优先，其次 Shizuku 或无线调试；三者都没有时只显示授权引导
+- **双数据源**：本机与外接设备共用同一张卡片，标题右侧下拉切换
 - 顶栏：6 种**监视悬浮窗**开关、快捷重启（系统 / Bootloader / FastbootD / Recovery / EDL / 安全模式）
 
 ### 刷机
@@ -197,7 +199,7 @@ GH_TOKEN=ghp_xxx python scripts/publish_release.py v1.2.0
 ```
 AuroraApp/
 ├── app/src/main/
-│   ├── java/com/aurora/app/      116 个源文件 · 35,482 行
+│   ├── java/com/aurora/app/      131 个源文件 · 40,736 行
 │   │   ├── ui/                   表现层（22 个子包）：Activity / Fragment / 自定义 View / Compose
 │   │   ├── core/                 能力层（6 个子包）：root / flash / monitor / display / cpu / util
 │   │   ├── data/                 数据层：Root 检测、运行时探测、模型
@@ -249,6 +251,7 @@ AuroraApp/
 | [`docs/subsystems/THEME.md`](docs/subsystems/THEME.md) | 主题引擎：调色板算法、覆盖层生成、attr 规则、AMOLED |
 | [`docs/subsystems/MONITOR.md`](docs/subsystems/MONITOR.md) | 监视悬浮窗：窗口体系、拖动实现、图表控件、采集器 |
 | [`docs/subsystems/SYSTEM_DATA.md`](docs/subsystems/SYSTEM_DATA.md) | **数据读不到时先看这份**：Android 12+ 的采数权限边界 |
+| [`docs/subsystems/DEVICE.md`](docs/subsystems/DEVICE.md) | 设备页的权限通道（Root / Shizuku / 无线调试）与本机·外接双数据源 |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | 环境、代码约定、提交规范、PR 流程 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 版本变更记录 |
 | [`docs/archive/`](docs/archive/) | 历史分析快照（含过时数字，仅供追溯判断依据） |

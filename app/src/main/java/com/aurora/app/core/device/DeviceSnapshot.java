@@ -1,0 +1,90 @@
+package com.aurora.app.core.device;
+
+import java.util.Locale;
+
+/**
+ * 设备信息的一次快照。
+ *
+ * <h3>为什么要有这个类</h3>
+ * 设备页的数据有两个来源：本机（{@code Build.*} + 少量 shell）与外接设备（全部走
+ * {@code adb shell}）。两个来源都得喂给<b>同一套</b>卡片，字段必须一一对齐 ——
+ * 用同一个值对象承载，页面就只认快照、不认来源，切换数据源时不需要分支渲染。
+ *
+ * <h3>静态字段与动态字段</h3>
+ * {@link #title}、{@link #fingerprint} 这类一辈子不变；{@link #cores} 与
+ * {@link #batteryCycles} 每秒都在变。{@link DeviceReader#readDynamic} 只填后者，
+ * 前者留 {@code null} —— 页面据此判断「这次刷新要不要动静态行」。
+ */
+public final class DeviceSnapshot {
+
+    /** 制造商 + 型号，如 {@code OPPO PJX110}。 */
+    public String title;
+    /** 设备代号，如 {@code PJX110}。 */
+    public String deviceCode;
+    /** 如 {@code Android 16 (API 36)}。 */
+    public String android;
+    /** 内核版本，如 {@code 6.1.118-android15-11}。 */
+    public String kernel;
+    /** {@code getenforce} 原文：{@code Enforcing} / {@code Permissive} / {@code Disabled}；读不到为 {@code null}。 */
+    public String selinux;
+    /** 如 {@code A 槽位} / {@code 未启用 A/B 分区}。 */
+    public String bootSlot;
+    /** {@code ro.build.display.id}。 */
+    public String buildDisplay;
+    /** 安全补丁日期。 */
+    public String securityPatch;
+    /** 基带版本。 */
+    public String radio;
+    /** 安卓 ID。 */
+    public String androidId;
+    /** 构建指纹（一长串）。 */
+    public String fingerprint;
+    /** 电池循环次数；读不到为 {@code null}。 */
+    public String batteryCycles;
+
+    /** 各核状态，下标即核心号。 */
+    public CpuCore[] cores = new CpuCore[0];
+
+    /** 单个核心的频率与在线状态。 */
+    public static final class CpuCore {
+        public final int index;
+        public final boolean online;
+        /** 当前频率 kHz；读不到 {@code -1}。 */
+        public final long curKhz;
+        /** 最大频率 kHz；读不到 {@code -1}。 */
+        public final long maxKhz;
+        /** 最小频率 kHz；读不到 {@code -1}。 */
+        public final long minKhz;
+
+        CpuCore(int index, boolean online, long curKhz, long maxKhz, long minKhz) {
+            this.index = index;
+            this.online = online;
+            this.curKhz = curKhz;
+            this.maxKhz = maxKhz;
+            this.minKhz = minKhz;
+        }
+
+        /** 展示用频段，如 {@code 364~2265MHz}；数据不全时是 {@code —}。 */
+        public String rangeLabel() {
+            if (minKhz <= 0 || maxKhz <= 0) {
+                return "—";
+            }
+            return String.format(Locale.getDefault(), "%.0f~%.0fMHz", minKhz / 1000.0, maxKhz / 1000.0);
+        }
+
+        /**
+         * 环心百分比 = 当前频率 / 最大频率。
+         *
+         * <p>不是「CPU 占用率」—— Android 12 起 {@code /proc/stat} 对三方应用关闭，
+         * 占用率根本读不到。频率占比是这个替代方案里最接近「忙不忙」的指标，
+         * 也解释了为什么数值会跟着调频一起跳。
+         */
+        public int loadPercent() {
+            if (!online || maxKhz <= 0L || curKhz <= 0L) {
+                return 0;
+            }
+            int pct = Math.round(curKhz * 100f / (float) maxKhz);
+            return Math.min(100, Math.max(0, pct));
+        }
+    }
+}

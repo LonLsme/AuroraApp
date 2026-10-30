@@ -12,6 +12,32 @@
 
 下一个版本要做的改动放这里。发布时把本段整段改名为 `## [x.y.z] - YYYY-MM-DD`。
 
+### 新增
+
+- **设备页改由「权限通道」门控**。Root / Shizuku / 无线调试按优先级探测，命中即短路：
+  - 有 Root → 直接进内容，**绝不出现 Shizuku 引导**（用户已有更高权限）；
+  - 没有 Root 但有 Shizuku 或无线调试 → 同样进内容；
+  - 三者全无 → 收起设备卡与 CPU 卡，只留一块授权引导：一句说明 + 横向并排两颗按钮
+    （`去激活Shizuku` · `打开无线调试设置`）。
+- **设备概览支持切换数据源**：本机与外接设备**共用同一张卡片**，靠「设备概览」标题右侧的
+  胶囊下拉切换，不再摆两套视图。切换时整份快照重读，卡片结构不动。
+- 新增 `core/shell`（`ShellManager` / `ShizukuBridge` / `AdbBridge`）与 `core/device`
+  （`DeviceReader` / `DeviceSnapshot`）：三条通道统一成一个命令入口，外接设备的十几个字段
+  由**一条** `adb shell` 批量取回（逐字段发命令要一两秒）。
+
+### 变更
+
+- SELinux 与安卓 ID 不再只认 root：通过当前最优通道读取，读不到的字段显示「—」而不是猜一个值。
+- 首帧不再空等检测：`DETECTING` 阶段按放行处理，先摆出已经能读到的机型/系统信息，
+  真没有通道时检测一结束就收起。
+- 删掉 `DeviceFragment` 里从未被调用的电池电流 / 设计容量 / 充电状态格式化代码（约 200 行）。
+
+### 依赖
+
+- 新增 `dev.rikka.shizuku:api` + `:provider` 13.1.5（MIT），Manifest 声明 `ShizukuProvider`
+  （authorities = `${applicationId}.shizuku`，`INTERACT_ACROSS_USERS_FULL` 保护）。
+  Shizuku 本体不由本应用分发，用户需自行安装。
+
 ---
 
 ## [1.1.5] - 2026-10-28

@@ -31,13 +31,34 @@
 ## 二、设备页（tab 0）
 
 `res/layout/fragment_device.xml`，容器 id `deviceContentContainer`。
+权限通道与双数据源的完整说明见 [`subsystems/DEVICE.md`](subsystems/DEVICE.md)。
 
-**① 设备概览**卡片 —— 12 个字段：
+**权限门控** —— 页面能不能显示数据，取决于有没有一条能读系统信息的通道：
+
+| 通道 | 判定 | 页面表现 |
+| --- | --- | --- |
+| `ROOT` | `su` 可用（**优先级最高，命中就短路**） | 直接进内容，**绝不出现 Shizuku 引导** |
+| `SHIZUKU` | 服务在跑 + 已授权 | 进内容 |
+| `WIRELESS_ADB` | 内置 adb 已连到本机自己的无线调试 | 进内容 |
+| `NONE` | 以上全无 | 收起设备卡与 CPU 卡，只留授权引导卡 |
+
+授权引导卡：一句 `需要Shizuku授权或者开启无线调试，才能读取设备信息`，
+下面是**横向并排**两颗按钮 —— `去激活Shizuku` · `打开无线调试设置`。
+
+**① 设备概览**卡片（`cardDeviceOverview`）—— 12 个字段：
 
 设备名称、设备代号、Android 版本、内核版本、SELinux 状态、当前 Slot、
 系统版本（Build Display）、安全补丁日期、基带版本、安卓 ID、电池循环次数、构建指纹。
 
-**② CPU 状态** —— `llCpuCoreRings`，按核心渲染环形仪表（`ui/widget/CpuRingGaugeView.java`）。
+右上角（标题右侧）是**数据源胶囊**（`btnDeviceSource` / `tvDeviceSource`）：
+`本机` ↔ 外接设备二选一。本机与外接设备**共用这一张卡片**，不摆两套视图；
+切换时整份快照重读，卡片结构不动。
+
+**② CPU 状态**（`cardCpu`）—— `llCpuCoreRings`，按核心渲染环形仪表
+（`ui/widget/CpuRingGaugeView.java`）。环心百分比是**当前频率 / 最大频率**，
+不是占用率（Android 12 起 `/proc/stat` 对三方应用关闭，占用率读不到）。
+
+> 刷新节奏：本机 1 秒（sysfs 直读），外接设备 2 秒（每次一次 adb 往返）。
 
 ---
 

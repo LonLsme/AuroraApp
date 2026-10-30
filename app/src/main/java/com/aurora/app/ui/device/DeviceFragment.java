@@ -1,132 +1,256 @@
 package com.aurora.app.ui.device;
 
-import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.os.BatteryManager;
-import android.os.Build;
+import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.StatFs;
-import android.provider.Settings;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.GridLayout;
-import android.widget.ProgressBar;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.aurora.app.R;
-import com.aurora.app.core.util.BatterySysFiles;
-import com.aurora.app.core.util.CpuSysFiles;
-import com.aurora.app.core.util.SelinuxShellUtil;
-import com.aurora.app.core.util.SelinuxStatusReader;
+import com.aurora.app.core.device.DeviceReader;
+import com.aurora.app.core.device.DeviceSnapshot;
+import com.aurora.app.core.shell.AdbBridge;
+import com.aurora.app.core.shell.ShellManager;
+import com.aurora.app.core.shell.ShizukuBridge;
 import com.aurora.app.ui.widget.CpuRingGaugeView;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import rikka.shizuku.Shizuku;
+
+/**
+ * 设备概览页。
+ *
+ * <h3>权限门控</h3>
+ * 页面能不能显示数据，取决于有没有一条能读系统信息的通道，优先级固定：
+ * <ol>
+ *   <li>{@link ShellManager.Mode#ROOT} —— 有 root 就直接进内容，<b>绝不</b>出现
+ *       Shizuku 引导（用户已经拥有更高权限，再引导他去激活一个免 root 工具是荒谬的）；</li>
+ *   <li>{@link ShellManager.Mode#SHIZUKU} 或 {@link ShellManager.Mode#WIRELESS_ADB} ——
+ *       有一个就进内容；</li>
+ *   <li>{@link ShellManager.Mode#NONE} —— 收起设备卡与 CPU 卡，只留授权引导
+ *       （{@code cardAuthGuide}）：一句说明 + 两颗并列按钮。</li>
+ * </ol>
+ * 检测与数据读取全在后台单线程，主线程只做「把文字贴上去」。
+ *
+ * <h3>数据源</h3>
+ * 本机与外接设备<b>共用同一套卡片</b>，靠标题右侧的胶囊下拉切换 —— 不摆两套视图。
+ * 切换时整份快照重读，卡片结构完全不动，所以不存在「两张卡片各自显示一半」的中间态。
+ */
 public class DeviceFragment extends Fragment {
 
-    /**
-     * 部分 {@code android.jar} 存根未声明 {@link BatteryManager} 的较新 {@code BATTERY_PROPERTY_*} 字段，编译期用反射解析一次。
-     */
-    private static final int BATTERY_PROPERTY_CHARGE_FULL_NUM = batteryPropertyId("BATTERY_PROPERTY_CHARGE_FULL", 6);
-    private static final int BATTERY_PROPERTY_CHARGE_FULL_DESIGN_NUM =
-            batteryPropertyId("BATTERY_PROPERTY_CHARGE_FULL_DESIGN", 37);
-    private static final int BATTERY_PROPERTY_CYCLE_COUNT_NUM = batteryPropertyId("BATTERY_PROPERTY_CYCLE_COUNT", 35);
+    /** Shizuku 授权请求码，回调里用它认领自己那次请求。 */
+    private static final int REQ_SHIZUKU_PERMISSION = 4401;
 
-    private static int batteryPropertyId(String fieldName, int fallbackIfMissing) {
-        try {
-            return BatteryManager.class.getField(fieldName).getInt(null);
-        } catch (Throwable ignored) {
-            return fallbackIfMissing;
-        }
-    }
+    /** 本机刷新间隔：sysfs 直读，1 秒不心疼。 */
+    private static final long TICK_LOCAL_MS = 1000L;
+
+    /** 外接设备刷新间隔：每次都要一次 adb 往返，2 秒是「看起来实时」与「别把 adb 打通」的折中。 */
+    private static final long TICK_REMOTE_MS = 2000L;
+
+    /** 「有哪些外接设备」不用秒级刷新 —— 每次都要起一个 adb 进程。 */
+    private static final long SOURCES_REFRESH_MS = 5000L;
+
+    /** Shizuku 官方下载页 —— 没装 Shizuku 时唯一的去处。 */
+    private static final String SHIZUKU_DOWNLOAD_URL = "https://shizuku.rikka.app/download/";
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    /** 各核圆环、存储占用、电池瞬时量：每秒刷新（部分机型电量广播极稀疏，仅靠广播电压/电流不更新） */
-    private final Runnable cpuRingTickRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (!isAdded()) {
-                return;
-            }
-            refreshBatteryStickyUi();
-            refreshCpuCoreRingsUi();
-            mainHandler.postDelayed(this, 1000L);
-        }
-    };
+    private ExecutorService worker;
+    private Context appContext;
 
-    private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent == null || !Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) {
-                return;
-            }
-            applyBatteryIntent(intent);
-        }
-    };
+    // ── 卡片
+    private View cardOverview;
+    private View cardCpu;
+    private View cardGuide;
 
-    private ExecutorService gpuExecutor;
+    // ── 文本
+    private TextView tvDeviceName;
+    private TextView tvDeviceCode;
+    private TextView tvAndroidVersion;
+    private TextView tvKernelVersion;
+    private TextView tvSelinuxStatus;
+    private TextView tvBootSlot;
+    private TextView tvRadioVersion;
+    private TextView tvBuildDisplay;
+    private TextView tvSecurityPatch;
+    private TextView tvAndroidId;
+    private TextView tvBatteryCycles;
+    private TextView tvBuildFingerprint;
+    private TextView tvDeviceSource;
 
     private GridLayout llCpuCoreRings;
     private final List<CpuCoreRingHolder> cpuCoreRingHolders = new ArrayList<>();
 
-    private TextView tvBatteryCycles;
+    private DeviceSourceDropdown sourceDropdown;
 
-    private TextView tvBuildFingerprint;
+    /** 下拉里当前这一份可选项，切换后要拿它回写选中态（胶囊上的字）。 */
+    private List<DeviceSourceDropdown.Source> lastSources = new ArrayList<>();
 
-    private TextView tvAndroidId;
+    /** 当前数据源序列号；{@code null} 表示本机。 */
+    private String sourceSerial;
 
-    private TextView tvSelinuxStatus;
+    /** 已经贴到界面上的那份数据来自哪个数据源 / 哪条通道 —— 用来决定要不要重读。 */
+    private String loadedSerial;
+    private ShellManager.Mode loadedMode;
+
+    /** 每次整份重读自增，晚到的旧结果直接丢掉（快速切数据源时会发生）。 */
+    private final AtomicInteger loadToken = new AtomicInteger(0);
+
+    /** 本轮页面可见期内是否已经弹过配对框，避免每次 onResume 都顶一个对话框。 */
+    private boolean pairingPrompted;
+
+    /** 上次查外接设备列表的时间戳（毫秒），用于限流。 */
+    private long lastSourcesRefresh;
+
+    /** 各核圆环、电池循环次数：定时刷新（静态行只在切源/resume 时读一次）。 */
+    private final Runnable tickRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isAdded() || !ShellManager.get().state().hasShell()) {
+                return;
+            }
+            refreshDynamic();
+            mainHandler.postDelayed(this, sourceSerial == null ? TICK_LOCAL_MS : TICK_REMOTE_MS);
+        }
+    };
+
+    // ── Shizuku 状态回调：授权结果 / 服务连上，两个都要触发重测
+    private final Shizuku.OnRequestPermissionResultListener permissionListener =
+            (requestCode, grantResult) -> {
+                if (requestCode != REQ_SHIZUKU_PERMISSION) {
+                    return;
+                }
+                ShellManager.get().invalidate();
+                detect();
+            };
+
+    private final Shizuku.OnBinderReceivedListener binderReceivedListener = () -> {
+        if (!ShizukuBridge.hasPermission()) {
+            return;
+        }
+        ShellManager.get().invalidate();
+        detect();
+    };
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_device, container, false);
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        appContext = requireContext().getApplicationContext();
+        worker = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "aurora-device");
+            t.setDaemon(true);
+            return t;
+        });
 
-        llCpuCoreRings = view.findViewById(R.id.llCpuCoreRings);
-        inflateCpuCoreRingsIfNeeded();
+        bindViews(view);
+        setCopyOnClick();
+        setupSourceDropdown(view);
+        setupGuideButtons(view);
+        registerShizukuListeners();
 
-        TextView tvDeviceName = view.findViewById(R.id.tvDeviceName);
-        TextView tvDeviceCode = view.findViewById(R.id.tvDeviceCode);
-        TextView tvAndroidVersion = view.findViewById(R.id.tvAndroidVersion);
-        TextView tvKernelVersion = view.findViewById(R.id.tvKernelVersion);
+        // 先用上次的检测结果铺一次界面（同一个进程内第二次进页面时这里就是「已知状态」），
+        // 免得已授权用户每次进来都先闪一下引导页；随后 detect() 再按真实情况校正。
+        applyGate(ShellManager.get().state());
+        detect();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // root 可能刚授权、Shizuku 可能刚激活、无线调试可能刚连上 —— 这些都没有系统广播，
+        // 只能在页面回到前台时重测一次。
+        ShellManager.get().invalidate();
+        detect();
+        mainHandler.postDelayed(this::maybePromptPairing, 600L);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mainHandler.removeCallbacks(tickRunnable);
+        if (sourceDropdown != null) {
+            sourceDropdown.dismiss();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        mainHandler.removeCallbacksAndMessages(null);
+        unregisterShizukuListeners();
+        if (sourceDropdown != null) {
+            sourceDropdown.dismiss();
+            sourceDropdown = null;
+        }
+        if (worker != null) {
+            worker.shutdownNow();
+            worker = null;
+        }
+        llCpuCoreRings = null;
+        cpuCoreRingHolders.clear();
+        loadedSerial = null;
+        loadedMode = null;
+        appContext = null;
+    }
+
+    // ───────────────── 视图绑定 ─────────────────
+
+    private void bindViews(View view) {
+        cardOverview = view.findViewById(R.id.cardDeviceOverview);
+        cardCpu = view.findViewById(R.id.cardCpu);
+        cardGuide = view.findViewById(R.id.cardAuthGuide);
+
+        tvDeviceName = view.findViewById(R.id.tvDeviceName);
+        tvDeviceCode = view.findViewById(R.id.tvDeviceCode);
+        tvAndroidVersion = view.findViewById(R.id.tvAndroidVersion);
+        tvKernelVersion = view.findViewById(R.id.tvKernelVersion);
         tvSelinuxStatus = view.findViewById(R.id.tvSelinuxStatus);
-        TextView tvBootSlot = view.findViewById(R.id.tvBootSlot);
-
-        TextView tvRadioVersion = view.findViewById(R.id.tvRadioVersion);
-        TextView tvBuildDisplay = view.findViewById(R.id.tvBuildDisplay);
-        TextView tvSecurityPatch = view.findViewById(R.id.tvSecurityPatch);
+        tvBootSlot = view.findViewById(R.id.tvBootSlot);
+        tvRadioVersion = view.findViewById(R.id.tvRadioVersion);
+        tvBuildDisplay = view.findViewById(R.id.tvBuildDisplay);
+        tvSecurityPatch = view.findViewById(R.id.tvSecurityPatch);
         tvAndroidId = view.findViewById(R.id.tvAndroidId);
-
         tvBatteryCycles = view.findViewById(R.id.tvBatteryCycles);
         tvBuildFingerprint = view.findViewById(R.id.tvBuildFingerprint);
+        tvDeviceSource = view.findViewById(R.id.tvDeviceSource);
+        llCpuCoreRings = view.findViewById(R.id.llCpuCoreRings);
+    }
 
+    private void setCopyOnClick() {
         enableCopyOnClick(tvDeviceName, "设备名称");
         enableCopyOnClick(tvDeviceCode, "设备代号");
         enableCopyOnClick(tvAndroidVersion, "系统版本");
@@ -139,395 +263,217 @@ public class DeviceFragment extends Fragment {
         enableCopyOnClick(tvAndroidId, "安卓 ID");
         enableCopyOnClick(tvBatteryCycles, "电池循环次数");
         enableCopyOnClick(tvBuildFingerprint, "构建指纹");
-
-        gpuExecutor = Executors.newSingleThreadExecutor();
-
-        String deviceTitle = Build.MANUFACTURER + " " + Build.MODEL;
-        tvDeviceName.setText(deviceTitle);
-        tvDeviceCode.setText("设备代号: " + Build.DEVICE);
-
-        tvAndroidVersion.setText("Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
-
-        String kernelVersion = System.getProperty("os.version");
-        if (kernelVersion == null) {
-            kernelVersion = "未知";
-        }
-        tvKernelVersion.setText(kernelVersion);
-
-        applySelinuxSummary();
-
-        tvBootSlot.setText(formatSlotShort(getBootSlotRaw()));
-
-        if (tvRadioVersion != null) {
-            String radio = Build.getRadioVersion();
-            tvRadioVersion.setText(TextUtils.isEmpty(radio) ? "—" : radio);
-        }
-        if (tvBuildDisplay != null) {
-            tvBuildDisplay.setText(Build.DISPLAY);
-        }
-        if (tvBuildFingerprint != null) {
-            tvBuildFingerprint.setText(Build.FINGERPRINT);
-        }
-        if (tvSecurityPatch != null) {
-            tvSecurityPatch.setText(Build.VERSION.SECURITY_PATCH);
-        }
-        refreshAndroidIdUi();
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        Intent sticky = null;
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                sticky = requireContext().registerReceiver(null, filter, Context.RECEIVER_NOT_EXPORTED);
-            } else {
-                sticky = requireContext().registerReceiver(null, filter);
+    private void setupSourceDropdown(View root) {
+        View chip = root.findViewById(R.id.btnDeviceSource);
+        if (chip == null) {
+            return;
+        }
+        chip.setOnClickListener(v -> {
+            if (sourceDropdown != null) {
+                sourceDropdown.toggle();
             }
-        } catch (Exception ignored) {
+        });
+        sourceDropdown = new DeviceSourceDropdown(requireActivity(), chip, tvDeviceSource,
+                this::onSourceSelected);
+        List<DeviceSourceDropdown.Source> initial = new ArrayList<>();
+        initial.add(DeviceSourceDropdown.Source.local());
+        lastSources = initial;
+        sourceDropdown.setSources(initial, sourceSerial);
+    }
+
+    private void setupGuideButtons(View root) {
+        View activate = root.findViewById(R.id.btnActivateShizuku);
+        if (activate != null) {
+            activate.setOnClickListener(v -> onActivateShizuku());
         }
-        if (sticky != null) {
-            applyBatteryIntent(sticky);
+        View wireless = root.findViewById(R.id.btnWirelessDebug);
+        if (wireless != null) {
+            wireless.setOnClickListener(v -> {
+                // 点这颗按钮意味着「我要去开无线调试」——回来时自动弹配对框，否则用户
+                // 开完开关还得自己猜下一步该干嘛。
+                pairingPrompted = false;
+                openWirelessDebuggingSettings();
+            });
         }
+    }
+
+    private void registerShizukuListeners() {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                requireContext().registerReceiver(batteryReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-            } else {
-                requireContext().registerReceiver(batteryReceiver, filter);
-            }
-        } catch (Exception ignored) {
-        }
-
-        applySelinuxSummary();
-        refreshAndroidIdUi();
-
-        mainHandler.removeCallbacks(cpuRingTickRunnable);
-        mainHandler.post(cpuRingTickRunnable);
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        try {
-            requireContext().unregisterReceiver(batteryReceiver);
-        } catch (IllegalArgumentException ignored) {
-        }
-        mainHandler.removeCallbacks(cpuRingTickRunnable);
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        if (gpuExecutor != null) {
-            gpuExecutor.shutdownNow();
-            gpuExecutor = null;
-        }
-        llCpuCoreRings = null;
-        cpuCoreRingHolders.clear();
-        tvBatteryCycles = null;
-        tvBuildFingerprint = null;
-        tvSelinuxStatus = null;
-    }
-
-    private void refreshAndroidIdUi() {
-        if (tvAndroidId == null || getContext() == null) {
-            return;
-        }
-        String viaSu = readAndroidIdViaSu();
-        if (!TextUtils.isEmpty(viaSu)) {
-            tvAndroidId.setText(viaSu);
-            return;
-        }
-        String apiValue = Settings.Secure.getString(requireContext().getContentResolver(), Settings.Secure.ANDROID_ID);
-        tvAndroidId.setText(!TextUtils.isEmpty(apiValue) ? apiValue : "—");
-    }
-
-    private String readAndroidIdViaSu() {
-        SelinuxShellUtil.ShellResult result = SelinuxShellUtil.runSu("settings get secure android_id", 1500);
-        if (!result.success) {
-            return "";
-        }
-        String out = result.stdout == null ? "" : result.stdout.trim();
-        if (TextUtils.isEmpty(out) || "null".equalsIgnoreCase(out)) {
-            return "";
-        }
-        return out;
-    }
-
-    private void enableCopyOnClick(@Nullable TextView textView, @NonNull String label) {
-        if (textView == null) {
-            return;
-        }
-        textView.setClickable(true);
-        textView.setOnClickListener(v -> copyTextToClipboard(label, textView.getText()));
-    }
-
-    private void copyTextToClipboard(@NonNull String label, @Nullable CharSequence value) {
-        Context ctx = getContext();
-        if (ctx == null) {
-            return;
-        }
-        String text = value == null ? "" : value.toString().trim();
-        if (TextUtils.isEmpty(text)) {
-            return;
-        }
-        ClipboardManager clipboard = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
-        if (clipboard == null) {
-            return;
-        }
-        clipboard.setPrimaryClip(ClipData.newPlainText(label, text));
-        Toast.makeText(ctx, "已复制到剪切板", Toast.LENGTH_SHORT).show();
-    }
-
-    private void applyBatteryIntent(Intent batteryStatus) {
-        if (batteryStatus == null || getContext() == null) {
-            return;
-        }
-        try {
-            applyBatteryIntentInner(batteryStatus);
+            Shizuku.addRequestPermissionResultListener(permissionListener);
+            // Sticky：注册时 binder 已经在就立刻回调一次，省掉「页面先开着、Shizuku 后才起来」的漏判
+            Shizuku.addBinderReceivedListenerSticky(binderReceivedListener);
         } catch (Throwable ignored) {
-            // 部分机型在电量属性 / 广播字段上实现不完整，避免从权限页返回后 onResume 里直接崩进程
+            // 没装 Shizuku 时这些调用本身不会抛，抛了也只是少了自动刷新，不影响手动重测
         }
     }
 
-    /**
-     * 不注册 Receiver，仅取系统缓存的 {@link Intent#ACTION_BATTERY_CHANGED}；配合定时任务可更新电压/电流。
-     */
-    private void refreshBatteryStickyUi() {
-        Context ctx = getContext();
-        if (ctx == null) {
-            return;
+    private void unregisterShizukuListeners() {
+        try {
+            Shizuku.removeRequestPermissionResultListener(permissionListener);
+        } catch (Throwable ignored) {
         }
         try {
-            IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-            Intent sticky;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                sticky = ctx.registerReceiver(null, filter, Context.RECEIVER_NOT_EXPORTED);
-            } else {
-                sticky = ctx.registerReceiver(null, filter);
-            }
-            if (sticky != null) {
-                applyBatteryIntent(sticky);
-            }
+            Shizuku.removeBinderReceivedListener(binderReceivedListener);
         } catch (Throwable ignored) {
         }
     }
 
-    private void applyBatteryIntentInner(Intent batteryStatus) {
-        Context ctx = getContext();
-        if (ctx == null) {
+    // ───────────────── 权限门控 ─────────────────
+
+    private void detect() {
+        if (appContext == null) {
             return;
         }
-        BatteryManager bm = (BatteryManager) ctx.getSystemService(Context.BATTERY_SERVICE);
-
-        if (tvBatteryCycles != null) {
-            int c = readBatteryCycleCount(bm, batteryStatus);
-            if (c >= 0) {
-                tvBatteryCycles.setText(String.valueOf(c));
-            } else {
-                tvBatteryCycles.setText("—");
+        ShellManager.get().detectAsync(appContext, state -> {
+            if (!isAdded()) {
+                return;
             }
-        }
+            applyGate(state);
+        });
     }
 
     /**
-     * 优先电量广播 {@link BatteryManager#EXTRA_CYCLE_COUNT}，再 {@code getIntProperty}，最后 sysfs。
+     * 按通道状态决定「显示卡片」还是「显示授权引导」。
+     *
+     * <p>{@link ShellManager.Mode#DETECTING} 按<b>放行</b>处理：首次进页面时检测要跑几十毫秒到
+     * 一秒（{@code su} 可能要等授权弹窗），这期间先摆出已经能读到的机型/系统信息，
+     * 比先给一个空页再跳成内容要稳。真没有通道时，检测一结束就收起卡片。
      */
-    private static int readBatteryCycleCount(BatteryManager bm, Intent batteryStatus) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (batteryStatus != null) {
-                int fromIntent = batteryStatus.getIntExtra(BatteryManager.EXTRA_CYCLE_COUNT, -1);
-                if (fromIntent >= 0) {
-                    return fromIntent;
-                }
-            }
-            if (bm != null) {
-                int v = bm.getIntProperty(BATTERY_PROPERTY_CYCLE_COUNT_NUM);
-                if (v != Integer.MIN_VALUE && v >= 0) {
-                    return v;
-                }
-            }
+    private void applyGate(ShellManager.State state) {
+        boolean open = state.mode == ShellManager.Mode.DETECTING || state.hasShell();
+
+        setVisible(cardGuide, !open);
+        setVisible(cardOverview, open);
+        setVisible(cardCpu, open);
+
+        if (!open) {
+            mainHandler.removeCallbacks(tickRunnable);
+            maybePromptPairing();
+            return;
         }
-        return BatterySysFiles.readCycleCount();
+
+        refreshSources();
+        loadStatic(false);
+
+        mainHandler.removeCallbacks(tickRunnable);
+        if (state.hasShell()) {
+            mainHandler.post(tickRunnable);
+        }
     }
+
+    private static void setVisible(@Nullable View view, boolean visible) {
+        if (view != null) {
+            view.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    // ───────────────── 数据读取 ─────────────────
 
     /**
-     * 电流：{@code CURRENT_NOW} → {@code CURRENT_AVERAGE} → sysfs；单位按微安换算为毫安（异常大值按纳安缩一次）。
+     * 读整份静态信息。
+     *
+     * @param force {@code true} 表示无条件重读（切数据源时用）
      */
-    private static String formatBatteryCurrentMa(BatteryManager bm) {
-        long raw = Long.MIN_VALUE;
-        if (bm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            int now = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
-            if (now != Integer.MIN_VALUE && now != 0) {
-                raw = now;
-            } else {
-                int avg = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE);
-                if (avg != Integer.MIN_VALUE && avg != 0) {
-                    raw = avg;
+    private void loadStatic(boolean force) {
+        final ExecutorService executor = worker;
+        final Context ctx = appContext;
+        if (executor == null || ctx == null) {
+            return;
+        }
+        final String serial = sourceSerial;
+        final ShellManager.Mode mode = ShellManager.get().state().mode;
+        if (!force && Objects.equals(loadedSerial, serial) && loadedMode == mode) {
+            return;
+        }
+        loadedSerial = serial;
+        loadedMode = mode;
+        final int token = loadToken.incrementAndGet();
+        executor.execute(() -> {
+            DeviceSnapshot snapshot = DeviceReader.readStatic(ctx, serial);
+            mainHandler.post(() -> {
+                if (!isAdded() || token != loadToken.get()) {
+                    return;
                 }
-            }
-            if (raw == Long.MIN_VALUE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                long nowL = bm.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
-                if (nowL != Long.MIN_VALUE && nowL != 0L) {
-                    raw = nowL;
+                bindStatic(snapshot);
+            });
+        });
+    }
+
+    /** 只刷会变的字段（各核频率 + 循环次数）。 */
+    private void refreshDynamic() {
+        final ExecutorService executor = worker;
+        final Context ctx = appContext;
+        if (executor == null || ctx == null) {
+            return;
+        }
+        final String serial = sourceSerial;
+        executor.execute(() -> {
+            DeviceSnapshot snapshot = DeviceReader.readDynamic(ctx, serial);
+            mainHandler.post(() -> {
+                if (!isAdded() || !Objects.equals(serial, sourceSerial)) {
+                    return;
                 }
-            }
-        }
-        if (raw == Long.MIN_VALUE) {
-            long s = BatterySysFiles.readCurrentNowMicroAmps();
-            if (s != Long.MIN_VALUE) {
-                raw = s;
-            }
-        }
-        if (raw == Long.MIN_VALUE) {
-            return null;
-        }
-        long ma = microAmpsToMilliAmps(raw);
-        if (ma == 0L) {
-            return "0 mA";
-        }
-        return String.format(Locale.getDefault(), "%+d mA", ma);
+                bindDynamic(snapshot);
+            });
+        });
     }
 
-    /**
-     * 设计容量：{@code CHARGE_FULL_DESIGN} → {@code CHARGE_FULL} → sysfs {@code charge_full_design} / {@code charge_full}。
-     */
-    @Nullable
-    private static String formatDesignCapacityMah(@Nullable BatteryManager bm) {
-        if (bm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            int design = bm.getIntProperty(BATTERY_PROPERTY_CHARGE_FULL_DESIGN_NUM);
-            if (design != Integer.MIN_VALUE && design > 0) {
-                return String.format(Locale.getDefault(), "%d mAh", design / 1000);
-            }
-            int full = bm.getIntProperty(BATTERY_PROPERTY_CHARGE_FULL_NUM);
-            if (full != Integer.MIN_VALUE && full > 0) {
-                return String.format(Locale.getDefault(), "%d mAh", full / 1000);
-            }
+    private void bindStatic(DeviceSnapshot s) {
+        if (s == null) {
+            return;
         }
-        long d = BatterySysFiles.readChargeFullDesignMicroAh();
-        if (d > 0L) {
-            return sysfsMicroAhToMahLabel(d);
-        }
-        long f = BatterySysFiles.readChargeFullMicroAh();
-        if (f > 0L) {
-            return sysfsMicroAhToMahLabel(f);
-        }
-        return null;
+        setText(tvDeviceName, s.title);
+        setText(tvDeviceCode, s.deviceCode == null ? null : "设备代号: " + s.deviceCode);
+        setText(tvAndroidVersion, s.android);
+        setText(tvKernelVersion, s.kernel);
+        setText(tvBootSlot, s.bootSlot);
+        setText(tvBuildDisplay, s.buildDisplay);
+        setText(tvSecurityPatch, s.securityPatch);
+        setText(tvRadioVersion, s.radio);
+        setText(tvAndroidId, s.androidId);
+        setText(tvBuildFingerprint, s.fingerprint);
+        applySelinuxLabel(s.selinux);
+        bindDynamic(s);
+        // 循环次数在静态读里也一并带回来；读不到就写「—」，
+        // 不能留着上一台设备（或上一轮）的数字假装还准
+        setText(tvBatteryCycles, s.batteryCycles);
     }
 
-    private static String sysfsMicroAhToMahLabel(long microAh) {
-        if (microAh >= 100_000L) {
-            return String.format(Locale.getDefault(), "%d mAh", microAh / 1000L);
+    private void bindDynamic(DeviceSnapshot s) {
+        if (s == null) {
+            return;
         }
-        return String.format(Locale.getDefault(), "%d mAh", microAh);
-    }
-
-    /** sysfs 多为 µV；若数值较小则按已是 mV 处理。 */
-    private static int sysfsMicroVoltsToMilliVolts(long microVolts) {
-        long a = Math.abs(microVolts);
-        if (a >= 100_000L) {
-            return (int) (microVolts / 1000L);
+        if (s.cores != null && s.cores.length > 0) {
+            ensureCpuCoreRings(s.cores.length);
+            bindCpuCoreRings(s.cores);
         }
-        return (int) microVolts;
-    }
-
-    private static long microAmpsToMilliAmps(long rawMicro) {
-        long a = Math.abs(rawMicro);
-        if (a > 20_000_000L) {
-            return rawMicro / 1_000_000L;
-        }
-        return rawMicro / 1000L;
-    }
-
-    /** 充电状态、供电方式、健康（{@link Intent#ACTION_BATTERY_CHANGED}） */
-    private static String formatBatteryStatusSummary(Intent intent) {
-        if (intent == null) {
-            return "—";
-        }
-        if (!intent.getBooleanExtra(BatteryManager.EXTRA_PRESENT, true)) {
-            return "未检测到电池";
-        }
-        int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN);
-        int plug = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0);
-        int health = intent.getIntExtra(BatteryManager.EXTRA_HEALTH, BatteryManager.BATTERY_HEALTH_UNKNOWN);
-
-        StringBuilder sb = new StringBuilder(batteryStatusLabel(status));
-        boolean chargingLike = status == BatteryManager.BATTERY_STATUS_CHARGING
-                || status == BatteryManager.BATTERY_STATUS_FULL;
-        if (chargingLike && plug != 0) {
-            sb.append(" · ").append(batteryPlugLabel(plug));
-        }
-        sb.append(" · 健康 ").append(batteryHealthLabel(health));
-        return sb.toString();
-    }
-
-    private static String batteryStatusLabel(int status) {
-        switch (status) {
-            case BatteryManager.BATTERY_STATUS_CHARGING:
-                return "充电中";
-            case BatteryManager.BATTERY_STATUS_DISCHARGING:
-                return "放电中";
-            case BatteryManager.BATTERY_STATUS_FULL:
-                return "已充满";
-            case BatteryManager.BATTERY_STATUS_NOT_CHARGING:
-                return "未在充电";
-            default:
-                return "状态未知";
+        if (s.batteryCycles != null) {
+            setText(tvBatteryCycles, s.batteryCycles);
         }
     }
 
-    private static String batteryPlugLabel(int plug) {
-        if (plug == 0) {
-            return "未接外电";
+    private void setText(@Nullable TextView view, @Nullable String value) {
+        if (view == null) {
+            return;
         }
-        switch (plug) {
-            case BatteryManager.BATTERY_PLUGGED_AC:
-                return "AC 电源";
-            case BatteryManager.BATTERY_PLUGGED_USB:
-                return "USB 供电";
-            case BatteryManager.BATTERY_PLUGGED_WIRELESS:
-                return "无线充电";
-            default:
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                        && plug == BatteryManager.BATTERY_PLUGGED_DOCK) {
-                    return "底座供电";
-                }
-                return "外接电源";
-        }
+        view.setText(TextUtils.isEmpty(value) ? "—" : value);
     }
 
-    private static String batteryHealthLabel(int health) {
-        switch (health) {
-            case BatteryManager.BATTERY_HEALTH_GOOD:
-                return "良好";
-            case BatteryManager.BATTERY_HEALTH_OVERHEAT:
-                return "过热";
-            case BatteryManager.BATTERY_HEALTH_DEAD:
-                return "异常/耗尽";
-            case BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE:
-                return "过压";
-            case BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE:
-                return "故障";
-            case BatteryManager.BATTERY_HEALTH_COLD:
-                return "过冷";
-            default:
-                return "未知";
-        }
-    }
+    // ───────────────── CPU 圆环 ─────────────────
 
-    private void inflateCpuCoreRingsIfNeeded() {
-        if (llCpuCoreRings == null) {
+    private void ensureCpuCoreRings(int count) {
+        if (llCpuCoreRings == null || count <= 0 || count == cpuCoreRingHolders.size()) {
             return;
         }
         llCpuCoreRings.removeAllViews();
         cpuCoreRingHolders.clear();
-        int n = CpuSysFiles.getSysfsCpuCount();
         LayoutInflater inflater = LayoutInflater.from(requireContext());
         float density = getResources().getDisplayMetrics().density;
         int gap = (int) (3 * density);
         int rowGap = (int) (8 * density);
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < count; i++) {
             View item = inflater.inflate(R.layout.item_cpu_core_ring, llCpuCoreRings, false);
             TextView tvLabel = item.findViewById(R.id.tvCpuCoreLabel);
             CpuRingGaugeView ring = item.findViewById(R.id.cpuRingGauge);
@@ -551,11 +497,8 @@ public class DeviceFragment extends Fragment {
         }
     }
 
-    /**
-     * 各核：圆环与环心百分比 = 当前频率 / 该核最大频率（cpufreq）；档位色随该比例变化。
-     */
-    private void refreshCpuCoreRingsUi() {
-        if (llCpuCoreRings == null || cpuCoreRingHolders.isEmpty()) {
+    private void bindCpuCoreRings(DeviceSnapshot.CpuCore[] cores) {
+        if (cores == null || cores.length == 0) {
             return;
         }
         Context ctx = getContext();
@@ -565,134 +508,84 @@ public class DeviceFragment extends Fragment {
         int colorVariant = ContextCompat.getColor(ctx, R.color.fluent_on_surface_variant);
         int colorOnSurface = ContextCompat.getColor(ctx, R.color.fluent_on_surface);
         Locale loc = Locale.getDefault();
-        for (int i = 0; i < cpuCoreRingHolders.size(); i++) {
-            CpuCoreRingHolder h = cpuCoreRingHolders.get(i);
-            boolean online = CpuSysFiles.isCpuOnline(i);
-            long maxK = online ? CpuSysFiles.readCpuMaxFreqKhz(i) : -1L;
-            long curK = online ? CpuSysFiles.readCpuCurFreqKhz(i) : -1L;
 
-            int pct = 0;
-            boolean haveRatio = online && maxK > 0L && curK > 0L;
-            if (haveRatio) {
-                pct = Math.round(curK * 100f / (float) maxK);
-                if (pct > 100) {
-                    pct = 100;
-                }
+        int count = Math.min(cores.length, cpuCoreRingHolders.size());
+        for (int i = 0; i < count; i++) {
+            CpuCoreRingHolder holder = cpuCoreRingHolders.get(i);
+            DeviceSnapshot.CpuCore core = cores[i];
+
+            boolean haveRatio = core.online && core.maxKhz > 0L && core.curKhz > 0L;
+            int pct = core.loadPercent();
+
+            if (holder.ring != null) {
+                holder.ring.setProgress(haveRatio ? (float) pct : 0f);
             }
-            if (h.ring != null) {
-                h.ring.setProgress(haveRatio ? (float) pct : 0f);
-            }
-            if (h.tvPct != null) {
-                if (!online) {
-                    h.tvPct.setText("—");
-                    h.tvPct.setTextColor(colorVariant);
+            if (holder.tvPct != null) {
+                if (!core.online) {
+                    holder.tvPct.setText("—");
+                    holder.tvPct.setTextColor(colorVariant);
                 } else if (!haveRatio) {
-                    h.tvPct.setText("—");
-                    h.tvPct.setTextColor(colorOnSurface);
+                    holder.tvPct.setText("—");
+                    holder.tvPct.setTextColor(colorOnSurface);
                 } else {
-                    h.tvPct.setText(pct + "%");
-                    h.tvPct.setTextColor(ContextCompat.getColor(ctx, CpuRingGaugeView.stitchTextColorResForProgress((float) pct)));
+                    holder.tvPct.setText(pct + "%");
+                    holder.tvPct.setTextColor(ContextCompat.getColor(ctx,
+                            CpuRingGaugeView.stitchTextColorResForProgress((float) pct)));
                 }
             }
-            if (h.tvFreq != null) {
-                if (!online) {
-                    h.tvFreq.setText("—");
-                    h.tvFreq.setTextColor(colorVariant);
-                    if (h.tvFreqUnit != null) {
-                        h.tvFreqUnit.setVisibility(View.GONE);
-                    }
-                    if (h.tvFreqRange != null) {
-                        h.tvFreqRange.setText("—");
-                        h.tvFreqRange.setTextColor(colorVariant);
+            if (holder.tvFreq != null) {
+                if (!core.online) {
+                    holder.tvFreq.setText("—");
+                    holder.tvFreq.setTextColor(colorVariant);
+                    if (holder.tvFreqUnit != null) {
+                        holder.tvFreqUnit.setVisibility(View.GONE);
                     }
                 } else {
-                    if (h.tvFreqUnit != null) {
-                        h.tvFreqUnit.setVisibility(View.VISIBLE);
+                    if (holder.tvFreqUnit != null) {
+                        holder.tvFreqUnit.setVisibility(View.VISIBLE);
                     }
-                    long khz = curK;
-                    if (khz <= 0) {
-                        h.tvFreq.setText("—");
-                        h.tvFreq.setTextColor(colorOnSurface);
+                    if (core.curKhz <= 0L) {
+                        holder.tvFreq.setText("—");
+                        holder.tvFreq.setTextColor(colorOnSurface);
                     } else {
-                        double mhz = khz / 1000.0;
-                        String s = mhz >= 1000d
+                        double mhz = core.curKhz / 1000.0;
+                        holder.tvFreq.setText(mhz >= 1000d
                                 ? String.format(loc, "%.0f", mhz)
-                                : String.format(loc, "%.1f", mhz);
-                        h.tvFreq.setText(s);
-                        h.tvFreq.setTextColor(colorOnSurface);
-                    }
-                    if (h.tvFreqRange != null) {
-                        h.tvFreqRange.setText(CpuSysFiles.formatCpuFreqRangeMhzShort(i));
-                        h.tvFreqRange.setTextColor(colorVariant);
+                                : String.format(loc, "%.1f", mhz));
+                        holder.tvFreq.setTextColor(colorOnSurface);
                     }
                 }
+            }
+            if (holder.tvFreqRange != null) {
+                holder.tvFreqRange.setText(core.online ? core.rangeLabel() : "—");
+                holder.tvFreqRange.setTextColor(colorVariant);
             }
         }
     }
 
-    private static final class CpuCoreRingHolder {
-        final CpuRingGaugeView ring;
-        final TextView tvPct;
-        final TextView tvFreq;
-        final TextView tvFreqUnit;
-        final TextView tvFreqRange;
+    // ───────────────── SELinux ─────────────────
 
-        CpuCoreRingHolder(CpuRingGaugeView ring, TextView tvPct, TextView tvFreq, TextView tvFreqUnit,
-                           TextView tvFreqRange) {
-            this.ring = ring;
-            this.tvPct = tvPct;
-            this.tvFreq = tvFreq;
-            this.tvFreqUnit = tvFreqUnit;
-            this.tvFreqRange = tvFreqRange;
-        }
-    }
-
-    private void applySelinuxSummary() {
+    private void applySelinuxLabel(@Nullable String raw) {
         if (tvSelinuxStatus == null || getContext() == null) {
             return;
         }
-        tvSelinuxStatus.setText("读取中…");
-        tvSelinuxStatus.setTextColor(ContextCompat.getColor(getContext(), R.color.fluent_on_surface_variant));
-        ExecutorService ex = gpuExecutor;
-        if (ex == null) {
+        if (raw == null || raw.isEmpty()) {
+            tvSelinuxStatus.setText("—");
+            tvSelinuxStatus.setTextColor(ContextCompat.getColor(getContext(),
+                    R.color.fluent_on_surface_variant));
             return;
         }
-        ex.execute(() -> {
-            final String label;
-            if (!hasRootAccess()) {
-                label = "严格模式";
-            } else {
-                String raw = SelinuxStatusReader.getStatusString();
-                label = formatSelinuxShort(raw);
-            }
-            mainHandler.post(() -> {
-                if (!isAdded() || tvSelinuxStatus == null || getContext() == null) {
-                    return;
-                }
-                tvSelinuxStatus.setText(label);
-                int colorRes;
-                if (isPermissive(label)) {
-                    colorRes = R.color.fluent_orange;
-                } else if ("严格模式".equals(label)) {
-                    colorRes = R.color.fluent_green_600;
-                } else {
-                    colorRes = R.color.fluent_on_surface_variant;
-                }
-                tvSelinuxStatus.setTextColor(ContextCompat.getColor(getContext(), colorRes));
-            });
-        });
-    }
-
-    private boolean hasRootAccess() {
-        SelinuxShellUtil.ShellResult result = SelinuxShellUtil.runSu("id -u", 1200);
-        if (!result.success) {
-            return false;
+        String label = formatSelinuxShort(raw);
+        tvSelinuxStatus.setText(label);
+        int colorRes;
+        if (isPermissive(label)) {
+            colorRes = R.color.fluent_orange;
+        } else if ("严格模式".equals(label)) {
+            colorRes = R.color.fluent_green_600;
+        } else {
+            colorRes = R.color.fluent_on_surface_variant;
         }
-        String uid = result.stdout == null ? "" : result.stdout.trim();
-        if (TextUtils.isEmpty(uid)) {
-            return true;
-        }
-        return uid.startsWith("0");
+        tvSelinuxStatus.setTextColor(ContextCompat.getColor(getContext(), colorRes));
     }
 
     private boolean isPermissive(String shortStatus) {
@@ -705,9 +598,6 @@ public class DeviceFragment extends Fragment {
 
     /** 与玩机「SELinux 管理」一致：严格模式 / 宽容模式 / 关闭状态 / 未知 */
     private String formatSelinuxShort(String raw) {
-        if (raw == null) {
-            return "未知";
-        }
         String r = raw.toLowerCase(Locale.US);
         if (r.contains("严格") || r.contains("强制") || r.contains("enforcing")) {
             return "严格模式";
@@ -718,65 +608,304 @@ public class DeviceFragment extends Fragment {
         if (r.contains("关闭") || r.contains("disabled")) {
             return "关闭状态";
         }
-        if (r.contains("未知")) {
-            return "未知";
-        }
         return raw;
     }
 
-    private String formatSlotShort(String raw) {
-        if (raw == null) {
-            return "—";
+    // ───────────────── 数据源 ─────────────────
+
+    /** 后台列一遍外接设备，回来更新下拉。 */
+    private void refreshSources() {
+        final ExecutorService executor = worker;
+        final Context ctx = appContext;
+        if (executor == null || ctx == null) {
+            return;
         }
-        if (raw.contains("A")) {
-            return "Slot A";
+        // 每开一次 gate 都会走到这里，而列设备要起一次 adb 进程 —— 5 秒内不重复查，
+        // 插拔设备本来也不会快到秒级
+        long now = System.currentTimeMillis();
+        if (now - lastSourcesRefresh < SOURCES_REFRESH_MS) {
+            return;
         }
-        if (raw.contains("B")) {
-            return "Slot B";
-        }
-        return raw;
+        lastSourcesRefresh = now;
+        executor.execute(() -> {
+            List<String> serials = AdbBridge.externalSerials(ctx);
+            mainHandler.post(() -> {
+                if (!isAdded()) {
+                    return;
+                }
+                List<DeviceSourceDropdown.Source> next = new ArrayList<>();
+                next.add(DeviceSourceDropdown.Source.local());
+                for (String serial : serials) {
+                    next.add(DeviceSourceDropdown.Source.external(serial));
+                }
+                // 当前选中的外接设备掉线了：退回本机，别让页面停在读不到的快照上
+                if (sourceSerial != null && !serials.contains(sourceSerial)) {
+                    sourceSerial = null;
+                    loadStatic(true);
+                }
+                lastSources = next;
+                if (sourceDropdown != null) {
+                    sourceDropdown.setSources(next, sourceSerial);
+                }
+            });
+        });
     }
 
-    private String getBootSlotRaw() {
+    private void onSourceSelected(DeviceSourceDropdown.Source source) {
+        String serial = source == null ? null : source.serial;
+        if (Objects.equals(serial, sourceSerial)) {
+            return;
+        }
+        sourceSerial = serial;
+        if (sourceDropdown != null) {
+            // 胶囊上的字得跟着换：它就是「现在看的是哪台」的唯一提示
+            sourceDropdown.setSources(lastSources, sourceSerial);
+        }
+        mainHandler.removeCallbacks(tickRunnable);
+        loadStatic(true);
+        if (ShellManager.get().state().hasShell()) {
+            mainHandler.postDelayed(tickRunnable, 200L);
+        }
+    }
+
+    // ───────────────── 授权引导 ─────────────────
+
+    /**
+     * 「去激活Shizuku」：按当前状态决定这声点击是「去下载」「去启动」还是「去授权」。
+     */
+    private void onActivateShizuku() {
+        Context ctx = appContext;
+        if (ctx == null) {
+            return;
+        }
+        if (!ShellManager.get().isShizukuInstalled(ctx)) {
+            openUrl(SHIZUKU_DOWNLOAD_URL);
+            return;
+        }
+        if (!ShizukuBridge.pingBinder()) {
+            // 装是装了，但服务没跑：只能把 Shizuku 拉起来，由它自己去做启动引导
+            launchShizukuApp(ctx);
+            return;
+        }
+        if (ShizukuBridge.hasPermission()) {
+            // 已经授权了却没进内容页：很可能刚刚授权完，重测一次即可
+            ShellManager.get().invalidate();
+            detect();
+            return;
+        }
+        ShizukuBridge.requestPermission(REQ_SHIZUKU_PERMISSION);
+    }
+
+    private void launchShizukuApp(Context ctx) {
         try {
-            Class<?> c = Class.forName("android.os.SystemProperties");
-            Method get = c.getMethod("get", String.class, String.class);
-            String slotSuffix = (String) get.invoke(null, "ro.boot.slot_suffix", "");
-            if (slotSuffix != null && !slotSuffix.isEmpty()) {
-                if (slotSuffix.equalsIgnoreCase("_a") || slotSuffix.equalsIgnoreCase("a")) {
-                    return "A 槽位";
-                }
-                if (slotSuffix.equalsIgnoreCase("_b") || slotSuffix.equalsIgnoreCase("b")) {
-                    return "B 槽位";
-                }
-                return slotSuffix;
+            Intent intent = ctx.getPackageManager()
+                    .getLaunchIntentForPackage(ShellManager.SHIZUKU_PACKAGE);
+            if (intent == null) {
+                throw new IllegalStateException("no launch intent");
             }
-            String slot = (String) get.invoke(null, "ro.boot.slot", "");
-            if (slot != null && !slot.isEmpty()) {
-                if (slot.equalsIgnoreCase("a") || slot.equalsIgnoreCase("_a")) {
-                    return "A 槽位";
-                }
-                if (slot.equalsIgnoreCase("b") || slot.equalsIgnoreCase("_b")) {
-                    return "B 槽位";
-                }
-                return slot;
-            }
-            return "未启用 A/B 分区";
-        } catch (Exception e) {
-            return "未知";
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(intent);
+        } catch (Throwable t) {
+            toast("打不开 Shizuku，请手动启动");
         }
     }
 
-    private String formatGb(long bytes) {
-        double gb = bytes / (1024d * 1024d * 1024d);
-        if (gb >= 100) {
-            return String.format(Locale.getDefault(), "%.0fGB", gb);
+    /**
+     * 「打开无线调试设置」。
+     *
+     * <p>三级回落：先点名系统设置里的无线调试页（各家 ROM 的类名不统一，命中率最高的是
+     * AOSP 那个），失败退到「开发者选项」，再退到设置首页 —— 不能让用户点了没反应。
+     */
+    private void openWirelessDebuggingSettings() {
+        if (!isAdded()) {
+            return;
         }
-        if (gb >= 10) {
-            return String.format(Locale.getDefault(), "%.1fGB", gb);
+        Intent direct = new Intent();
+        direct.setComponent(new ComponentName("com.android.settings",
+                "com.android.settings.Settings$WirelessDebuggingActivity"));
+        direct.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            requireContext().startActivity(direct);
+            return;
+        } catch (Throwable ignored) {
         }
-        return String.format(Locale.getDefault(), "%.2fGB", gb);
+        try {
+            Intent dev = new Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS);
+            dev.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            requireContext().startActivity(dev);
+            return;
+        } catch (Throwable ignored) {
+        }
+        try {
+            Intent all = new Intent(android.provider.Settings.ACTION_SETTINGS);
+            all.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            requireContext().startActivity(all);
+        } catch (Throwable t) {
+            toast("打不开系统设置");
+        }
     }
 
-    // GPU/存储卡片已移除；保留其他功能区逻辑即可。
+    private void openUrl(String url) {
+        Context ctx = appContext;
+        if (ctx == null) {
+            return;
+        }
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(intent);
+        } catch (Throwable t) {
+            toast("没有可用的浏览器");
+        }
+    }
+
+    // ───────────────── 无线调试配对 ─────────────────
+
+    /**
+     * 无线调试开着却没连上时，弹一次配对框。
+     *
+     * <p>Android 11 起无线调试必须先用 6 位配对码换证书，配对的端口和连接的端口还不是同一个。
+     * 那对端口只有「配对」这个页面开着的时候才在 mDNS 上广播，所以能自动填就自动填，
+     * 填不上就让用户照着设置页手输 —— 各家的免 root 工具都是这个流程，没有更省的办法。
+     */
+    private void maybePromptPairing() {
+        if (!isAdded() || pairingPrompted) {
+            return;
+        }
+        ShellManager.State state = ShellManager.get().state();
+        if (state.mode != ShellManager.Mode.NONE || !state.wirelessEnabled) {
+            return;
+        }
+        final ExecutorService executor = worker;
+        final Context ctx = appContext;
+        if (executor == null || ctx == null) {
+            return;
+        }
+        pairingPrompted = true;
+        executor.execute(() -> {
+            String address = AdbBridge.findPairingAddress(ctx);
+            mainHandler.post(() -> {
+                if (isAdded()) {
+                    showPairingDialog(address);
+                }
+            });
+        });
+    }
+
+    private void showPairingDialog(@Nullable String address) {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        int pad = dp(20);
+        LinearLayout box = new LinearLayout(ctx);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(pad, dp(8), pad, 0);
+
+        EditText etAddress = new EditText(ctx);
+        etAddress.setHint("配对地址，如 192.168.1.7:37231");
+        etAddress.setSingleLine(true);
+        etAddress.setInputType(InputType.TYPE_CLASS_TEXT);
+        if (!TextUtils.isEmpty(address)) {
+            etAddress.setText(address);
+        }
+
+        EditText etCode = new EditText(ctx);
+        etCode.setHint("6 位配对码");
+        etCode.setSingleLine(true);
+        etCode.setInputType(InputType.TYPE_CLASS_NUMBER);
+
+        box.addView(etAddress);
+        box.addView(etCode);
+
+        new AlertDialog.Builder(ctx)
+                .setTitle("无线调试配对")
+                .setView(box)
+                .setPositiveButton("配对", (dialog, which) ->
+                        doPair(etAddress.getText().toString().trim(), etCode.getText().toString().trim()))
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void doPair(String address, String code) {
+        final ExecutorService executor = worker;
+        final Context ctx = appContext;
+        if (executor == null || ctx == null) {
+            return;
+        }
+        if (TextUtils.isEmpty(address) || TextUtils.isEmpty(code)) {
+            toast("地址和配对码都要填");
+            return;
+        }
+        executor.execute(() -> {
+            boolean paired = AdbBridge.pair(ctx, address, code);
+            mainHandler.post(() -> {
+                if (!isAdded()) {
+                    return;
+                }
+                if (paired) {
+                    toast("配对成功");
+                    ShellManager.get().invalidate();
+                    detect();
+                } else {
+                    toast("配对失败，检查地址与配对码");
+                }
+            });
+        });
+    }
+
+    // ───────────────── 杂项 ─────────────────
+
+    private void enableCopyOnClick(@Nullable TextView textView, @NonNull String label) {
+        if (textView == null) {
+            return;
+        }
+        textView.setClickable(true);
+        textView.setOnClickListener(v -> copyTextToClipboard(label, textView.getText()));
+    }
+
+    private void copyTextToClipboard(@NonNull String label, @Nullable CharSequence value) {
+        Context ctx = getContext();
+        if (ctx == null) {
+            return;
+        }
+        String text = value == null ? "" : value.toString().trim();
+        if (TextUtils.isEmpty(text) || "—".equals(text)) {
+            return;
+        }
+        ClipboardManager clipboard = (ClipboardManager) ctx.getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard == null) {
+            return;
+        }
+        clipboard.setPrimaryClip(ClipData.newPlainText(label, text));
+        Toast.makeText(ctx, "已复制到剪切板", Toast.LENGTH_SHORT).show();
+    }
+
+    private void toast(String message) {
+        Context ctx = getContext();
+        if (ctx != null) {
+            Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private static final class CpuCoreRingHolder {
+        final CpuRingGaugeView ring;
+        final TextView tvPct;
+        final TextView tvFreq;
+        final TextView tvFreqUnit;
+        final TextView tvFreqRange;
+
+        CpuCoreRingHolder(CpuRingGaugeView ring, TextView tvPct, TextView tvFreq, TextView tvFreqUnit,
+                          TextView tvFreqRange) {
+            this.ring = ring;
+            this.tvPct = tvPct;
+            this.tvFreq = tvFreq;
+            this.tvFreqUnit = tvFreqUnit;
+            this.tvFreqRange = tvFreqRange;
+        }
+    }
 }

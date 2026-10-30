@@ -15,7 +15,7 @@
 | minSdk / targetSdk | **24** / **36** | 同上 |
 | compileSdk | 36（`minorApiLevel = 1`） | 同上 |
 | Java 语言级别 | 11（`sourceCompatibility` / `targetCompatibility`） | 同上 |
-| 源码规模 | **119 个源文件 / 36,407 行**（111 `.java` + 8 `.kt`） | 实测统计 |
+| 源码规模 | **131 个源文件 / 40,736 行**（123 `.java` + 8 `.kt`） | 实测统计 |
 | 布局文件 | 61 个（`res/layout/`） | 实测统计 |
 | Activity | **35 个** | 实测统计 |
 | 上游 | [violet_Box](https://github.com/Smart-Paocai/violet_Box)（GPL-3.0），二次开发 | `README.md` / `LICENSE` |
@@ -31,8 +31,9 @@
 | viewpager2 / recyclerview / constraintlayout | 1.0.0 / 1.3.2 / 2.1.4 |
 | kyant0 backdrop / capsule | 1.0.6 / 2.1.3 |
 
-**非 AndroidX 依赖**（直接写在 `dependencies` 里，未走 version catalog）：
+**第三方依赖**（版本一律写在 `gradle/libs.versions.toml`）：
 `com.scottyab:rootbeer-lib:0.1.0`（Root 检测）、
+`dev.rikka.shizuku:api` + `:provider` 13.1.5（免 root 提权，MIT；本体由用户自己安装）、
 `com.squareup.okhttp3:okhttp:4.12.0`（OTA 云提取）、
 `org.apache.commons:commons-compress:1.27.1` + `org.tukaani:xz:1.10` + `commons-io:commons-io:2.18.0`（OTA payload 解析）。
 
@@ -77,7 +78,7 @@
 | 包 | 职责 | 代表类 |
 | --- | --- | --- |
 | `ui/main` | 主框架：Activity、ViewPager2、底栏 | `MainActivity`(1794) · `FloatingBottomBarCompose.kt`(534) · `BottomBarState.kt` |
-| `ui/device` | 「设备」页（tab 0） | `DeviceFragment`(782) |
+| `ui/device` | 「设备」页（tab 0） | `DeviceFragment`(911) · `DeviceSourceDropdown`(167) |
 | `ui/flash` | 「刷机」页（tab 1）与全部刷机子页 | `FlashPage`(516) · `FlashConsoleActivity`(417) · `QdlActivity`(610) · `FlashFilePicker`(309) |
 | `ui/update` | 检查更新：结果对话框（三种形态共用一套控件） | `UpdateDialog` |
 | `ui/settings` | 「设置」页（tab 3）与主题设置 | `SettingsFragment` · `ThemeActivity.kt` · `ThemeScreen.kt`(864) |
@@ -99,12 +100,14 @@
 | `ui/animation` | Compose 动效基元 | `DampedDragAnimation.kt` · `InteractiveHighlight.kt` |
 | `ui/modifier` | Compose 手势 | `DragGestureInspector.kt` |
 
-### `core/`（7 个子包）
+### `core/`（9 个子包）
 
 | 包 | 文件数 | 职责 |
 | --- | --- | --- |
 | `core/flash` | 11 | 刷机链路全套，详见 [`subsystems/FLASH.md`](subsystems/FLASH.md) |
 | `core/monitor` | 12 | 12 个指标采集器，详见 [`subsystems/MONITOR.md`](subsystems/MONITOR.md) |
+| `core/shell` | 3 | 特权通道（Root / Shizuku / 无线 ADB）探测与命令路由，详见 [`subsystems/DEVICE.md`](subsystems/DEVICE.md) |
+| `core/device` | 2 | `DeviceReader` —— 本机与外接两条读取链路 · `DeviceSnapshot` —— 快照值对象 |
 | `core/util` | 7 | 系统节点读取工具（`NodeReader` · `CpuStatReader` · `BatterySysFiles` · `SelinuxStatusReader` …） |
 | `core/display` | 3 | `DisplayController`(710) · `DisplayGuard` · `DisplayRestoreJobService` |
 | `core/update` | 2 | `UpdateChecker` —— GitHub Releases 版本检查（纯 HTTP + JSON，零新依赖）· `ReleaseNotes` —— Release 说明的 Markdown 清理 |
@@ -276,6 +279,7 @@ CoordinatorLayout 时期写在 XML 里的 margin 随之丢失。
 | 主题引擎 | [`subsystems/THEME.md`](subsystems/THEME.md) | `ui/theme/ThemeManager.java` |
 | 监视器 / 悬浮窗 | [`subsystems/MONITOR.md`](subsystems/MONITOR.md) | `ui/overlay/MonitorOverlayService.java` |
 | 系统采数边界 | [`subsystems/SYSTEM_DATA.md`](subsystems/SYSTEM_DATA.md) | `core/util/NodeReader.java` |
+| 设备页 / 权限通道 | [`subsystems/DEVICE.md`](subsystems/DEVICE.md) | `core/shell/ShellManager.java` |
 | Root 执行 | `core/root/RootShell.java`（见下） | — |
 
 ### RootShell（`core/root/RootShell.java`，389 行）
@@ -369,7 +373,7 @@ AuroraApp/
 │       ├── assets/
 │       │   ├── flash_tools.zip     刷机工具链（5 个可执行文件，见 FLASH.md）
 │       │   └── aurora_box_module.zip  Aurora 核心扩展模块（Magisk / KernelSU）
-│       ├── java/com/aurora/app/    117 个源文件
+│       ├── java/com/aurora/app/    131 个源文件
 │       └── res/
 │           ├── layout/             59 个布局
 │           ├── values/             attrs / colors / dimens / strings / themes

@@ -120,6 +120,9 @@ dependencies {
 
     // Root 检测
     implementation(libs.rootbeer)
+    // 免 root 提权：设备页在没有 root 时走 Shizuku 拿 shell
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     // OTA 云提取
     implementation(libs.okhttp)
     // 刷机包解析：payload.bin / .7z / xz
