@@ -19,7 +19,7 @@
 | 各核频率 | ✅ | `/sys/devices/system/cpu/cpu*/cpufreq/*`（Android 12+ 仍开放） |
 | 电池循环次数 | ✅ / ⚠️ | Android 14+ 走 `BatteryManager`，更早只能读 sysfs `cycle_count`，多数机型没有 |
 | **SELinux** | ❌ | `getenforce` 需要 root；Android 12 起三方应用读 `/sys/fs/selinux/enforce` 也被拒 |
-| **BL 状态** | ⚠️ | 属性本身可读，但 `ro.boot.*` 在 application 域常被 SELinux 过滤，**只信 root 身份读到的值** |
+| **BL 状态** | ✅ | `ro.boot.*` 三个属性在 AOSP 里标 `bootloader_prop`，应用身份就有 `get` 权限（真机 Redmi 23117RK66C / Android 16 / 无 root 实测直读得到 `green` / `1` / `locked`），**不需要 root**；判不出结论时才回退 root 再读一次 |
 | **安卓 ID（可信值）** | ⚠️ | `Settings.Secure.ANDROID_ID` 能读，但国产 ROM 可能改写；`settings get secure android_id` 才是系统真值 |
 
 ---
@@ -85,7 +85,7 @@
 
 | 读什么 | 本机 | 外接设备 |
 | --- | --- | --- |
-| 静态信息 | `Build.*` + 一次 shell（`getenforce` / `android_id` / BL 三属性） | 一条 `adb shell`：`echo KEY=$(...)` 十几项 |
+| 静态信息 | `Build.*` + BL 三属性（属性服务直读）+ 一次 shell（`getenforce` / `android_id`） | 一条 `adb shell`：`echo KEY=$(...)` 十几项 |
 | 动态信息 | sysfs 直读，**1 秒**刷 | 每次一次 adb 往返，**2 秒**刷 |
 | 刷新暂停 | `onPause` 移除 tick | 同左 |
 
@@ -166,7 +166,8 @@ crw-rw---- 1 root usb 189, 0 /dev/bus/usb/001/001
 | 插了 USB 外接却不出现 | 无 root 时应用身份读不到 `/dev/bus/usb`，属平台边界 | `AdbBridge.runAsApp()` |
 | 下拉正展开时突然被关掉 | `setSources()` 一律 `dismiss()` | `refreshSources()` 里先比列表 |
 | 外接设备读不到任何值 | 内置 adb 未解压（首次要读 9.9MB assets） | `AdbBridge.externalSerials()` 里 `ensureReady` |
-| BL 状态恒为「—」 | 三个属性都被 SELinux 过滤，或没有 root | `BootloaderState.of()` 逐级回退 |
+| BL 状态恒为「—」 | 三个属性都读不到（个别 ROM 收紧了 `bootloader_prop`，属少数）；先看 `adb logcat -s DeviceReader` 里 `BL 应用身份直读` 那行 | `BootloaderState.of()` 逐级回退，判不出时回退 root 再读 |
+| **无 root 时 BL 显示「—」**（已修） | 曾把 BL 三属性与 `getenforce` 压进同一条 root shell，`execOrEmpty` 在无 root 时整条返回空串 → 一条挂全挂 | `DeviceReader` 把 BL 拆成属性服务直读（提交 `9a965f2`） |
 | 本机多段输出切完后下标错位 | `split` 没传 `-1`，尾部空段被丢掉 | `DeviceReader` 里 `split("##AURORA##", -1)` |
 
 ---
