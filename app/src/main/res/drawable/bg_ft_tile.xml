@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  两列网格里的功能卡片：14dp 圆角 + 细描边 + 按压反馈。
+
+  ripple 的遮罩用卡片形状（不是整块方形），否则按下时会溢出圆角。
+-->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#1F3978ED">
+    <item android:id="@android:id/mask">
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFFFF" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/flash_tool_surface" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/flash_tool_stroke" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+</ripple>

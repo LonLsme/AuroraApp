@@ -1,24 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  「刷写分区」页（竖屏，独立 Activity，无顶栏，Miuix 风格）。
+  「刷写分区」页。
 
   版式（自上而下，顺序固定）：
-    · 顶部区域：左上角返回箭头 + 右上角设备状态下拉（胶囊，点开是 10 个槽位）
-    · 大标题「刷写分区」（加粗大字）
-    · 第一行：保存日志 / 终止
-    · 第二行：读取当前槽位 / 选取 .img 文件
-    · 第三行：切换到另一槽位 / 写入 boot 分区
-    · 第四行：刷入 dtbo / 刷入 recovery
-    · 小标题「按分区名写入」+ 分区名输入框（占位「分区名」）+ 执行写入
-    · 小标题「输出」+ 日志输出区（初始文案「选择操作」）
+    1. 顶部导航栏：返回 · 标题「刷写分区」· 右侧设备连接状态（胶囊，点开是设备列表）
+    2. 镜像文件卡片：标题 + 只读路径框 + 文件夹按钮
+    3. 刷写操作区：两列网格，7 张功能卡片
+    4. 按分区名称写入：标题 + 分区名输入框 + 蓝色「执行写入」
+    5. 运行日志卡片：标题 + 复制 / 清空 + 深色日志区（自身滚动）
+    6. 刷写进度卡片：状态 · 百分比 · 进度条 · 速度 · 剩余时间
 
-  文案：读取当前槽位 / 选取 .img 文件 / 切换到另一槽位 / 写入 boot·dtbo·recovery /
-  按分区名写入 / 分区名 / 执行写入。
-  版式：同一行两个按钮，之后是自定义分区一整行。
+  配色与圆角全部走 @color/flash_tool_* 与 bg_ft_*（浅色 / 夜间两份），
+  不接 ?attr/auroraCard —— 这一页是需求指定的独立视觉语言，而 auroraCard
+  会被 AMOLED 覆盖层改成纯黑，会把白卡片的设计改掉。
 
-  外层是 NestedScrollView 且 overScrollMode="always"：内容不满一屏时也保留上下回弹。
-  日志区刻意用 wrap_content + minHeight（不用 weight 占满）—— 这样日志变长时页面会跟着变高，
-  外层才真的滚得动；若用 weight 撑满一屏则滚动范围恒为 0，只剩回弹没有滚动。
+  外层 NestedScrollView 带 overScrollMode="always"：内容不满一屏时也保留上下回弹。
+  日志区用 maxHeight 限制高度并自身滚动 —— 它是页面里唯一会长到几百行的区域，
+  若让它把页面撑高，用户要滚很久才能看到下面的进度区。
 -->
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -26,7 +24,7 @@
     android:id="@+id/scrollPartition"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/ios_background_grouped"
+    android:background="@color/flash_tool_bg"
     android:fillViewport="true"
     android:fitsSystemWindows="true"
     android:overScrollMode="always"
@@ -36,254 +34,706 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingHorizontal="@dimen/ios_screen_edge"
+        android:paddingHorizontal="16dp"
         android:paddingTop="6dp"
-        android:paddingBottom="20dp">
+        android:paddingBottom="24dp">
 
-        <!-- ───────── 顶部区域：返回箭头 + 设备状态下拉 ───────── -->
+        <!-- ══════════ 1. 顶部导航栏 ══════════ -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="56dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <ImageButton
                 android:id="@+id/btnFlashBack"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:layout_marginStart="-10dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="-8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="返回"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_arrow_back"
-                android:tint="@color/ios_text_primary" />
+                android:tint="@color/flash_tool_text_primary" />
 
-            <View
+            <TextView
                 android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:singleLine="true"
+                android:text="刷写分区"
+                android:textColor="@color/flash_tool_text_primary"
+                android:textSize="19sp" />
 
             <!--
-              下拉胶囊：整体可点（点开弹 10 个槽位列表），文字由页面按探测结果刷新。
-              id 仍叫 tvFlashDeviceState —— 基类据此绑定设备状态文字。
+              设备状态胶囊：整体可点，点开弹设备列表。
+              id 仍叫 tvFlashDeviceState —— 基类 FlashConsoleActivity 据此绑定状态文字。
             -->
             <LinearLayout
                 android:id="@+id/btnPartitionDevicePill"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_flash_device_pill"
+                android:layout_height="34dp"
+                android:background="@drawable/bg_ft_pill"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="7dp">
+                android:paddingStart="10dp"
+                android:paddingEnd="8dp">
+
+                <View
+                    android:id="@+id/vwDeviceStateDot"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_ft_state_dot" />
 
                 <TextView
                     android:id="@+id/tvFlashDeviceState"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:ellipsize="end"
-                    android:maxWidth="170dp"
+                    android:maxWidth="150dp"
                     android:singleLine="true"
                     android:text="未连接设备"
-                    android:textColor="@color/ios_text_secondary"
-                    android:textSize="13sp"
-                    tools:text="Fastboot 已连接 · 45850c2f" />
+                    android:textColor="@color/flash_tool_text_secondary"
+                    android:textSize="12sp"
+                    tools:text="已连接 · 45850c2f" />
 
                 <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_marginStart="4dp"
-                    android:contentDescription="展开设备状态"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_marginStart="3dp"
+                    android:contentDescription="展开设备列表"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_chevron_down"
-                    android:tint="@color/ios_text_secondary" />
+                    android:tint="@color/flash_tool_text_hint" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ───────── 大标题 ───────── -->
+        <!-- ══════════ 2. 镜像文件 ══════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_ft_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_ms_build"
+                    android:tint="@color/flash_tool_accent" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="镜像文件"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/tvImageSize"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/flash_tool_text_hint"
+                    android:textSize="12sp"
+                    tools:text="48.2 MB" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!--
+                  只读路径框：视觉是输入框，行为是展示。
+                  不用可编辑输入框是因为 fastboot 只认真实路径，手输一个不存在的路径
+                  只会在刷写那一刻才失败，而失败信息（No such file）跟分区无关，很难归因。
+                -->
+                <EditText
+                    android:id="@+id/etPartitionImagePath"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_ft_inner"
+                    android:cursorVisible="false"
+                    android:ellipsize="middle"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:fontFamily="monospace"
+                    android:gravity="center_vertical"
+                    android:hint="未选择镜像，点右侧选择 .img"
+                    android:importantForAutofill="no"
+                    android:inputType="none"
+                    android:maxLines="1"
+                    android:paddingHorizontal="12dp"
+                    android:singleLine="true"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textColorHint="@color/flash_tool_text_hint"
+                    android:textSize="12sp"
+                    tools:text="/data/user/0/com.aurora.app/files/image_1729.img" />
+
+                <ImageButton
+                    android:id="@+id/btnPartitionPickImage"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_ft_inner"
+                    android:contentDescription="选择镜像文件"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_folder_open"
+                    android:tint="@color/flash_tool_accent" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ══════════ 3. 刷写操作（两列网格） ══════════ -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="10dp"
+            android:layout_marginStart="2dp"
             android:fontFamily="sans-serif-medium"
-            android:text="刷写分区"
-            android:textColor="@color/ios_text_primary"
-            android:textSize="30sp"
-            android:textStyle="bold" />
+            android:text="刷写操作"
+            android:textColor="@color/flash_tool_text_secondary"
+            android:textSize="13sp" />
 
-        <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:orientation="horizontal">
+
+            <!-- 保存日志 -->
+            <LinearLayout
+                android:id="@+id/btnFlashSaveLog"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_marginEnd="5dp"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bg_ft_tile"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="84dp"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <FrameLayout
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_ft_icon_chip">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_ms_save"
+                        android:tint="@color/flash_tool_accent" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="保存日志"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- 终止操作 -->
+            <LinearLayout
+                android:id="@+id/btnFlashStop"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_marginStart="5dp"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bg_ft_tile"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="84dp"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <FrameLayout
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_ft_icon_chip_danger">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_ms_stop_circle"
+                        android:tint="@color/flash_tool_danger" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="终止操作"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- 读取当前槽位 -->
+            <LinearLayout
+                android:id="@+id/btnPartitionGetSlot"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_marginEnd="5dp"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bg_ft_tile"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="84dp"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <FrameLayout
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_ft_icon_chip">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_ms_memory"
+                        android:tint="@color/flash_tool_accent" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="读取当前槽位"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- 切换到另一槽位 -->
+            <LinearLayout
+                android:id="@+id/btnPartitionSwitchSlot"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_marginStart="5dp"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bg_ft_tile"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="84dp"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <FrameLayout
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_ft_icon_chip">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_ms_swap_vert"
+                        android:tint="@color/flash_tool_accent" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="切换到另一槽位"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- 写入 boot -->
+            <LinearLayout
+                android:id="@+id/btnPartitionFlashBoot"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_marginEnd="5dp"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bg_ft_tile"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="84dp"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <FrameLayout
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_ft_icon_chip">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_ms_developer_board"
+                        android:tint="@color/flash_tool_accent" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="写入 boot 分区"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- 写入 dtbo -->
+            <LinearLayout
+                android:id="@+id/btnPartitionFlashDtbo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_marginStart="5dp"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bg_ft_tile"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="84dp"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <FrameLayout
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_ft_icon_chip">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_ms_tune"
+                        android:tint="@color/flash_tool_accent" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="写入 dtbo 分区"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- 写入 recovery -->
+            <LinearLayout
+                android:id="@+id/btnPartitionFlashRecovery"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_marginEnd="5dp"
+                android:background="@drawable/bg_ft_tile"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="84dp"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <FrameLayout
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_ft_icon_chip">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_ms_settings_backup_restore"
+                        android:tint="@color/flash_tool_accent" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="写入 recovery 分区"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </GridLayout>
+
+        <!-- ══════════ 4. 按分区名称写入 ══════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_ft_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:text="按分区名称写入"
+                android:textColor="@color/flash_tool_text_primary"
+                android:textSize="15sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="分区名写错会刷到别的分区，且不可逆"
+                android:textColor="@color/flash_tool_text_hint"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/etPartitionName"
+                    android:layout_width="0dp"
+                    android:layout_height="46dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_ft_inner"
+                    android:fontFamily="monospace"
+                    android:gravity="center_vertical"
+                    android:hint="分区名，如 init_boot"
+                    android:importantForAutofill="no"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:paddingHorizontal="12dp"
+                    android:singleLine="true"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textColorHint="@color/flash_tool_text_hint"
+                    android:textSize="13sp"
+                    tools:text="init_boot" />
+
+                <TextView
+                    android:id="@+id/btnPartitionFlashCustom"
+                    android:layout_width="wrap_content"
+                    android:layout_height="46dp"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_ft_button_primary"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:minWidth="96dp"
+                    android:paddingHorizontal="18dp"
+                    android:text="执行写入"
+                    android:textColor="@color/flash_tool_on_accent"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ══════════ 5. 运行日志 ══════════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:orientation="horizontal">
+            android:background="@drawable/bg_ft_card"
+            android:orientation="vertical"
+            android:padding="16dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnFlashSaveLog"
-                style="@style/Widget.Aurora.Miuix.Button"
-                android:layout_width="0dp"
-                android:layout_height="@dimen/miuix_button_height"
-                android:layout_weight="1"
-                android:text="保存日志" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnFlashStop"
-                style="@style/Widget.Aurora.Miuix.Button"
-                android:layout_width="0dp"
-                android:layout_height="@dimen/miuix_button_height"
-                android:layout_marginStart="@dimen/miuix_button_gap"
-                android:layout_weight="1"
-                android:text="终止" />
-        </LinearLayout>
-
-        <!-- ───────── 第二行：读取当前槽位 / 选取镜像 ───────── -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/miuix_button_gap"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPartitionGetSlot"
-                style="@style/Widget.Aurora.Miuix.Button"
-                android:layout_width="0dp"
-                android:layout_height="@dimen/miuix_button_height"
-                android:layout_weight="1"
-                android:text="读取当前槽位" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPartitionPickImage"
-                style="@style/Widget.Aurora.Miuix.Button"
-                android:layout_width="0dp"
-                android:layout_height="@dimen/miuix_button_height"
-                android:layout_marginStart="@dimen/miuix_button_gap"
-                android:layout_weight="1"
-                android:text="选取 .img 文件" />
-        </LinearLayout>
-
-        <!-- ───────── 第三行：切换到另一槽位 / 写入 boot ───────── -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/miuix_button_gap"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPartitionSwitchSlot"
-                style="@style/Widget.Aurora.Miuix.Button"
-                android:layout_width="0dp"
-                android:layout_height="@dimen/miuix_button_height"
-                android:layout_weight="1"
-                android:text="切换到另一槽位" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPartitionFlashBoot"
-                style="@style/Widget.Aurora.Miuix.Button"
-                android:layout_width="0dp"
-                android:layout_height="@dimen/miuix_button_height"
-                android:layout_marginStart="@dimen/miuix_button_gap"
-                android:layout_weight="1"
-                android:text="写入 boot 分区" />
-        </LinearLayout>
-
-        <!-- ───────── 第四行：刷入 dtbo / 刷入 recovery ───────── -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/miuix_button_gap"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPartitionFlashDtbo"
-                style="@style/Widget.Aurora.Miuix.Button"
-                android:layout_width="0dp"
-                android:layout_height="@dimen/miuix_button_height"
-                android:layout_weight="1"
-                android:text="写入 dtbo 分区" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPartitionFlashRecovery"
-                style="@style/Widget.Aurora.Miuix.Button"
-                android:layout_width="0dp"
-                android:layout_height="@dimen/miuix_button_height"
-                android:layout_marginStart="@dimen/miuix_button_gap"
-                android:layout_weight="1"
-                android:text="写入 recovery 分区" />
-        </LinearLayout>
-
-        <!-- ───────── 小标题：按分区名写入 ───────── -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:layout_marginBottom="8dp"
-            android:layout_marginStart="4dp"
-            android:text="按分区名写入"
-            android:textAppearance="@style/Widget.IOS.SectionLabel" />
-
-        <!-- 一行：分区名输入框 + 刷入 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <EditText
-                android:id="@+id/etPartitionName"
-                android:layout_width="0dp"
-                android:layout_height="@dimen/miuix_button_height"
-                android:layout_weight="1"
-                android:background="@drawable/bg_flash_input"
-                android:fontFamily="sans-serif"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:gravity="center_vertical"
-                android:hint="分区名"
-                android:importantForAutofill="no"
-                android:inputType="text"
-                android:maxLines="1"
-                android:paddingHorizontal="14dp"
-                android:singleLine="true"
-                android:textColor="@color/ios_text_primary"
-                android:textColorHint="@color/ios_text_secondary"
-                android:textSize="13sp"
-                tools:text="init_boot" />
+                android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPartitionFlashCustom"
-                style="@style/Widget.Aurora.Miuix.Button"
-                android:layout_width="wrap_content"
-                android:layout_height="@dimen/miuix_button_height"
-                android:layout_marginStart="@dimen/miuix_button_gap"
-                android:paddingHorizontal="20dp"
-                android:text="执行写入" />
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_ms_terminal"
+                    android:tint="@color/flash_tool_accent" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="运行日志"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="15sp" />
+
+                <ImageButton
+                    android:id="@+id/btnLogCopy"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="复制日志"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_ms_content_copy"
+                    android:tint="@color/flash_tool_text_secondary" />
+
+                <ImageButton
+                    android:id="@+id/btnLogClear"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:layout_marginStart="2dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="清空日志"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_ms_delete_sweep"
+                    android:tint="@color/flash_tool_text_secondary" />
+            </LinearLayout>
+
+            <!--
+              日志区自身滚动（代码里挂 ScrollingMovementMethod），并用 maxHeight 封顶：
+              它会长到几百行，若把页面撑高，下面的进度区就要滚很久才看得到。
+            -->
+            <TextView
+                android:id="@+id/tvFlashConsole"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_ft_log"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="2dp"
+                android:maxHeight="230dp"
+                android:minHeight="150dp"
+                android:padding="14dp"
+                android:scrollbars="vertical"
+                android:text="选择操作后，命令与输出会显示在这里"
+                android:textColor="@color/flash_tool_log_text"
+                android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- ───────── 小标题：输出 ───────── -->
-        <TextView
+        <!-- ══════════ 6. 刷写进度 ══════════ -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:layout_marginBottom="8dp"
-            android:layout_marginStart="4dp"
-            android:text="输出"
-            android:textAppearance="@style/Widget.IOS.SectionLabel" />
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_ft_card"
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <!--
-          日志区随内容增长、起步 240dp；由外层 NestedScrollView 负责滚动，
-          所以页面里不给它设 ScrollingMovementMethod（否则手势被它吃掉，外层就不再回弹）。
-        -->
-        <TextView
-            android:id="@+id/tvFlashConsole"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_console"
-            android:fontFamily="monospace"
-            android:minHeight="@dimen/miuix_console_height"
-            android:padding="14dp"
-            android:text="选择操作"
-            android:textColor="@color/ios_text_secondary"
-            android:textIsSelectable="true"
-            android:textSize="11sp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvProgressState"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="空闲"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvProgressPercent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="0%"
+                    android:textColor="@color/flash_tool_accent"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/pbFlashProgress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="6dp"
+                android:layout_marginTop="12dp"
+                android:max="100"
+                android:progress="0"
+                android:progressDrawable="@drawable/progress_ft" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="速度"
+                    android:textColor="@color/flash_tool_text_hint"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvProgressSpeed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="—"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="12sp" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="剩余"
+                    android:textColor="@color/flash_tool_text_hint"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvProgressEta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="—"
+                    android:textColor="@color/flash_tool_text_primary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

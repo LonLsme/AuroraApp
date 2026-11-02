@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  「刷写分区」页的专用配色（浅色）。
+
+  为什么不复用 ?attr/auroraCard / ?attr/auroraAccent：
+  这一页是需求指定的独立视觉语言（浅灰底 #F5F6FA + 蓝 #3978ED + 白卡片），
+  而 auroraAccent 默认是品牌绿、auroraCard 会被 AMOLED 覆盖层改成纯黑 ——
+  两者都会把这页的设计规格改掉。
+
+  为什么还是要单独建一组资源而不是直接写 hex：
+  深色主题下白卡片会非常刺眼，必须有 values-night 的对应值。
+  命名保持语义（不是 ft_3978ed），换色时只改这两份文件。
+
+  注意：本页卡片都带 1dp 描边，AMOLED 的纯黑背景下仍能看出边界，
+  所以这里不需要再接入 auroraCard 的 AMOLED 覆盖层。
+-->
+<resources>
+    <!-- 页面底色 -->
+    <color name="flash_tool_bg">#F5F6FA</color>
+
+    <!-- 卡片与次表面 -->
+    <color name="flash_tool_surface">#FFFFFF</color>
+    <color name="flash_tool_surface_alt">#F7F8FC</color>
+    <color name="flash_tool_stroke">#E6E8F0</color>
+    <color name="flash_tool_stroke_strong">#D5D9E5</color>
+
+    <!-- 强调色（需求指定 #3978ED） -->
+    <color name="flash_tool_accent">#3978ED</color>
+    <color name="flash_tool_accent_pressed">#2C63CC</color>
+    <color name="flash_tool_accent_weak">#EAF1FE</color>
+    <color name="flash_tool_on_accent">#FFFFFF</color>
+
+    <!-- 文字层级 -->
+    <color name="flash_tool_text_primary">#101828</color>
+    <color name="flash_tool_text_secondary">#667085</color>
+    <color name="flash_tool_text_hint">#98A2B3</color>
+
+    <!-- 语义色 -->
+    <color name="flash_tool_danger">#F04438</color>
+    <color name="flash_tool_danger_weak">#FEF0EF</color>
+    <color name="flash_tool_success">#12B76A</color>
+    <color name="flash_tool_success_weak">#E7F8F0</color>
+
+    <!-- 日志区：深底浅字，和整页的浅色卡片拉开，看长文本不累 -->
+    <color name="flash_tool_log_bg">#1B1F27</color>
+    <color name="flash_tool_log_text">#D7DCE5</color>
+
+    <!-- 进度条 -->
+    <color name="flash_tool_progress_track">#E6E8F0</color>
+</resources>

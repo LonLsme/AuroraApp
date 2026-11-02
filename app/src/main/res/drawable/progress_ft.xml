@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  进度条：全圆角轨道 + 强调色填充。
+
+  用 layer-list 而不是 Material 的 LinearProgressIndicator，是因为要控制
+  「4dp 高、全圆角、无内边距」这个具体外形；Material 组件在窄高度上
+  自带的 track 内边距会让圆角看起来发扁。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@android:id/background">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/flash_tool_progress_track" />
+            <corners android:radius="999dp" />
+        </shape>
+    </item>
+    <item android:id="@android:id/progress">
+        <clip>
+            <shape android:shape="rectangle">
+                <solid android:color="@color/flash_tool_accent" />
+                <corners android:radius="999dp" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>

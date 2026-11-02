@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  设备状态圆点。
+
+  默认是「未连接」的灰；连接成功后由代码 setBackgroundTintList 改成成功色。
+  用 shape + tint 而不是三个各自的 drawable：颜色是状态，不该靠换资源表达。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/flash_tool_text_hint" />
+</shape>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  日志区底：深色圆角块 + 细描边。
+
+  刻意用深底浅字而不是白底黑字：这块是整个页面里唯一会长到几百行的区域，
+  浅色底看长文本更累，而且深色块能在满屏白卡片里一眼定位到「输出在哪」。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/flash_tool_log_bg" />
+    <corners android:radius="14dp" />
+</shape>

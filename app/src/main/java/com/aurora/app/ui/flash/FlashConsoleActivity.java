@@ -87,6 +87,45 @@ public abstract class FlashConsoleActivity extends AppCompatActivity {
     }
 
     /**
+     * 每收到一行输出（<b>主线程</b>触发）。
+     *
+     * <p>给需要「边跑边更新界面」的页面用 —— 例如刷写分区页从 fastboot 的输出里
+     * 认出 {@code Sending 'boot' / Writing 'boot' / Finished} 来推进进度条。
+     *
+     * <p>为什么在基类开这个口子而不是让子类自己包一层 {@code FlashRuntime.Listener}：
+     * 那样子类要重复实现「单任务闸门、忙碌态、收尾刷新设备状态」这一整套，
+     * 而这套逻辑一旦两边各写一份迟早分叉。
+     *
+     * <p>只有覆写了 {@link #wantsConsoleLine()} 返回 {@code true} 的页面才会收到回调。
+     */
+    protected void onConsoleLine(String line) {
+    }
+
+    /**
+     * 是否需要逐行回调。
+     *
+     * <p>默认 {@code false}：回调要切一次主线程，不需要的页面没必要为每条输出
+     * 白排一个 Runnable（长任务动辄几百行）。
+     */
+    protected boolean wantsConsoleLine() {
+        return false;
+    }
+
+    /**
+     * 清空输出区与缓冲。
+     *
+     * <p>同时把占位标记复位：清空后输出区是空的，下一次 {@link #appendLine} 应该
+     * 重新走一遍「清占位」的流程。
+     */
+    protected void clearConsole() {
+        consoleBuffer.setLength(0);
+        placeholderCleared = false;
+        if (tvConsole != null) {
+            tvConsole.setText("");
+        }
+    }
+
+    /**
      * 一次设备探测完成后的钩子（主线程）。
      *
      * <p>给「需要等探测结束才能做下一件事」的页面用（例如刷入 KernelSU 要在设备状态出来之后
@@ -298,6 +337,11 @@ public abstract class FlashConsoleActivity extends AppCompatActivity {
                     public void onLine(String line) {
                         sink.append(line).append('\n');
                         appendLine(line);
+                        // 切回主线程再回调：子类的进度条 / 状态文字都只能在这里动。
+                        // 只要覆写过 wantsConsoleLine() 的页面才排这次 post
+                        if (wantsConsoleLine()) {
+                            runOnUiThreadSafe(() -> onConsoleLine(line));
+                        }
                     }
 
                     @Override
