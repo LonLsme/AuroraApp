@@ -34,6 +34,18 @@ public class FpsChartView extends View {
 
     private float[] data = new float[0];
 
+    /**
+     * 复用的两条路径（折线与填充）。
+     *
+     * <p>不能每帧 {@code new Path()}：这个控件是帧率记录页的主体，采样期间持续
+     * invalidate，60fps 下每秒就是 120 个 Path 对象。虽然它们很快死掉，但会在
+     * 绘制阶段制造 GC 压力 —— 而绘制阶段正是最不该出现分配的地方（GC 一停就是掉帧，
+     * 帧率图上会直接反映成凹陷，等于测量工具污染了被测量的东西）。
+     * {@code Path.reset()} 保留已分配的点缓冲区，比重新 new 便宜得多。
+     */
+    private final Path reuseLine = new Path();
+    private final Path reuseFill = new Path();
+
     public FpsChartView(Context context) {
         super(context);
         init();
@@ -108,9 +120,11 @@ public class FpsChartView extends View {
             return;
         }
 
-        // 曲线路径
-        Path line = new Path();
-        Path fill = new Path();
+        // 曲线路径（复用同两个 Path，不每帧 new —— 见 reuseLine / reuseFill 的说明）
+        Path line = reuseLine;
+        Path fill = reuseFill;
+        line.reset();
+        fill.reset();
         float stepX = w / (data.length - 1);
         for (int i = 0; i < data.length; i++) {
             float x = getPaddingLeft() + i * stepX;

@@ -169,6 +169,15 @@ public class DeviceFragment extends Fragment {
     /** 贴到界面上的那份快照是不是读成功了 —— 失败时 tick 会按 {@link #STATIC_RETRY_MS} 重试。 */
     private boolean loadedOk = true;
 
+    /**
+     * 这个 tab 现在是不是前台可见。
+     *
+     * <p>不能靠 {@code isResumed()} 代替：ViewPager2 只 detach 页面 View，
+     * Fragment 一直是 RESUMED，用它判会得出「永远可见」。由宿主通过
+     * {@link #onTabShown()} / {@link #onTabHidden()} 显式维护。
+     */
+    private boolean tabVisible = true;
+
     /** 上次整份重读的时间戳，给失败重试限流。 */
     private long lastStaticAttempt;
 
@@ -232,6 +241,35 @@ public class DeviceFragment extends Fragment {
         // root 可能刚授权完 —— 这没有系统广播，只能在页面回到前台时重测一次。
         ShellManager.get().invalidate();
         detect();
+    }
+
+    /**
+     * 所在 tab 被切到前台。
+     *
+     * <p><b>为什么需要这个方法</b>：ViewPager2 换页时<b>不会</b>触发 Fragment 的
+     * {@code onResume} / {@code onPause} —— 它只 detach / attach 页面的 View，
+     * Fragment 本身始终是 RESUMED。所以「切走了就别再每秒读一次 sysfs」这件事
+     * 必须由宿主显式通知，否则停在刷机页或设置页时，设备页仍在后台每秒读 8 个核的
+     * 频率节点、每 5 秒起一次 adb —— 白白耗电，还和前台页抢主线程。
+     */
+    public void onTabShown() {
+        if (!isAdded()) {
+            return;
+        }
+        tabVisible = true;
+        mainHandler.removeCallbacks(tickRunnable);
+        mainHandler.post(tickRunnable);
+        // 切回来时静态行可能是几分钟前的（切走期间不刷新），补一次整份重读
+        loadStatic(false);
+        refreshSources(false);
+    }
+
+    /** 所在 tab 被切走：停掉定时刷新。{@link #onTabShown()} 会重新拉起。 */
+    public void onTabHidden() {
+        tabVisible = false;
+        // 只摘 tick，不能 removeCallbacksAndMessages(null)：那会连带清掉正在排队的
+        // 快照回填（bindStatic 走的是同一个 Handler），页面会停在半截状态。
+        mainHandler.removeCallbacks(tickRunnable);
     }
 
     @Override
@@ -342,7 +380,10 @@ public class DeviceFragment extends Fragment {
         loadStatic(false);
         refreshSources(false);
         mainHandler.removeCallbacks(tickRunnable);
-        mainHandler.post(tickRunnable);
+        // 不可见时不重启 tick：否则停在别的 tab 上，root 授权一回来就把每秒读准时拉起来了
+        if (tabVisible) {
+            mainHandler.post(tickRunnable);
+        }
     }
 
 
@@ -474,7 +515,9 @@ public class DeviceFragment extends Fragment {
         if (view == null) {
             return;
         }
-        view.setText(TextUtils.isEmpty(value) ? "—" : value);
+        // 走变化检测：tick 每秒都会把全部静态行刷一遍，内容没变时不该触发重排。
+        // 空值统一写「—」，所以这里把 null 归一成同一个占位符再比。
+        setTextIfChanged(view, TextUtils.isEmpty(value) ? "—" : value);
     }
 
     // ───────────────── CPU 圆环 ─────────────────
@@ -551,47 +594,67 @@ public class DeviceFragment extends Fragment {
             if (holder.ring != null) {
                 holder.ring.setProgress(haveRatio ? (float) pct : 0f);
             }
-            if (holder.tvPct != null) {
-                if (!core.online) {
-                    holder.tvPct.setText("—");
-                    holder.tvPct.setTextColor(colorVariant);
-                } else if (!haveRatio) {
-                    holder.tvPct.setText("—");
-                    holder.tvPct.setTextColor(colorOnSurface);
-                } else {
-                    holder.tvPct.setText(pct + "%");
-                    holder.tvPct.setTextColor(ContextCompat.getColor(ctx,
-                            CpuRingGaugeView.stitchTextColorResForProgress((float) pct)));
-                }
+            // 下面全部走「变了才写」：setText / setTextColor / setVisibility 都会
+            // 触发 requestLayout + invalidate，而这个方法每秒被调一次、一次 8 个核。
+            // 空闲核的频率在两次采样之间完全一样，无条件写等于每秒白排 8 次布局。
+            if (!core.online || !haveRatio) {
+                setTextIfChanged(holder.tvPct, "—");
+                setTextColorIfChanged(holder.tvPct, core.online ? colorOnSurface : colorVariant);
+            } else {
+                setTextIfChanged(holder.tvPct, pct + "%");
+                setTextColorIfChanged(holder.tvPct, ContextCompat.getColor(ctx,
+                        CpuRingGaugeView.stitchTextColorResForProgress((float) pct)));
             }
             if (holder.tvFreq != null) {
                 if (!core.online) {
-                    holder.tvFreq.setText("—");
-                    holder.tvFreq.setTextColor(colorVariant);
-                    if (holder.tvFreqUnit != null) {
-                        holder.tvFreqUnit.setVisibility(View.GONE);
-                    }
+                    setTextIfChanged(holder.tvFreq, "—");
+                    setTextColorIfChanged(holder.tvFreq, colorVariant);
+                    setVisibilityIfChanged(holder.tvFreqUnit, View.GONE);
                 } else {
-                    if (holder.tvFreqUnit != null) {
-                        holder.tvFreqUnit.setVisibility(View.VISIBLE);
-                    }
+                    setVisibilityIfChanged(holder.tvFreqUnit, View.VISIBLE);
                     if (core.curKhz <= 0L) {
-                        holder.tvFreq.setText("—");
-                        holder.tvFreq.setTextColor(colorOnSurface);
+                        setTextIfChanged(holder.tvFreq, "—");
                     } else {
                         double mhz = core.curKhz / 1000.0;
-                        holder.tvFreq.setText(mhz >= 1000d
+                        setTextIfChanged(holder.tvFreq, mhz >= 1000d
                                 ? String.format(loc, "%.0f", mhz)
                                 : String.format(loc, "%.1f", mhz));
-                        holder.tvFreq.setTextColor(colorOnSurface);
                     }
+                    setTextColorIfChanged(holder.tvFreq, colorOnSurface);
                 }
             }
-            if (holder.tvFreqRange != null) {
-                holder.tvFreqRange.setText(core.online ? core.rangeLabel() : "—");
-                holder.tvFreqRange.setTextColor(colorVariant);
-            }
+            setTextIfChanged(holder.tvFreqRange, core.online ? core.rangeLabel() : "—");
+            setTextColorIfChanged(holder.tvFreqRange, colorVariant);
         }
+    }
+
+    /** 只在文本真的变了时才 setText —— setText 会触发 requestLayout + invalidate。 */
+    private static void setTextIfChanged(@Nullable TextView view, @Nullable String text) {
+        if (view == null) {
+            return;
+        }
+        String next = text == null ? "" : text;
+        CharSequence current = view.getText();
+        if (current != null && current.toString().equals(next)) {
+            return;
+        }
+        view.setText(next);
+    }
+
+    /** 只在颜色真的变了时才 setTextColor。 */
+    private static void setTextColorIfChanged(@Nullable TextView view, int color) {
+        if (view == null || view.getCurrentTextColor() == color) {
+            return;
+        }
+        view.setTextColor(color);
+    }
+
+    /** 只在可见性真的变了时才 setVisibility（每次 set 都会 requestLayout）。 */
+    private static void setVisibilityIfChanged(@Nullable View view, int visibility) {
+        if (view == null || view.getVisibility() == visibility) {
+            return;
+        }
+        view.setVisibility(visibility);
     }
 
     // ───────────────── 状态标签 ─────────────────

@@ -376,6 +376,12 @@ public final class ApkDownloader {
                 }
             } finally {
                 finished = true;
+                // 结束后立刻松开静态引用：listener 通常是界面的匿名类，
+                // 挂在 static current 上等于让一个已经关掉的界面跟着进程活着。
+                // 用 current == this 判，避免把用户刚发起的新任务误清。
+                if (current == this) {
+                    current = null;
+                }
             }
         }
 

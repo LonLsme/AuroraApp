@@ -84,6 +84,7 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.compose.ui.platform.ComposeView;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.card.MaterialCardView;
@@ -441,6 +442,8 @@ public class MainActivity extends AppCompatActivity {
         if (flashPage != null && currentTab == 1) {
             flashPage.onTabShown();
         }
+        // 启动就落在非设备页时，设备页的 tick 不能跑（onViewCreated 已经 post 过一次）
+        notifyDeviceTabVisibility(currentTab);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -755,7 +758,16 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         mainPager.setAdapter(new TabPagerAdapter(pages));
-        mainPager.setOffscreenPageLimit(pages.length - 1);
+        // 常驻页数 = 1（相邻一页），不是「全部 4 页」。
+        //
+        // 设成 pages.length - 1 时，ViewPager2 的首次布局会把 4 个页面全部
+        // measure + layout 一遍 —— 而这 4 页加起来 280+ 个节点（玩机页 104、
+        // 刷机页 91、设备页 59），冷启动就在做用户看不见的 3 页排版。
+        // 设 1 之后首帧只排版当前页与相邻页，另外两页等滑过去再排。
+        //
+        // 注意：页面 View 本身仍由 activity_main.xml 的 include 一次性 inflate，
+        // 这里省的是「排版」不是「创建」。要连创建一起省，得把 include 换成 ViewStub。
+        mainPager.setOffscreenPageLimit(1);
         mainPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
@@ -779,6 +791,9 @@ public class MainActivity extends AppCompatActivity {
                         flashPage.onTabHidden();
                     }
                 }
+                // 设备页同理：ViewPager2 换页不触发 Fragment 的 onPause，
+                // 不显式通知的话它会一直在后台每秒读 8 核频率、每 5 秒起一次 adb。
+                notifyDeviceTabVisibility(position);
             }
         });
 
@@ -788,6 +803,24 @@ public class MainActivity extends AppCompatActivity {
         // （Activity 达到 ACTIVITY_CREATED 时），那一刻 ViewPager2 还没开始布局，
         // 所以容器查找必须与视图树状态无关 —— 这正是 pageViews 兜底存在的意义。
         installPageFragments();
+    }
+
+    /**
+     * 通知设备页「你的 tab 现在可不可见」。
+     *
+     * <p>存在的唯一理由：ViewPager2 换页只 detach / attach 页面 View，不会让 Fragment
+     * 走 {@code onPause}，所以「切走要不要停轮询」这件事 Fragment 自己判断不出来。
+     */
+    private void notifyDeviceTabVisibility(int position) {
+        Fragment fragment = getSupportFragmentManager().findFragmentByTag(TAG_DEVICE_FRAGMENT);
+        if (!(fragment instanceof DeviceFragment)) {
+            return;
+        }
+        if (position == TAB_DEVICE) {
+            ((DeviceFragment) fragment).onTabShown();
+        } else {
+            ((DeviceFragment) fragment).onTabHidden();
+        }
     }
 
     /**

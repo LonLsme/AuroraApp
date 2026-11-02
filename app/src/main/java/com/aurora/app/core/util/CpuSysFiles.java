@@ -53,20 +53,46 @@ public final class CpuSysFiles {
     }
 
     /**
+     * 核数缓存。
+     *
+     * <p>运行期不会变：热插拔只改 {@code cpuN/online} 的<b>值</b>，不会增删 {@code cpuN}
+     * 目录。而设备页每秒都要问一次 —— 一次 {@code listFiles()} 要走十几个目录项的 stat，
+     * 再对每个名字跑一次 {@code matches("\\d+")}（{@link String#matches} 每次都编译 Pattern）。
+     * 缓存之后这些在进程生命周期里只做一次。
+     */
+    private static volatile int sCpuCount = -1;
+
+    /**
      * 从 sysfs 统计逻辑 CPU 数量（cpu0…cpuN-1），失败时用 {@link Runtime#availableProcessors()}。
      */
     public static int getSysfsCpuCount() {
+        int cached = sCpuCount;
+        if (cached > 0) {
+            return cached;
+        }
+        int result = detectCpuCount();
+        sCpuCount = result;
+        return result;
+    }
+
+    private static int detectCpuCount() {
         File dir = new File("/sys/devices/system/cpu");
         File[] files = dir.listFiles();
         int maxIndex = -1;
         if (files != null) {
             for (File f : files) {
                 String name = f.getName();
-                if (name.startsWith("cpu")) {
-                    String tail = name.substring(3);
-                    if (tail.matches("\\d+")) {
-                        maxIndex = Math.max(maxIndex, Integer.parseInt(tail));
-                    }
+                if (!name.startsWith("cpu")) {
+                    continue;
+                }
+                String tail = name.substring(3);
+                if (!isAllDigits(tail)) {
+                    continue;
+                }
+                try {
+                    maxIndex = Math.max(maxIndex, Integer.parseInt(tail));
+                } catch (NumberFormatException ignored) {
+                    // 名字异常长之类的极端情况，跳过这一个即可
                 }
             }
         }
@@ -74,6 +100,20 @@ public final class CpuSysFiles {
             return maxIndex + 1;
         }
         return Math.max(1, Runtime.getRuntime().availableProcessors());
+    }
+
+    /** 纯数字判断：替代 {@code matches("\\d+")}，不编译正则、不产生临时对象。 */
+    private static boolean isAllDigits(String s) {
+        if (s.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < '0' || c > '9') {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isCpuDirPresent(int cpuIndex) {
@@ -103,9 +143,8 @@ public final class CpuSysFiles {
      * 硬件/策略最小频率 kHz（cpuinfo_min_freq，失败则试 scaling_min_freq）。
      */
     public static long readCpuMinFreqKhz(int cpuIndex) {
-        if (!isCpuDirPresent(cpuIndex)) {
-            return -1L;
-        }
+        // 不再先 stat 一次目录：读文件失败与目录不存在在这条链路上是同一个结果（-1），
+        // 多一次 {@code isDirectory()} 只是给每秒一次的轮询白加一次系统调用。
         String base = "/sys/devices/system/cpu/cpu" + cpuIndex + "/cpufreq/";
         Long khz = readLongFile(base + "cpuinfo_min_freq");
         if (khz != null && khz > 0) {
@@ -122,9 +161,7 @@ public final class CpuSysFiles {
      * 硬件/策略最大频率 kHz（cpuinfo_max_freq，失败则试 scaling_max_freq）。
      */
     public static long readCpuMaxFreqKhz(int cpuIndex) {
-        if (!isCpuDirPresent(cpuIndex)) {
-            return -1L;
-        }
+        // 同 readCpuMinFreqKhz：省掉那次目录 stat
         String base = "/sys/devices/system/cpu/cpu" + cpuIndex + "/cpufreq/";
         Long khz = readLongFile(base + "cpuinfo_max_freq");
         if (khz != null && khz > 0) {

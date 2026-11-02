@@ -115,7 +115,17 @@ public class CpuRingGaugeView extends View {
      * 设置目标进度 0–100，会自当前显示值插值过去并触发重绘。
      */
     public void setProgress(float p) {
-        targetProgress = Math.max(0f, Math.min(100f, p));
+        float clamped = Math.max(0f, Math.min(100f, p));
+        // 值没变就直接返回：设备页每秒刷一次、一次刷 8 个核，而频率在两次采样之间
+        // 经常完全一样（尤其是空闲核）。无条件走下面的 cancel + invalidate，
+        // 等于每秒白重绘 8 个自定义 View，还会把正在跑的高度动画反复掐断。
+        //
+        // 这里比的是 targetProgress（目标值）而不是 displayedProgress：动画途中
+        // target 已定、displayed 还在追，再送同一个 target 没有意义。
+        if (Math.abs(clamped - targetProgress) < 0.01f) {
+            return;
+        }
+        targetProgress = clamped;
         if (progressAnimator != null) {
             progressAnimator.cancel();
             progressAnimator = null;
