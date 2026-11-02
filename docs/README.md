@@ -20,6 +20,7 @@
 | [`subsystems/SYSTEM_DATA.md`](subsystems/SYSTEM_DATA.md) | 为什么某些指标读不到？Android 各版本限制了哪些路径？ | 遇到「数据全是 0 / 显示 --」时 |
 | [`subsystems/UPDATE.md`](subsystems/UPDATE.md) | 自动更新怎么检查、下载、校验、装上？发版流水线有哪些约定？ | 改更新逻辑、发版、排查「检查更新失败」时 |
 | [`subsystems/DEVICE.md`](subsystems/DEVICE.md) | 设备页为什么只剩 `—`？为什么免 root 通道被移除？本机与外接设备怎么共用一套卡片？插了另一台手机为什么看不到？ | 改设备页、动权限探测时 |
+| [`PERFORMANCE.md`](PERFORMANCE.md) | 现在多快？怎么量？哪些地方在空转？哪些还能再优化？ | **怀疑卡顿/耗电时先看这份**，改完用它验证 |
 
 ---
 
