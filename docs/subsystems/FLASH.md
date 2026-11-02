@@ -387,12 +387,12 @@ protected void confirmThenRun(String title, String message, String positive, Str
 | --- | --- | --- |
 | `QdlActivity.java` | 610 | 页面 · QDL |
 | `FlashPage.java` | 516 | 刷机页绑定（tab 1） |
-| `FlashConsoleActivity.java` | 417 | **抽象基类** |
+| `FlashConsoleActivity.java` | 461 | **抽象基类** |
 | `OplusFlashActivity.java` | 311 | 页面 · 欧加真 |
 | `ExecCommandActivity.java` | 311 | 页面 · 执行命令 |
 | `FlashFilePicker.java` | 309 | 公共件 |
 | `InstallActivity.java` | 308 | 页面 · 应用安装 |
-| `PartitionFlashActivity.java` | 305 | 页面 · 刷写分区 |
+| `PartitionFlashActivity.java` | 572 | 页面 · 刷写分区 |
 | `AppUninstallActivity.java` | 305 | 页面 · 应用卸载冻结 |
 | `SideloadActivity.java` | 284 | 页面 · ADB Sideload |
 | `MiFlashActivity.java` | 273 | 页面 · 小米线刷 |
@@ -405,6 +405,49 @@ protected void confirmThenRun(String title, String message, String positive, Str
 
 小计 **4,659 行**。
 
+
+---
+
+## 七点五、「刷写分区」页的视觉与进度
+
+这一页（`activity_partition_flash.xml`，739 行）是全项目唯一**自带一套配色**的页面，
+理由是需求指定了独立视觉语言：浅灰底 `#F5F6FA` + 蓝 `#3978ED` + 白卡片。
+
+### 为什么不接 `?attr/auroraCard` / `?attr/auroraAccent`
+
+| 直接用主题属性会怎样 | 结果 |
+| --- | --- |
+| `?attr/auroraAccent` | 默认指向品牌绿，蓝色设计直接没了 |
+| `?attr/auroraCard` | AMOLED 覆盖层会把它改成纯黑，白卡片变黑块 |
+
+所以走 `res/values/colors_flash_tool.xml` + `values-night/` 两份**语义命名**的
+专用色（`flash_tool_surface` / `flash_tool_accent` / …），换色只改这两份文件。
+
+> [!warning] 加新页面别照抄这一套
+> 这套颜色是「需求指定了独立视觉语言」的特例。其它页面一律用主题属性，
+> 否则换主题、切 AMOLED 时那页不会跟着变。
+
+### 进度条为什么只能按阶段跳
+
+`fastboot flash` **不提供实时字节进度**：它在整段发送结束之后才打出
+`Sending 'boot' (65536 KB) OKAY [ 1.553s]`，发送期间一条输出都没有。
+所以 `onConsoleLine()` 里只做三件事：
+
+1. 认出 `Sending` / `Writing` / `Finished` 三个真实阶段，映射成 55% / 92% / 100%；
+2. 从行尾 `[ 1.553s]` 取**真实耗时**，配合镜像大小算实际速度（这是页面上唯一的真数字）；
+3. 剩余时间按已完成阶段外推，文案写明「约」。
+
+**不要**改成「按时间匀速爬到 90% 再卡住」的假进度 —— 刷机页最不该骗人的地方就是进度。
+
+### 基类为它开的口子
+
+`FlashConsoleActivity` 新增两个钩子（对其它子页是纯增量）：
+
+| 成员 | 作用 |
+| --- | --- |
+| `onConsoleLine(String)` | 每行输出回调，**主线程** |
+| `wantsConsoleLine()` | 默认 `false`；返回 true 才会排那次主线程 post，避免不需要的页面为每条输出白排 Runnable |
+| `clearConsole()` | 清缓冲 + 复位占位标记，供日志区的「清空」按钮用 |
 
 ---
 
