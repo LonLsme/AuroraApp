@@ -73,6 +73,8 @@ for s,n in items[:8]: print('%8.2f MB  %s'%(s/1e6,n))
 | release APK | 23,151,215 B | 解压后 42.8 MB |
 | release dex 合计 | **~29.8 MB** | 占解压后体积 70%，见 4.2 |
 | assets/flash_tools.zip | 9.90 MB | adb/fastboot 二进制，功能依赖 |
+| 切页 `ui+draw` 中位 | **2.87 ms** | 144Hz 预算 6.9ms，120 帧里 6 帧超，见第六节 |
+| 屏幕实际刷新率 | 144 Hz | 由 `RefreshRate.applyMax()` 申请，见第六节 |
 
 ---
 
@@ -261,3 +263,71 @@ grep "Overdraw" app/build/intermediates/lint_intermediate_text_report/debug/lint
 4. **页面里的轮询必须能被停掉**。见 3.1，`isResumed()` 不能用来判可见性。
 5. **测完再说话**。`dumpsys cpuinfo` 会四舍五入成 0%，要用 jiffies 增量；
    冷启动要跑 4~5 次；跨进程的 CPU 数字没有可比性。
+
+---
+
+## 六、刷新率与切页帧时间线（2026-11-03）
+
+### 6.1 高刷屏默认不一定给第三方应用
+
+Xiaomi Pad 6 上 `settings get system peak_refresh_rate` = 144，屏幕也支持 144Hz，
+但应用不声明偏好时会一直按 50~60Hz 走 —— 用户感受到的「滑动不跟手」
+有很大一部分是刷新率造成的，和真正的掉帧是两件不同的事。
+
+`core/display/RefreshRate.applyMax(activity)` 在 `AuroraApplication` 的
+`ActivityLifecycleCallbacks.onActivityCreated` 里给每个窗口设
+`preferredRefreshRate = 屏幕支持的最高值`。
+
+- 用 `preferredRefreshRate`（API 23+），不是 `Window#setFrameRate`（API 30+）
+- 放在 Application 统一注册：三十多个页面逐个加必漏
+- 在 `onActivityCreated` 设：窗口还没 attach，偏好随窗口创建生效，
+  不会「先按 60Hz 画几帧再跳高刷」
+- 只是**偏好**：系统取 `min(偏好, peak_refresh_rate)`，限了 60Hz / 省电模式时不听
+
+### 6.2 切 tab 的帧时间线（144Hz，15 次点击 × 3 轮）
+
+| 指标 | 数值 |
+| --- | --- |
+| 主线程（`DrawStart − HandleInputStart`） | **0.4 ~ 0.8 ms** |
+| 录制绘制命令（`IssueDrawCommandsStart − DrawStart`） | 中位 **2.08 ms**，p90 3.64 ms |
+| ui + draw 合计 | 中位 **2.87 ms**，p90 4.33 ms |
+| 超 144Hz 预算（6.9ms） | **6 / 120 帧** |
+
+**主线程不是瓶颈。** 慢帧全部是「录制绘制命令」阶段 —— 也就是整棵视图树的
+`onDraw` 累加，不是 measure/layout，也不是业务逻辑。
+
+### 6.3 三个被实测排除的假设（别再重复试）
+
+| 假设 | 实验 | 结果 |
+| --- | --- | --- |
+| 底栏 backdrop 的 blur/lens/vibrancy 太贵 | 强制关掉 glass + blur | **反而更慢**（ui+draw 中位 3.73 vs 2.87）。模糊在 RenderThread 上做，不占主线程 draw 录制 |
+| 切页改 `AppBarLayout` 高度导致整树重排 | 注释 `updateToolbarForTab` | 无变化 |
+| `onPageSelected` 里的页面通知太重 | 注释 `flashPage.onTabShown` / `notifyDeviceTabVisibility` | 无变化 |
+
+还顺带否掉了 `setOffscreenPageLimit(3)`（全常驻）：p95 反而从 23ms 涨到 32ms。
+
+### 6.4 剩下的 5%
+
+120 帧里 5~6 帧是 20ms 级尖峰，出现在**跨多个 tab 跳转**时（如 设置→设备）：
+目标页在 `offscreenPageLimit=1` 下已被回收，重新 attach 后要完整录制一次
+display list。设备页 59 个节点 + 8 个 CPU 圆环，首绘成本最高。
+
+这是「冷启动省 50ms」与「远跳少一帧尖峰」之间的取舍，当前选前者。
+
+### 6.5 `gfxinfo framestats` 的字段下标会变
+
+新版 Android 的列顺序已经不是老文章里那套（`Flags` 之后直接是
+`FrameTimelineVsyncId`，不再是 `IntendedVsync`）。**按下标硬编码必然算错**，
+要按表头名字取：
+
+```python
+hdr = line.strip(',').split(',')
+ix  = {name: k for k, name in enumerate(hdr)}
+ui   = (r[ix['DrawStart']] - r[ix['HandleInputStart']]) / 1e6
+draw = (r[ix['IssueDrawCommandsStart']] - r[ix['DrawStart']]) / 1e6
+```
+
+> [!warning] 别只盯着 gfxinfo 顶部的 percentile
+> `50th/90th/95th percentile` 是**整帧耗时**，包含等 vsync 和缓冲排队的时间。
+> 判断「是不是 app 自己慢」要看 `ui + draw` 这两段，它们在 6.9ms 内就说明
+> 应用侧没问题，超预算是排队的锅。
