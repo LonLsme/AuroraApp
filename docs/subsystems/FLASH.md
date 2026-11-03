@@ -410,22 +410,28 @@ protected void confirmThenRun(String title, String message, String positive, Str
 
 ## 七点五、「刷写分区」页的视觉与进度
 
-这一页（`activity_partition_flash.xml`，739 行）是全项目唯一**自带一套配色**的页面，
-理由是需求指定了独立视觉语言：浅灰底 `#F5F6FA` + 蓝 `#3978ED` + 白卡片。
+这一页（`activity_partition_flash.xml`）曾短暂用过一套独立的蓝色配色
+（`flash_tool_*` 资源），后来**整体改回主题属性** —— 页面之间的色调不统一，
+换强调色时只有这一页不跟着变。现在它和项目其它页面完全一致：
 
-### 为什么不接 `?attr/auroraCard` / `?attr/auroraAccent`
-
-| 直接用主题属性会怎样 | 结果 |
+| 用途 | 取色 |
 | --- | --- |
-| `?attr/auroraAccent` | 默认指向品牌绿，蓝色设计直接没了 |
-| `?attr/auroraCard` | AMOLED 覆盖层会把它改成纯黑，白卡片变黑块 |
+| 页面背景 | `@color/ios_background_grouped` |
+| 卡片 / 内部小块 | `?attr/auroraCard` / `?attr/auroraFill` |
+| 描边 | `@color/ios_separator` |
+| 强调色（图标、主按钮、进度条） | `?attr/auroraAccent` |
+| 强调色上的前景 | `?attr/auroraOnAccent` |
+| 文字三级 | `@color/ios_text_primary` / `@color/ios_text_secondary` |
+| 语义色 | `@color/ios_semantic_positive` / `@color/ios_semantic_negative` |
 
-所以走 `res/values/colors_flash_tool.xml` + `values-night/` 两份**语义命名**的
-专用色（`flash_tool_surface` / `flash_tool_accent` / …），换色只改这两份文件。
+这些资源全部自带 `values-night` 的对应值，强调色还会跟着「主题 → 强调色」覆盖层一起变。
+**所以这一页不再有需要单独维护的配色文件**（`colors_flash_tool.xml` 已删除）。
 
-> [!warning] 加新页面别照抄这一套
-> 这套颜色是「需求指定了独立视觉语言」的特例。其它页面一律用主题属性，
-> 否则换主题、切 AMOLED 时那页不会跟着变。
+> [!warning] 不要在本页写死色值
+> 一旦写死，换强调色、切 AMOLED 时这一页就会掉队，而其它页面都跟着变了 ——
+> 这种「只有一页不对劲」的问题在深色模式下最明显，也最难被归因到配色上。
+> `bg_ft_tile` / `bg_ft_pill` 里的 ripple 遮罩用的是中性灰 `#1A888888`，
+> 不是强调色：强调色本身可配置，遮罩跟它走会在浅色主题下偏色。
 
 ### 进度条为什么只能按阶段跳
 
@@ -441,7 +447,7 @@ protected void confirmThenRun(String title, String message, String positive, Str
 
 ### 基类为它开的口子
 
-`FlashConsoleActivity` 新增两个钩子（对其它子页是纯增量）：
+`FlashConsoleActivity` 新增三个成员（对其它子页是纯增量）：
 
 | 成员 | 作用 |
 | --- | --- |

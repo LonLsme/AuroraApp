@@ -204,8 +204,8 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
         }
         boolean connected = state != null && (state.adbReady || state.fastbootReady);
         int color = ContextCompat.getColor(this, connected
-                ? R.color.flash_tool_success
-                : R.color.flash_tool_text_hint);
+                ? R.color.ios_semantic_positive
+                : R.color.ios_text_secondary);
         vwDeviceStateDot.setBackgroundTintList(ColorStateList.valueOf(color));
     }
 
@@ -234,7 +234,7 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
         // fastboot 的失败信息有 FAILED / 也有 error: 开头的，两种都算
         if (text.contains("FAILED") || text.toLowerCase(Locale.US).startsWith("error")) {
             flashInProgress = false;
-            applyProgress(0, "刷写失败", R.color.flash_tool_danger);
+            applyProgress(0, "刷写失败", R.color.ios_semantic_negative);
             setSpeed("—");
             setEta("—");
             return;
@@ -257,7 +257,7 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
         }
         if (text.contains("Finished")) {
             flashInProgress = false;
-            applyProgress(100, "刷写完成", R.color.flash_tool_success);
+            applyProgress(100, "刷写完成", R.color.ios_semantic_positive);
             setEta("已完成");
         }
     }
@@ -514,7 +514,7 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
         if (tvProgressState != null) {
             tvProgressState.setText(state);
             tvProgressState.setTextColor(ContextCompat.getColor(this,
-                    colorRes == 0 ? R.color.flash_tool_text_primary : colorRes));
+                    colorRes == 0 ? R.color.ios_text_primary : colorRes));
         }
     }
 

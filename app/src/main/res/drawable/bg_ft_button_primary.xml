@@ -10,7 +10,7 @@
     </item>
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/flash_tool_accent" />
+            <solid android:color="?attr/auroraAccent" />
             <corners android:radius="14dp" />
         </shape>
     </item>

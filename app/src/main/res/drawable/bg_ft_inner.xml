@@ -2,9 +2,9 @@
 <!-- 卡片内部的小块底（输入框、日志区外框）：比卡片低一档的浅底 + 14dp 圆角。 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="@color/flash_tool_surface_alt" />
+    <solid android:color="?attr/auroraFill" />
     <stroke
         android:width="1dp"
-        android:color="@color/flash_tool_stroke" />
+        android:color="@color/ios_separator" />
     <corners android:radius="14dp" />
 </shape>
