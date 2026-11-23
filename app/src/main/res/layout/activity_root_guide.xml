@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ROOT 引导页：检测中只显示一个小进度圈；检测到未授权才切到引导内容。
+    已授权时本页会被立即 finish，用户实际看不到任何东西（只有启动白底）。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fluent_background">
+
+    <!-- ① 检测中 -->
+    <LinearLayout
+        android:id="@+id/guideLoading"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ProgressBar
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:indeterminateTint="?attr/auroraAccent" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="正在检测 ROOT 权限…"
+            android:textColor="?attr/auroraTextSecondary"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- ② 未授权引导 -->
+    <LinearLayout
+        android:id="@+id/guideContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:visibility="gone">
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="@color/fluent_glass_card"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/fluent_card_stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="20dp">
+
+                <ImageView
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_ms_root_not_granted" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="未授予 ROOT"
+                        android:textColor="?attr/auroraTextPrimary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="部分功能需要 ROOT 权限，可先进入体验"
+                        android:textColor="?attr/auroraTextSecondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnGuideEnter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:layout_marginStart="12dp"
+                    android:minWidth="76dp"
+                    android:text="进入"
+                    android:textAllCaps="false"
+                    android:textSize="14sp"
+                    app:cornerRadius="21dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text="在 Root 管理器里授权后，重新打开应用会自动跳过此页"
+            android:textColor="?attr/auroraTextSecondary"
+            android:textSize="12sp" />
+    </LinearLayout>
+</FrameLayout>

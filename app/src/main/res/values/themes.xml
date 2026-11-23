@@ -8,6 +8,16 @@
         <item name="auroraCard">@color/ios_card</item>
         <item name="auroraBackgroundElevated">@color/ios_background_elevated</item>
         <item name="auroraFill">@color/ios_fill_tertiary</item>
+        <!--
+          文字色三级 + 分隔线：默认值先指向 ios_* 这一代（它自带 values-night，
+          深浅两套都不用在这里重写）。从这里往下所有页面只写 ?attr/auroraTextPrimary 之类的
+          属性引用，不再出现 @color/ios_text_primary、@color/explore_slate_800、
+          @color/fluent_on_surface 这些具体色值。
+        -->
+        <item name="auroraTextPrimary">@color/ios_text_primary</item>
+        <item name="auroraTextSecondary">@color/ios_text_secondary</item>
+        <item name="auroraTextTertiary">@color/ios_text_tertiary</item>
+        <item name="auroraSeparator">@color/ios_separator</item>
         <item name="colorSurface">?attr/auroraCard</item>
         <item name="android:colorBackground">@color/ios_background_grouped</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

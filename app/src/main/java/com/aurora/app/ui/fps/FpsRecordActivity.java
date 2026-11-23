@@ -15,6 +15,7 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.aurora.app.R;
 import com.aurora.app.core.monitor.FpsRecorder;
+import com.aurora.app.ui.theme.ThemeColors;
 import com.google.android.material.button.MaterialButton;
 
 import java.text.SimpleDateFormat;
@@ -120,8 +121,9 @@ public class FpsRecordActivity extends AppCompatActivity {
         boolean recording = FpsRecorder.get().isRecording();
         btnToggle.setText(recording ? "停止记录" : "开始记录");
         tvState.setText(recording ? "正在记录系统帧率..." : "未开始记录");
-        tvState.setTextColor(getColor(recording
-                ? R.color.ios_semantic_positive : R.color.ios_text_secondary));
+        tvState.setTextColor(recording
+                ? getColor(R.color.ios_semantic_positive)
+                : ThemeColors.textSecondary(this));
     }
 
     /** 刷新统计与曲线（来自 FpsRecorder 快照）。 */

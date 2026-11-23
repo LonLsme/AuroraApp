@@ -71,6 +71,7 @@ import com.aurora.app.ui.overlay.OverlayConfig;
 import com.aurora.app.ui.overlay.OverlayPermission;
 import com.aurora.app.ui.device.DeviceFragment;
 import com.aurora.app.ui.settings.SettingsFragment;
+import com.aurora.app.ui.theme.ThemeColors;
 import com.aurora.app.ui.update.UpdateDialog;
 import com.aurora.app.core.update.UpdateChecker;
 import com.aurora.app.ui.widget.AuroraSwitchStyler;
@@ -218,7 +219,6 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             updateExploreRootStatus(false);
-            updateExploreUptime();
         }
     };
 
@@ -453,19 +453,17 @@ public class MainActivity extends AppCompatActivity {
         });
 
         clearLog();
-        // 设备信息与玩机页 uptime 依赖 4 个页面 View，而 setupTabPager() 已把它们从视图树移除、
+        // 设备信息依赖页面 View，而 setupTabPager() 已把它们从视图树移除、
         // 等待 ViewPager2 首次布局时重新挂载。若此处同步调用，findViewById 会返回 null，
-        // 表现为「设备信息与运行时长不刷新」。因此延后到 ViewPager2 布局完成后执行。
+        // 表现为「设备信息不刷新」。因此延后到 ViewPager2 布局完成后执行。
         if (mainPager != null) {
             mainPager.post(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     setupDeviceInfo();
-                    updateExploreUptime();
                 }
             });
         } else {
             setupDeviceInfo();
-            updateExploreUptime();
         }
 
         // 启动后静默检查一次更新。延后 3 秒是为了不和首屏的设备信息采集、页面 Fragment
@@ -545,7 +543,6 @@ public class MainActivity extends AppCompatActivity {
         mainHandler.removeCallbacks(exploreResumeRefresh);
         // 返回时先让界面完成首帧绘制，再延后刷新 Explore 状态，降低体感卡顿。
         if (currentTab == 2) {
-            updateExploreUptime();
             View exploreView = findViewById(R.id.fragmentExplorePlaceholder);
             if (exploreView != null) {
                 exploreView.postDelayed(exploreResumeRefresh, 120);
@@ -780,6 +777,11 @@ public class MainActivity extends AppCompatActivity {
                 // 切到“玩机”(Explore) 时：静默检测并自动安装核心模块（只触发一次）
                 if (position == 2) {
                     maybeAutoInstallCoreModuleSilently();
+                    // 玩机页刚 attach：绑定「去设备页」箭头，并刷新一次 ROOT 状态卡片
+                    mainPager.post(() -> {
+                        bindExploreGoDeviceArrow();
+                        updateExploreRootStatus(false);
+                    });
                 }
                 // 切到“刷机”时：让本页的自动轮询跑起来（切走时停掉），并立刻追一次设备探测
                 if (flashPage != null) {
@@ -1700,11 +1702,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         tvExploreRootStatus.setText("正在检测ROOT状态...");
-        tvExploreRootStatus.setTextColor(ContextCompat.getColor(this, R.color.explore_slate_500));
+        tvExploreRootStatus.setTextColor(ThemeColors.textSecondary(this));
         tvExploreRootManager.setText("检测完成后将自动刷新");
-        tvExploreRootManager.setTextColor(ContextCompat.getColor(this, R.color.explore_slate_500));
+        tvExploreRootManager.setTextColor(ThemeColors.textSecondary(this));
         ivExploreRootStatusIcon.setImageResource(R.drawable.ic_ms_security);
-        ivExploreRootStatusIcon.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.explore_slate_500)));
+        ivExploreRootStatusIcon.setImageTintList(ColorStateList.valueOf(ThemeColors.textSecondary(this)));
         cardExploreRootStatusIconBg.setCardBackgroundColor(ContextCompat.getColor(this, R.color.explore_slate_100));
     }
 
@@ -1732,31 +1734,16 @@ public class MainActivity extends AppCompatActivity {
             ivExploreRootStatusIcon.setImageTintList(null);
             cardExploreRootStatusIconBg.setCardBackgroundColor(ContextCompat.getColor(this, R.color.explore_rose_100));
         }
-        tvExploreRootManager.setTextColor(ContextCompat.getColor(this, R.color.explore_slate_500));
+        tvExploreRootManager.setTextColor(ThemeColors.textSecondary(this));
     }
 
-    private void updateExploreUptime() {
-        TextView tvExploreUptimeValue = findViewById(R.id.tvExploreUptimeValue);
-        if (tvExploreUptimeValue == null) {
-            return;
+    /** 玩机页状态卡片右端的箭头：点一下切到设备页。 */
+    private void bindExploreGoDeviceArrow() {
+        View arrow = findViewById(R.id.ivExploreGoDevice);
+        if (arrow != null) {
+            arrow.setOnClickListener(v -> selectTab(TAB_DEVICE));
         }
-        long elapsed = SystemClock.elapsedRealtime();
-        long totalMinutes = elapsed / (60 * 1000);
-        long days = totalMinutes / (24 * 60);
-        long hours = (totalMinutes % (24 * 60)) / 60;
-        long minutes = totalMinutes % 60;
-
-        String uptimeText;
-        if (days > 0) {
-            uptimeText = days + "d " + hours + "h";
-        } else if (hours > 0) {
-            uptimeText = hours + "h " + minutes + "m";
-        } else {
-            uptimeText = minutes + "m";
-        }
-        tvExploreUptimeValue.setText(uptimeText);
     }
-
 
     private boolean canExecuteSuAsRoot() {
         String[][] commands = new String[][]{

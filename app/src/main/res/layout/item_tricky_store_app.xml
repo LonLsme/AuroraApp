@@ -48,7 +48,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/explore_slate_800"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="15sp"
                 android:fontFamily="sans-serif-medium" />
 
@@ -59,7 +59,7 @@
                 android:layout_marginTop="2dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/explore_slate_500"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>

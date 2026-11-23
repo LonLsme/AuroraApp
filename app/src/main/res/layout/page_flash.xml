@@ -41,7 +41,7 @@
             android:layout_weight="1"
             android:fontFamily="sans-serif-medium"
             android:text="刷机"
-            android:textColor="@color/ios_text_primary"
+            android:textColor="?attr/auroraTextPrimary"
             android:textSize="30sp" />
 
         <LinearLayout
@@ -66,7 +66,7 @@
                 android:maxWidth="170dp"
                 android:singleLine="true"
                 android:text="未连接设备"
-                android:textColor="@color/ios_text_secondary"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="13sp"
                 tools:text="ADB 已连接 · 45850c2f" />
 
@@ -76,7 +76,7 @@
                 android:layout_marginStart="4dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_down"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </LinearLayout>
 
@@ -122,7 +122,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="小米线刷"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -132,7 +132,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="小米 · 红米固件包线刷"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -141,7 +141,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -187,7 +187,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="欧加真线刷"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -197,7 +197,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="OPPO · 一加 · realme 固件线刷"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -206,7 +206,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -252,7 +252,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="刷入KernelSU"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -262,7 +262,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="刷写 init_boot / boot 获取 Root"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -271,7 +271,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -317,7 +317,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="高通QDL"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -327,7 +327,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="9008 EDL 深刷模式"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -336,7 +336,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -382,7 +382,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="刷写分区"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -392,7 +392,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="单分区 Fastboot 刷写"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -401,7 +401,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -447,7 +447,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="设备重启"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -457,7 +457,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="重启到系统 / Recovery / Bootloader"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -466,7 +466,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -512,7 +512,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="ADB Sideload 卡刷"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -522,7 +522,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="Recovery 下刷入 OTA 包"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -531,7 +531,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -577,7 +577,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="执行命令"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -587,7 +587,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="自定义 ADB / Fastboot 命令"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -596,7 +596,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -642,7 +642,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="Payload 解包"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -652,7 +652,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="全量包 / 欧加散包 按分区提取镜像"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -661,7 +661,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -722,7 +722,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="应用卸载冻结"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -732,7 +732,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="批量卸载 · 冻结设备上的应用"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -741,7 +741,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -787,7 +787,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="免root激活"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -797,7 +797,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="Shizuku · 小黑屋 · 冰箱"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -806,7 +806,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -852,7 +852,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="应用安装"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -862,7 +862,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:text="选择安装包 · 支持批量安装"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -871,7 +871,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="@color/ios_text_secondary" />
+                android:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

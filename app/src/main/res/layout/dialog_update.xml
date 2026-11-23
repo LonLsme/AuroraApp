@@ -50,7 +50,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
                 android:text="发现新版本"
-                android:textColor="@color/ios_text_primary"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="17sp" />
 
             <TextView
@@ -58,7 +58,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
-                android:textColor="@color/ios_text_secondary"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="13sp"
                 android:visibility="gone" />
         </LinearLayout>
@@ -89,7 +89,7 @@
                 android:layout_height="wrap_content"
                 android:lineSpacingExtra="3dp"
                 android:paddingBottom="6dp"
-                android:textColor="@color/ios_text_secondary"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="14sp"
                 android:visibility="gone" />
 
@@ -99,7 +99,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:lineSpacingExtra="4dp"
-                android:textColor="@color/ios_text_primary"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textIsSelectable="true"
                 android:textSize="13sp"
                 android:visibility="gone" />

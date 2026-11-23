@@ -55,7 +55,7 @@
                 android:contentDescription="返回"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_arrow_back"
-                android:tint="@color/ios_text_primary" />
+                android:tint="?attr/auroraTextPrimary" />
 
             <TextView
                 android:layout_width="0dp"
@@ -66,7 +66,7 @@
                 android:fontFamily="sans-serif-medium"
                 android:singleLine="true"
                 android:text="刷写分区"
-                android:textColor="@color/ios_text_primary"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="19sp" />
 
             <!--
@@ -100,7 +100,7 @@
                     android:maxWidth="150dp"
                     android:singleLine="true"
                     android:text="未连接设备"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp"
                     tools:text="已连接 · 45850c2f" />
 
@@ -111,7 +111,7 @@
                     android:contentDescription="展开设备列表"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_chevron_down"
-                    android:tint="@color/ios_text_secondary" />
+                    android:tint="?attr/auroraTextSecondary" />
             </LinearLayout>
         </LinearLayout>
 
@@ -144,14 +144,14 @@
                     android:layout_weight="1"
                     android:fontFamily="sans-serif-medium"
                     android:text="镜像文件"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/tvImageSize"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp"
                     tools:text="48.2 MB" />
             </LinearLayout>
@@ -186,8 +186,8 @@
                     android:maxLines="1"
                     android:paddingHorizontal="12dp"
                     android:singleLine="true"
-                    android:textColor="@color/ios_text_primary"
-                    android:textColorHint="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextPrimary"
+                    android:textColorHint="?attr/auroraTextSecondary"
                     android:textSize="12sp"
                     tools:text="/data/user/0/com.aurora.app/files/image_1729.img" />
 
@@ -213,7 +213,7 @@
             android:layout_marginStart="2dp"
             android:fontFamily="sans-serif-medium"
             android:text="刷写操作"
-            android:textColor="@color/ios_text_secondary"
+            android:textColor="?attr/auroraTextSecondary"
             android:textSize="13sp" />
 
         <GridLayout
@@ -258,7 +258,7 @@
                     android:layout_marginTop="10dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="保存日志"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
             </LinearLayout>
 
@@ -298,7 +298,7 @@
                     android:layout_marginTop="10dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="终止操作"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
             </LinearLayout>
 
@@ -338,7 +338,7 @@
                     android:layout_marginTop="10dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="读取当前槽位"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
             </LinearLayout>
 
@@ -378,7 +378,7 @@
                     android:layout_marginTop="10dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="切换到另一槽位"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
             </LinearLayout>
 
@@ -418,7 +418,7 @@
                     android:layout_marginTop="10dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="写入 boot 分区"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
             </LinearLayout>
 
@@ -458,7 +458,7 @@
                     android:layout_marginTop="10dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="写入 dtbo 分区"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
             </LinearLayout>
 
@@ -497,7 +497,7 @@
                     android:layout_marginTop="10dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="写入 recovery 分区"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
             </LinearLayout>
         </GridLayout>
@@ -516,7 +516,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
                 android:text="按分区名称写入"
-                android:textColor="@color/ios_text_primary"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="15sp" />
 
             <TextView
@@ -524,7 +524,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="分区名写错会刷到别的分区，且不可逆"
-                android:textColor="@color/ios_text_secondary"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="12sp" />
 
             <LinearLayout
@@ -548,8 +548,8 @@
                     android:maxLines="1"
                     android:paddingHorizontal="12dp"
                     android:singleLine="true"
-                    android:textColor="@color/ios_text_primary"
-                    android:textColorHint="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextPrimary"
+                    android:textColorHint="?attr/auroraTextSecondary"
                     android:textSize="13sp"
                     tools:text="init_boot" />
 
@@ -600,7 +600,7 @@
                     android:layout_weight="1"
                     android:fontFamily="sans-serif-medium"
                     android:text="运行日志"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="15sp" />
 
                 <ImageButton
@@ -611,7 +611,7 @@
                     android:contentDescription="复制日志"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_ms_content_copy"
-                    android:tint="@color/ios_text_secondary" />
+                    android:tint="?attr/auroraTextSecondary" />
 
                 <ImageButton
                     android:id="@+id/btnLogClear"
@@ -622,7 +622,7 @@
                     android:contentDescription="清空日志"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_ms_delete_sweep"
-                    android:tint="@color/ios_text_secondary" />
+                    android:tint="?attr/auroraTextSecondary" />
             </LinearLayout>
 
             <!--
@@ -642,7 +642,7 @@
                 android:padding="14dp"
                 android:scrollbars="vertical"
                 android:text="选择操作后，命令与输出会显示在这里"
-                android:textColor="@color/ios_text_primary"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -668,7 +668,7 @@
                     android:layout_weight="1"
                     android:fontFamily="sans-serif-medium"
                     android:text="空闲"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="14sp" />
 
                 <TextView
@@ -702,7 +702,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="速度"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
 
                 <TextView
@@ -711,7 +711,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
                     android:text="—"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="12sp" />
 
                 <View
@@ -723,7 +723,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="剩余"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
 
                 <TextView
@@ -732,7 +732,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
                     android:text="—"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="12sp" />
             </LinearLayout>
         </LinearLayout>

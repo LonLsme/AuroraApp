@@ -12,6 +12,26 @@
     <attr name="auroraBackgroundElevated" format="color" />
     <attr name="auroraFill" format="color" />
 
+    <!--
+      文字色三级 + 分隔线。与上面三个表面色同理必须走属性：它们是「被覆盖层和
+      深浅色同时改写」的量，写 @color/ 就等于把值焊死在布局里。
+
+      为什么这四个槽位之前不存在，值得记一笔：项目历史上并排长出了五代配色
+      （stitch → explore → fluent → ios → aurora），每一代只新增不迁移，
+      于是「主文字色」一个语义在三个页面是三个不同的值 ——
+      ios_text_primary(#000000) / explore_slate_800(#1E293B) / fluent_on_surface(#2D2F32)，
+      设备页甚至还有 5 处硬编码 #16181C。翻页时「这一页偏灰、那一页偏蓝」
+      就是这么来的，不是设计问题，是没有可以指的槽位。
+      深色模式下更糟：硬编码的那几处在黑底上直接不可读。
+
+      收口后：改文字色只改一处；新的覆盖层（AMOLED 之类）能一次性改写；
+      布局里不再出现任何具体色值。
+    -->
+    <attr name="auroraTextPrimary" format="color" />
+    <attr name="auroraTextSecondary" format="color" />
+    <attr name="auroraTextTertiary" format="color" />
+    <attr name="auroraSeparator" format="color" />
+
     <declare-styleable name="CpuRingGaugeView">
         <attr name="gaugeStyle" format="enum">
             <enum name="semi" value="0" />

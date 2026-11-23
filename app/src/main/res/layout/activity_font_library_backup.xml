@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="字库备份"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -131,7 +131,7 @@
                         android:layout_marginTop="14dp"
                         android:text="选择保存位置并备份"
                         android:textAllCaps="false"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         app:backgroundTint="?attr/auroraBackgroundElevated"
                         app:cornerRadius="14dp"
                         app:strokeColor="@color/ios_separator"

@@ -151,6 +151,8 @@ public final class AppUninstallActivity extends FlashConsoleActivity {
             return;
         }
         String command = systemScope ? AppCommands.listSystem() : AppCommands.listThirdParty();
+        // echoOutput = false：pm list packages 一行一个包名，设备上几百个应用就是几百行，
+        // 全刷进输出区只会把页面拉长。包名本身在下面的列表里看，输出区只留一行结果。
         runConsoleCommand(command, (output, exitCode, cancelled) -> {
             if (cancelled) {
                 return;
@@ -164,8 +166,11 @@ public final class AppUninstallActivity extends FlashConsoleActivity {
                 return;
             }
             adapter.submitList(packages);
-            appendLine("已读取 " + packages.size() + " 个应用");
-        });
+            int shown = adapter.getItemCount();
+            appendLine(shown == packages.size()
+                    ? "已读取 " + packages.size() + " 个应用"
+                    : "已读取 " + packages.size() + " 个应用，筛选后 " + shown + " 个");
+        }, false);
     }
 
     /** 在「第三方应用」与「系统应用」之间切换，并立刻刷新一次。 */

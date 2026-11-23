@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="SELinux管理"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -77,7 +77,7 @@
                         android:layout_marginTop="12dp"
                         android:text="切换模式"
                         android:textAllCaps="false"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         app:backgroundTint="?attr/auroraBackgroundElevated"
                         app:cornerRadius="14dp"
                         app:strokeColor="@color/ios_separator"
@@ -146,7 +146,7 @@
                         android:layout_marginTop="12dp"
                         android:text="保存开机自动切换设置"
                         android:textAllCaps="false"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         app:backgroundTint="?attr/auroraBackgroundElevated"
                         app:cornerRadius="14dp"
                         app:strokeColor="@color/ios_separator"

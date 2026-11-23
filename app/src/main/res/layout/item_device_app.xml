@@ -36,7 +36,7 @@
         android:layout_weight="1"
         android:ellipsize="middle"
         android:singleLine="true"
-        android:textColor="@color/ios_text_primary"
+        android:textColor="?attr/auroraTextPrimary"
         android:textSize="13sp"
         tools:text="com.tencent.mm" />
 </LinearLayout>

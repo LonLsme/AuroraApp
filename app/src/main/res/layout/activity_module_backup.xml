@@ -41,7 +41,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="全选"
-                android:textColor="@color/explore_slate_800"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="16sp" />
 
             <TextView
@@ -51,14 +51,14 @@
                 android:layout_weight="1"
                 android:gravity="end"
                 android:text="正在扫描..."
-                android:textColor="@color/explore_slate_500"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="14sp" />
         </LinearLayout>
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="@color/explore_slate_100" />
+            android:background="?attr/auroraFill" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerView"

@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="Aurora 插件"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -63,7 +63,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
                         android:text="隐藏应用列表"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="22sp" />
 
                     <LinearLayout
@@ -79,7 +79,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="常驻入口"
-                            android:textColor="@color/explore_slate_500"
+                            android:textColor="?attr/auroraTextSecondary"
                             android:textSize="14sp" />
 
                         <ImageView
@@ -96,7 +96,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="0.5dp"
                         android:layout_marginTop="10dp"
-                        android:background="@color/explore_slate_100" />
+                        android:background="?attr/auroraFill" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -124,7 +124,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
                         android:text="Tricky Store"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="22sp" />
 
                     <TextView
@@ -140,7 +140,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="0.5dp"
                         android:layout_marginTop="10dp"
-                        android:background="@color/explore_slate_100" />
+                        android:background="?attr/auroraFill" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -170,7 +170,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
                         android:text="SuSFS配置"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="22sp" />
 
                     <TextView
@@ -179,7 +179,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
                         android:text="SUSFS 相关配置与伪装功能"
-                        android:textColor="@color/explore_slate_500"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="14sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

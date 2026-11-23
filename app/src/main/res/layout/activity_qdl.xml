@@ -54,7 +54,7 @@
                 android:contentDescription="返回"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_arrow_back"
-                android:tint="@color/ios_text_primary" />
+                android:tint="?attr/auroraTextPrimary" />
 
             <View
                 android:layout_width="0dp"
@@ -81,7 +81,7 @@
                     android:maxWidth="170dp"
                     android:singleLine="true"
                     android:text="未连接设备"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="13sp"
                     tools:text="高通 QDLoader（9008 深刷）" />
 
@@ -92,7 +92,7 @@
                     android:contentDescription="展开设备状态"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_chevron_down"
-                    android:tint="@color/ios_text_secondary" />
+                    android:tint="?attr/auroraTextSecondary" />
             </LinearLayout>
         </LinearLayout>
 
@@ -103,7 +103,7 @@
             android:layout_marginTop="2dp"
             android:fontFamily="sans-serif-medium"
             android:text="高通 QDL 深刷"
-            android:textColor="@color/ios_text_primary"
+            android:textColor="?attr/auroraTextPrimary"
             android:textSize="30sp"
             android:textStyle="bold" />
 
@@ -203,7 +203,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：存储类型（点击弹单选，选项就是 storage 参数的合法取值） -->
@@ -246,7 +246,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：欧加授权方式（未开启 / Token 鉴权 / VIP 授权） -->
@@ -289,7 +289,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：VIP 档专用 —— 签名文件（选中「VIP 授权」后才出现） -->
@@ -336,7 +336,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：VIP 档专用 —— 摘要文件 -->
@@ -383,7 +383,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：模拟刷写（追加 dry-run 开关，不连设备） -->
@@ -493,7 +493,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：识别设备启动槽位（get_slot） -->
@@ -536,7 +536,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：切换至A -->
@@ -564,7 +564,7 @@
                         android:layout_height="20dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：切换至B -->
@@ -592,7 +592,7 @@
                         android:layout_height="20dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：复位设备（让设备退出 9008 重新启动） -->
@@ -620,7 +620,7 @@
                         android:layout_height="20dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -649,7 +649,7 @@
             android:minHeight="@dimen/miuix_console_height"
             android:padding="14dp"
             android:text="选择引导文件后点击「识别分区表」"
-            android:textColor="@color/ios_text_secondary"
+            android:textColor="?attr/auroraTextSecondary"
             android:textIsSelectable="true"
             android:textSize="11sp" />
     </LinearLayout>

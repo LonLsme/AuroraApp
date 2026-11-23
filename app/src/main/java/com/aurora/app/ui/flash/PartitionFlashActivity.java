@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat;
 import com.aurora.app.R;
 import com.aurora.app.core.flash.FlashCommands;
 import com.aurora.app.core.flash.FlashDevice;
+import com.aurora.app.ui.theme.ThemeColors;
 
 import java.io.File;
 import java.util.Locale;
@@ -203,9 +204,9 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
             return;
         }
         boolean connected = state != null && (state.adbReady || state.fastbootReady);
-        int color = ContextCompat.getColor(this, connected
-                ? R.color.ios_semantic_positive
-                : R.color.ios_text_secondary);
+        int color = connected
+                ? ContextCompat.getColor(this, R.color.ios_semantic_positive)
+                : ThemeColors.textSecondary(this);
         vwDeviceStateDot.setBackgroundTintList(ColorStateList.valueOf(color));
     }
 
@@ -513,8 +514,9 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
         }
         if (tvProgressState != null) {
             tvProgressState.setText(state);
-            tvProgressState.setTextColor(ContextCompat.getColor(this,
-                    colorRes == 0 ? R.color.ios_text_primary : colorRes));
+            tvProgressState.setTextColor(colorRes == 0
+                    ? ThemeColors.textPrimary(this)
+                    : ContextCompat.getColor(this, colorRes));
         }
     }
 

@@ -11,7 +11,7 @@
     app:cardBackgroundColor="?attr/auroraCard"
     app:cardCornerRadius="12dp"
     app:cardElevation="2dp"
-    app:strokeColor="@color/explore_slate_200"
+    app:strokeColor="?attr/auroraSeparator"
     app:strokeWidth="1dp">
 
     <LinearLayout
@@ -41,7 +41,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-medium"
                 android:text="Module Name"
-                android:textColor="@color/explore_slate_800"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="16sp" />
 
             <TextView
@@ -62,7 +62,7 @@
                 android:ellipsize="end"
                 android:maxLines="3"
                 android:text="Module Description"
-                android:textColor="@color/explore_slate_500"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="12sp"
                 android:lineSpacingExtra="2dp" />
         </LinearLayout>

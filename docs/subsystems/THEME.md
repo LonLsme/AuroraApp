@@ -202,7 +202,7 @@ AMOLED 覆盖层要能盖掉强调色覆盖层里的表面色。
 
 这是主题能不能生效的**前提条件**。
 
-`res/values/attrs.xml` 里定义了 5 个语义属性：
+`res/values/attrs.xml` 里定义了 9 个语义属性：
 
 | attr | 用途 |
 | --- | --- |
@@ -210,7 +210,11 @@ AMOLED 覆盖层要能盖掉强调色覆盖层里的表面色。
 | `auroraOnAccent` | 强调色**之上**的前景色（强调色作背景时的文字/图标色），由覆盖层按明度给出，**避免白字白底** |
 | `auroraCard` | 卡片表面色 |
 | `auroraBackgroundElevated` | 抬升背景 |
-| `auroraFill` | 填充色 |
+| `auroraFill` | 填充色（图标底色、胶囊底一类） |
+| `auroraTextPrimary` | 主文字色：标题、正文、数值 |
+| `auroraTextSecondary` | 次要文字色：说明、副标题、单位 |
+| `auroraTextTertiary` | 第三级：占位提示、极弱注释、禁用值 |
+| `auroraSeparator` | 分隔线、1dp 描边 |
 
 > [!warning] 会被覆盖层改写的颜色**必须引用 `?attr/auroraXxx`**
 > 写成 `@color/xxx` 的资源**无法在运行时被覆盖层改写** ——
@@ -218,6 +222,31 @@ AMOLED 覆盖层要能盖掉强调色覆盖层里的表面色。
 >
 > 所有的颜色都要**日夜成对**（`values/colors.xml` + `values-night/colors.xml`），
 > **禁止硬编码 hex**。
+
+### 后加的四个文字色属性（2026-11-17）
+
+前五个属性管的是「表面」，文字色一直是空的槽位 —— 于是每套配色各带一份自己的文字色：
+`ios_text_primary`(#000000) / `explore_slate_800`(#1E293B) / `fluent_on_surface`(#2D2F32)，
+设备页还有 5 处硬编码 `#16181C`。同一个语义三个值，翻页时「这页偏灰、那页偏蓝」就是这么来的；
+**硬编码的那几处在深色模式下根本不跟着变**，压在黑底上等于不可读。
+
+收口后布局里不再出现任何具体文字色值，代码侧统一走 `ui/theme/ThemeColors`：
+
+```java
+tvValue.setTextColor(ThemeColors.textPrimary(this));    // R.attr.auroraTextPrimary
+tvHint.setTextColor(ThemeColors.textSecondary(this));   // R.attr.auroraTextSecondary
+```
+
+`ThemeColors` 内部用 `MaterialColors.getColor(context, attr, 0)`，取不到返回透明 ——
+属性在 `Base.Theme.Aurora` 里恒有定义，取不到说明该 Activity 没用 Aurora 主题，
+让屏幕上直接看不见字比硬编码一个颜色更好排查。
+
+替换覆盖：`android:textColor(Hint)` / `app:titleTextColor` / `app:tabTextColor` /
+`app:hintTextColor` / `app:startIconTint` / `android:tint` / `app:tint` /
+`android:background`（图标底色 → `auroraFill`）/ `app:strokeColor`（→ `auroraSeparator`）。
+**`android:textColor` 之外的同名语义都要跟着换** —— 只换 textColor 会留下
+「文字统一了、旁边的图标还是老颜色」的半吊子状态。
+
 
 ### AMOLED 模式的连锁反应
 

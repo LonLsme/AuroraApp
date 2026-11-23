@@ -19,6 +19,6 @@
     <solid android:color="?attr/auroraCard" />
     <stroke
         android:width="1dp"
-        android:color="@color/ios_separator" />
+        android:color="?attr/auroraSeparator" />
     <corners android:radius="12dp" />
 </shape>

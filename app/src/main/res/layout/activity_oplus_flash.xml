@@ -41,7 +41,7 @@
             android:contentDescription="返回"
             android:scaleType="centerInside"
             android:src="@drawable/ic_arrow_back"
-            android:tint="@color/ios_text_primary" />
+            android:tint="?attr/auroraTextPrimary" />
 
         <TextView
             android:layout_width="0dp"
@@ -50,7 +50,7 @@
             android:layout_weight="1"
             android:fontFamily="sans-serif-medium"
             android:text="欧加真线刷"
-            android:textColor="@color/ios_text_primary"
+            android:textColor="?attr/auroraTextPrimary"
             android:textSize="30sp" />
     </LinearLayout>
 
@@ -69,7 +69,7 @@
             android:layout_weight="1"
             android:text="保存日志"
             android:textAllCaps="false"
-            android:textColor="@color/ios_text_primary"
+            android:textColor="?attr/auroraTextPrimary"
             app:cornerRadius="14dp"
             app:strokeColor="@color/ios_separator" />
 
@@ -82,7 +82,7 @@
             android:layout_weight="1"
             android:text="终止"
             android:textAllCaps="false"
-            android:textColor="@color/ios_text_primary"
+            android:textColor="?attr/auroraTextPrimary"
             app:cornerRadius="14dp"
             app:strokeColor="@color/ios_separator" />
     </LinearLayout>
@@ -110,8 +110,8 @@
             android:paddingHorizontal="14dp"
             android:paddingVertical="13dp"
             android:singleLine="true"
-            android:textColor="@color/ios_text_primary"
-            android:textColorHint="@color/ios_text_secondary"
+            android:textColor="?attr/auroraTextPrimary"
+            android:textColorHint="?attr/auroraTextSecondary"
             android:textSize="13sp"
             tools:text="/storage/emulated/0/Download/oplus_images" />
 
@@ -137,7 +137,7 @@
         android:layout_marginTop="10dp"
         android:text="修复Super分区"
         android:textAllCaps="false"
-        android:textColor="@color/ios_text_primary"
+        android:textColor="?attr/auroraTextPrimary"
         app:cornerRadius="14dp"
         app:strokeColor="@color/ios_separator" />
 
@@ -189,7 +189,7 @@
         android:padding="14dp"
         android:scrollbars="vertical"
         android:text="选择镜像目录后点击下方模式开始刷写"
-        android:textColor="@color/ios_text_secondary"
+        android:textColor="?attr/auroraTextSecondary"
         android:textIsSelectable="true"
         android:textSize="11sp" />
 </LinearLayout>

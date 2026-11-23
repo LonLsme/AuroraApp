@@ -65,6 +65,8 @@ public abstract class OverlayWindow {
     private float downRawX, downRawY;
     private float windowStartX, windowStartY;
     private boolean dragging = false;
+    /** 拖动锁：钉住后窗口位置固定，MOVE 不再更新坐标（单击/双击仍可用）。 */
+    private boolean dragLocked = false;
 
     /** 手势识别器：区分单击（切换状态）与双击（关闭窗口）。 */
     private final GestureDetector gestureDetector;
@@ -148,6 +150,19 @@ public abstract class OverlayWindow {
             } catch (Exception ignored) {
             }
         }
+    }
+
+    /**
+     * 设置拖动锁：true = 钉住窗口，手指在空白处滑动不再移动窗口（子 View 的点击不受影响）。
+     * 由进程悬浮窗的钉子按钮调用，其它窗口不涉及。
+     */
+    protected final void setDragLocked(boolean locked) {
+        this.dragLocked = locked;
+    }
+
+    /** 窗口当前是否被钉住（拖动锁定）。 */
+    protected final boolean isDragLocked() {
+        return dragLocked;
     }
 
     /**
@@ -242,17 +257,35 @@ public abstract class OverlayWindow {
 
     /**
      * 统一构建窗口根视图（子类无需覆写）：
-     * 深色胶囊背景（复刻 HoshinoScene 的 shape_corner）+ 按记忆状态加载折叠/展开内容。
+     * 默认深色胶囊背景（复刻 HoshinoScene 的 shape_corner）+ 按记忆状态加载折叠/展开内容。
+     *
+     * <p>内边距与背景都留了覆写口子：帧率记录窗要更小的外框 + 毛玻璃配色，
+     * 只覆写 {@link #contentPaddingDp()} / {@link #createWindowBackground()} 即可，
+     * 其余五个监视窗沿用默认值，不受影响。
      */
     protected final View buildContentView() {
         expanded = OverlayConfig.isExpanded(context, type);
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        int pad = OverlayWindowStyle.dpToPx(context, 5);
+        int pad = OverlayWindowStyle.dpToPx(context, contentPaddingDp());
         root.setPadding(pad, pad, pad, pad);
-        root.setBackground(OverlayWindowStyle.createMonitorBackground(context));
+        root.setBackground(createWindowBackground());
         root.addView(expanded ? buildExpandedView() : buildCollapsedView());
         return root;
+    }
+
+    /**
+     * 窗口内容内边距（dp），默认 5。帧率记录窗覆写为更小值以收紧外框。
+     */
+    protected int contentPaddingDp() {
+        return 5;
+    }
+
+    /**
+     * 窗口背景 drawable，默认星野深色半透明胶囊。子类可覆写为专属配色（如毛玻璃）。
+     */
+    protected android.graphics.drawable.Drawable createWindowBackground() {
+        return OverlayWindowStyle.createMonitorBackground(context);
     }
 
     /** 子类必须实现：折叠小窗内容视图。 */
@@ -328,6 +361,18 @@ public abstract class OverlayWindow {
         refreshHandler.postDelayed(refreshTask, getRefreshIntervalMs());
     }
 
+    /**
+     * 立即触发一轮「采集 + 刷新」（过滤模式切换、点按按钮等需要马上看到结果的场景）。
+     * 仍走共享单线程采集池与防堆积判断，不会与进行中的采集并发。
+     */
+    protected final void requestRefreshNow() {
+        if (!running) {
+            return;
+        }
+        refreshHandler.removeCallbacks(refreshTask);
+        refreshHandler.post(refreshTask);
+    }
+
     // ─── 单击/双击（所有窗口统一交互） ───
 
     /** 单击：折叠 ↔ 展开，带平滑动画，并记忆状态。 */
@@ -370,6 +415,11 @@ public abstract class OverlayWindow {
                     dragging = false;
                     return true;
                 case MotionEvent.ACTION_MOVE: {
+                    if (dragLocked) {
+                        // 钉住：位置固定，不响应拖动（仍返回 true 保持手势序列完整）
+                        dragging = false;
+                        return true;
+                    }
                     float dx = event.getRawX() - downRawX;
                     float dy = event.getRawY() - downRawY;
                     if (!dragging && (Math.abs(dx) > touchSlop || Math.abs(dy) > touchSlop)) {

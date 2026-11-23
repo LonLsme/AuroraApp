@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:text="日志路径"
         android:textSize="14sp"
-        android:textColor="@color/ios_text_secondary"
+        android:textColor="?attr/auroraTextSecondary"
         android:layout_marginBottom="8dp" />
 
     <ScrollView
@@ -26,7 +26,7 @@
             android:text="日志内容"
             android:textSize="12sp"
             android:fontFamily="monospace"
-            android:textColor="@color/ios_text_primary" />
+            android:textColor="?attr/auroraTextPrimary" />
 
     </ScrollView>
 

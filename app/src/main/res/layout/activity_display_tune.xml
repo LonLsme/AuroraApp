@@ -28,12 +28,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="屏幕"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -104,7 +104,7 @@
                         android:layout_marginTop="12dp"
                         android:text="重新检测"
                         android:textAllCaps="false"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         app:backgroundTint="?attr/auroraBackgroundElevated"
                         app:cornerRadius="14dp"
                         app:strokeColor="@color/ios_separator"
@@ -151,7 +151,7 @@
                         android:layout_marginTop="10dp"
                         android:text="恢复系统自适应刷新率"
                         android:textAllCaps="false"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         app:backgroundTint="?attr/auroraBackgroundElevated"
                         app:cornerRadius="14dp"
                         app:strokeColor="@color/ios_separator"
@@ -216,7 +216,7 @@
                                 android:imeOptions="actionNext"
                                 android:inputType="number"
                                 android:maxLines="1"
-                                android:textColor="@color/ios_text_primary"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="14sp" />
                         </com.google.android.material.textfield.TextInputLayout>
 
@@ -240,7 +240,7 @@
                                 android:imeOptions="actionNext"
                                 android:inputType="number"
                                 android:maxLines="1"
-                                android:textColor="@color/ios_text_primary"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="14sp" />
                         </com.google.android.material.textfield.TextInputLayout>
 
@@ -264,7 +264,7 @@
                                 android:imeOptions="actionDone"
                                 android:inputType="number"
                                 android:maxLines="1"
-                                android:textColor="@color/ios_text_primary"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="14sp" />
                         </com.google.android.material.textfield.TextInputLayout>
                     </LinearLayout>
@@ -286,7 +286,7 @@
                         android:layout_marginTop="8dp"
                         android:text="还原为物理分辨率"
                         android:textAllCaps="false"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         app:cornerRadius="14dp"
                         app:strokeColor="@color/ios_separator" />
                 </LinearLayout>
@@ -348,7 +348,7 @@
                             android:layout_weight="1"
                             android:text="停止"
                             android:textAllCaps="false"
-                            android:textColor="@color/ios_text_primary"
+                            android:textColor="?attr/auroraTextPrimary"
                             android:visibility="gone"
                             app:cornerRadius="14dp"
                             app:strokeColor="@color/ios_separator"

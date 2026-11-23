@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="SuSFS配置"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -48,7 +48,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
                 android:text="SUSFS 相关配置与伪装功能"
-                android:textColor="@color/explore_slate_500"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="14sp" />
 
             <com.google.android.material.card.MaterialCardView
@@ -75,7 +75,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
                         android:text="内核伪装"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="20sp" />
 
                     <TextView
@@ -84,7 +84,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
                         android:text="修改 SUSFS 内核版本与构建信息"
-                        android:textColor="@color/explore_slate_500"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="14sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

@@ -87,7 +87,7 @@
                                     android:letterSpacing="0.06"
                                     android:text="设备概览"
                                     android:textAllCaps="true"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="12sp"
                                     android:textStyle="bold" />
 
@@ -106,7 +106,7 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="2dp"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="11sp"
                                     tools:text="设备代号: PJX110" />
                             </LinearLayout>
@@ -135,7 +135,7 @@
                                     android:maxWidth="120dp"
                                     android:singleLine="true"
                                     android:text="本机"
-                                    android:textColor="@color/ios_text_secondary"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="13sp"
                                     tools:text="本机" />
 
@@ -145,7 +145,7 @@
                                     android:layout_marginStart="4dp"
                                     android:contentDescription="@null"
                                     android:src="@drawable/ic_chevron_down"
-                                    android:tint="@color/ios_text_secondary" />
+                                    android:tint="?attr/auroraTextSecondary" />
                             </LinearLayout>
                         </LinearLayout>
 
@@ -168,7 +168,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="系统版本"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="11sp" />
 
                                 <LinearLayout
@@ -190,7 +190,7 @@
                                         android:layout_width="0dp"
                                         android:layout_height="wrap_content"
                                         android:layout_weight="1"
-                                        android:textColor="@color/fluent_on_surface"
+                                        android:textColor="?attr/auroraTextPrimary"
                                         android:textSize="14sp"
                                         android:textStyle="bold"
                                         tools:text="Android 16 (API 36)" />
@@ -208,7 +208,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="内核版本"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="11sp" />
 
                                 <TextView
@@ -217,7 +217,7 @@
                                     android:layout_height="wrap_content"
                                     android:ellipsize="end"
                                     android:maxLines="2"
-                                    android:textColor="@color/fluent_on_surface"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="14sp"
                                     android:textStyle="bold"
                                     tools:text="6.1.118-android15-11" />
@@ -234,7 +234,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="SELinux"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="11sp" />
 
                                 <TextView
@@ -243,7 +243,7 @@
                                     android:layout_height="wrap_content"
                                     android:ellipsize="end"
                                     android:maxLines="2"
-                                    android:textColor="@color/fluent_on_surface"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="14sp"
                                     android:textStyle="bold"
                                     tools:text="强制模式" />
@@ -259,14 +259,14 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="当前 Slot"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="11sp" />
 
                                 <TextView
                                     android:id="@+id/tvBootSlot"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
-                                    android:textColor="@color/fluent_on_surface"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="14sp"
                                     android:textStyle="bold"
                                     tools:text="A 槽位" />
@@ -290,7 +290,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="BL 状态"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="11sp" />
 
                                 <TextView
@@ -299,7 +299,7 @@
                                     android:layout_height="wrap_content"
                                     android:maxLines="1"
                                     android:ellipsize="end"
-                                    android:textColor="@color/fluent_on_surface"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="14sp"
                                     android:textStyle="bold"
                                     tools:text="已解锁" />
@@ -336,7 +336,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="系统版本"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="10sp" />
 
                                 <TextView
@@ -346,7 +346,7 @@
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="monospace"
                                     android:maxLines="3"
-                                    android:textColor="@color/fluent_on_surface"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="12sp"
                                     android:textStyle="bold"
                                     tools:text="PJX110_15.0.0.300(CN01)" />
@@ -367,7 +367,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="安全补丁日期"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="10sp" />
 
                                 <TextView
@@ -376,7 +376,7 @@
                                     android:layout_height="wrap_content"
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="monospace"
-                                    android:textColor="@color/fluent_on_surface"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="12sp"
                                     android:textStyle="bold"
                                     tools:text="2025-01-05" />
@@ -396,7 +396,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="基带版本"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="10sp" />
 
                                 <TextView
@@ -406,7 +406,7 @@
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="monospace"
                                     android:maxLines="3"
-                                    android:textColor="@color/fluent_on_surface"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="12sp"
                                     android:textStyle="bold"
                                     tools:text="Q_V1_P14,Q_V1_P14" />
@@ -427,7 +427,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="安卓 ID"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="10sp" />
 
                                 <TextView
@@ -437,7 +437,7 @@
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="monospace"
                                     android:maxLines="3"
-                                    android:textColor="@color/fluent_on_surface"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="12sp"
                                     android:textStyle="bold"
                                     tools:text="a1b2c3d4e5f6g7h8" />
@@ -457,7 +457,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="电池循环次数"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="10sp" />
 
                                 <TextView
@@ -467,7 +467,7 @@
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="monospace"
                                     android:maxLines="3"
-                                    android:textColor="@color/fluent_on_surface"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="12sp"
                                     android:textStyle="bold"
                                     tools:text="333" />
@@ -489,7 +489,7 @@
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="构建指纹"
-                                    android:textColor="@color/fluent_on_surface_variant"
+                                    android:textColor="?attr/auroraTextSecondary"
                                     android:textSize="10sp" />
 
                                 <TextView
@@ -499,7 +499,7 @@
                                     android:layout_marginTop="4dp"
                                     android:fontFamily="monospace"
                                     android:maxLines="4"
-                                    android:textColor="@color/fluent_on_surface"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="12sp"
                                     android:textStyle="bold"
                                     tools:text="google/oriole/oriole:16/BP1A.250405.007/1234567:user/release-keys" />
@@ -549,7 +549,7 @@
                             android:letterSpacing="0.06"
                             android:text="CPU 状态"
                             android:textAllCaps="true"
-                            android:textColor="@color/fluent_on_surface_variant"
+                            android:textColor="?attr/auroraTextSecondary"
                             android:textSize="12sp"
                             android:textStyle="bold" />
                     </LinearLayout>

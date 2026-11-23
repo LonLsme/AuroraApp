@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="设置安全补丁"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -61,7 +61,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
                         android:text="当前状态"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="16sp" />
 
                     <com.google.android.material.card.MaterialCardView
@@ -85,7 +85,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="sans-serif"
                                 android:text="系统安全补丁：—"
-                                android:textColor="@color/explore_slate_800"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="13sp" />
 
                             <TextView
@@ -95,7 +95,7 @@
                                 android:layout_marginTop="4dp"
                                 android:fontFamily="sans-serif"
                                 android:text="Tricky Store安全补丁：&#10;system：—&#10;boot：—&#10;vendor：—"
-                                android:textColor="@color/explore_slate_800"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="13sp" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
@@ -104,7 +104,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="0.5dp"
                         android:layout_marginTop="12dp"
-                        android:background="@color/ios_separator" />
+                        android:background="?attr/auroraSeparator" />
 
                     <TextView
                         android:layout_width="match_parent"
@@ -112,7 +112,7 @@
                         android:layout_marginTop="12dp"
                         android:fontFamily="sans-serif-medium"
                         android:text="配置项"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="16sp" />
 
                     <com.google.android.material.card.MaterialCardView
@@ -136,7 +136,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="sans-serif-medium"
                                 android:text="System"
-                                android:textColor="@color/explore_slate_800"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="16sp" />
 
                             <com.google.android.material.textfield.TextInputLayout
@@ -157,7 +157,7 @@
                                     android:fontFamily="sans-serif"
                                     android:hint="选择日期 (YYYY-MM-DD)"
                                     android:inputType="textNoSuggestions"
-                                    android:textColor="@color/explore_slate_800"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="16sp" />
                             </com.google.android.material.textfield.TextInputLayout>
                         </LinearLayout>
@@ -184,7 +184,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="sans-serif-medium"
                                 android:text="Boot"
-                                android:textColor="@color/explore_slate_800"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="16sp" />
 
                             <com.google.android.material.textfield.TextInputLayout
@@ -205,7 +205,7 @@
                                     android:fontFamily="sans-serif"
                                     android:hint="选择日期 (YYYY-MM-DD)"
                                     android:inputType="textNoSuggestions"
-                                    android:textColor="@color/explore_slate_800"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="16sp" />
                             </com.google.android.material.textfield.TextInputLayout>
                         </LinearLayout>
@@ -232,7 +232,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="sans-serif-medium"
                                 android:text="Vendor"
-                                android:textColor="@color/explore_slate_800"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="16sp" />
 
                             <com.google.android.material.textfield.TextInputLayout
@@ -253,7 +253,7 @@
                                     android:fontFamily="sans-serif"
                                     android:hint="选择日期 (YYYY-MM-DD)"
                                     android:inputType="textNoSuggestions"
-                                    android:textColor="@color/explore_slate_800"
+                                    android:textColor="?attr/auroraTextPrimary"
                                     android:textSize="16sp" />
                             </com.google.android.material.textfield.TextInputLayout>
                         </LinearLayout>

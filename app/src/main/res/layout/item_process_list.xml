@@ -44,7 +44,7 @@
                 android:ellipsize="end"
                 android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
-                android:textColor="@color/ios_text_primary"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="14sp" />
 
             <TextView
@@ -54,7 +54,7 @@
                 android:layout_marginTop="2dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/ios_text_secondary"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -69,7 +69,7 @@
                 android:id="@+id/tvProcessPid"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/ios_text_secondary"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="10sp" />
 
             <TextView
@@ -86,7 +86,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:textColor="@color/ios_text_secondary"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>

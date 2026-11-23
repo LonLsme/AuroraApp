@@ -19,7 +19,7 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="应用管理"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/tabAppScope"
@@ -28,7 +28,7 @@
             android:background="@android:color/transparent"
             app:tabIndicatorColor="?attr/auroraAccent"
             app:tabSelectedTextColor="?attr/auroraAccent"
-            app:tabTextColor="@color/ios_text_secondary" />
+            app:tabTextColor="?attr/auroraTextSecondary" />
 
         <EditText
             android:id="@+id/etAppSearch"
@@ -41,14 +41,14 @@
             android:inputType="text"
             android:maxLines="1"
             android:padding="12dp"
-            android:textColor="@color/ios_text_primary"
-            android:textColorHint="@color/ios_text_secondary"
+            android:textColor="?attr/auroraTextPrimary"
+            android:textColorHint="?attr/auroraTextSecondary"
             android:textSize="14sp" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.recyclerview.widget.RecyclerView

@@ -34,7 +34,7 @@
                 android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
                 android:text="模板"
-                android:textColor="@color/explore_slate_800"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="14sp" />
 
             <TextView
@@ -45,7 +45,7 @@
                 android:ellipsize="end"
                 android:maxLines="2"
                 android:text="--"
-                android:textColor="@color/explore_slate_500"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="12sp" />
         </LinearLayout>
 

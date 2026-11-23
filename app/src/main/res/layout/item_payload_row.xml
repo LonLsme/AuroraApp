@@ -44,7 +44,7 @@
             android:layout_height="wrap_content"
             android:gravity="end"
             android:singleLine="true"
-            android:textColor="#6B7280"
+            android:textColor="?attr/auroraTextSecondary"
             android:textSize="12sp" />
     </LinearLayout>
 

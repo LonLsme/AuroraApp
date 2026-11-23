@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    结束进程图标：由外部 SVG 转换而来（48 viewport / 4 描边 / round cap+join）。
+    两段对角线，颜色直接用结束按钮的红色，不再额外做 tint。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M14,14 L34,34"
+        android:strokeColor="#FFD93025"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M14,34 L34,14"
+        android:strokeColor="#FFD93025"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

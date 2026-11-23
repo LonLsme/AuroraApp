@@ -20,6 +20,7 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.button.MaterialButton;
 import com.aurora.app.R;
+import com.aurora.app.ui.theme.ThemeColors;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -259,8 +260,8 @@ public class PartitionManagerActivity extends AppCompatActivity {
         // 默认底色走主题属性（而非 @color/），这样 AMOLED 纯黑模式能一并生效
         int defaultBg = com.google.android.material.color.MaterialColors.getColor(
                 layoutPartitionButtons, R.attr.auroraBackgroundElevated);
-        int defaultText = getColor(R.color.ios_text_primary);
-        int stroke = getColor(R.color.ios_separator);
+        int defaultText = ThemeColors.textPrimary(this);
+        int stroke = ThemeColors.separator(this);
 
         for (int i = 0; i < layoutPartitionButtons.getChildCount(); i++) {
             View row = layoutPartitionButtons.getChildAt(i);

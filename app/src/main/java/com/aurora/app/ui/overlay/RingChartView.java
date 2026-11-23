@@ -82,6 +82,10 @@ public final class RingChartView extends View {
      * @param color   进度弧颜色
      */
     public void setPercent(int percent, int color) {
+        // 先比后写：数值与颜色都没变就不重绘（悬浮窗每秒刷新，避免无谓 invalidate）
+        if (this.percent == percent && (percent < 0 || this.arcColor == color)) {
+            return;
+        }
         this.percent = percent;
         if (percent >= 0) {
             this.arcColor = color;
@@ -91,7 +95,11 @@ public final class RingChartView extends View {
 
     /** 环中心文字（如 "CPU" / "42%"）。 */
     public void setCenterText(String text) {
-        this.centerText = text == null ? "" : text;
+        String value = text == null ? "" : text;
+        if (value.equals(centerText)) {
+            return;
+        }
+        this.centerText = value;
         invalidate();
     }
 

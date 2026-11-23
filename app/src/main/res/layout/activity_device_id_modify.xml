@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="设备ID修改"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -57,7 +57,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="当前设备ID"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="16sp" />
 
                 <TextView
@@ -66,7 +66,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="当前安卓D：—"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
 
                 <LinearLayout
@@ -97,7 +97,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="0.5dp"
                     android:layout_marginTop="12dp"
-                    android:background="@color/ios_separator" />
+                    android:background="?attr/auroraSeparator" />
 
                 <TextView
                     android:layout_width="match_parent"
@@ -105,7 +105,7 @@
                     android:layout_marginTop="12dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="自定义修改"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="16sp" />
 
                 <TextView
@@ -113,7 +113,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="建议 16 位十六进制（0-9a-f）"
-                    android:textColor="@color/explore_slate_500"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -126,7 +126,7 @@
                     app:boxCornerRadiusTopEnd="10dp"
                     app:boxCornerRadiusTopStart="10dp"
                     app:boxStrokeColor="@color/ios_separator"
-                    app:hintTextColor="@color/explore_slate_500">
+                    app:hintTextColor="?attr/auroraTextSecondary">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etNewAndroidId"
@@ -135,7 +135,7 @@
                         android:hint="输入新的安卓ID"
                         android:inputType="textNoSuggestions"
                         android:maxLines="1"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 

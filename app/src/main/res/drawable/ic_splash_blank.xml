@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    启动画面用的空图标：Android 12+ 的系统 SplashScreen 一定会画一个图标，
+    想让开屏「只有纯白」就把图标位换成一个完全透明的 shape。
+    不用 windowSplashScreenAnimatedIcon=@null —— 部分 ROM 会回退到应用图标。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+</shape>

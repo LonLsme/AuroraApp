@@ -64,6 +64,13 @@
       给的是固定高度而不是 wrap_content —— 目标机上装几百个应用是常事，
       让列表随内容撑开会把整页拉到极长、而且每项都要测量。固定高度后列表自己在框内滚动，
       滚到边界再把手势交给外层（NestedScrollView），弹性与滚动都不丢。
+
+      实测站点：设备上几百个应用时，240dp 一屏只能看到六七行、翻找包名很费劲，
+      而下面那块输出区在「应用太多」时反而被刷得很长。所以这一页把列表拉高、
+      输出区压低 —— 包名为主、日志为辅。
     -->
-    <dimen name="device_app_list_height">240dp</dimen>
+    <dimen name="device_app_list_height">400dp</dimen>
+
+    <!-- 应用卸载冻结页的输出区高度：这一页日志只是结果回执，不需要大窗口。 -->
+    <dimen name="app_uninstall_console_height">120dp</dimen>
 </resources>

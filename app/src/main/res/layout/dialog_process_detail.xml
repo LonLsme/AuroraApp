@@ -38,7 +38,7 @@
                 android:ellipsize="end"
                 android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
-                android:textColor="@color/ios_text_primary"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="16sp" />
 
             <TextView
@@ -48,7 +48,7 @@
                 android:layout_marginTop="2dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/ios_text_secondary"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
@@ -57,7 +57,7 @@
         android:layout_width="match_parent"
         android:layout_height="0.5dp"
         android:layout_marginVertical="14dp"
-        android:background="@color/ios_separator" />
+        android:background="?attr/auroraSeparator" />
 
     <!-- 详情键值对（代码动态填充）。
          上限必须靠自定义控件给：android:maxHeight 是 ImageView 的属性，
@@ -117,7 +117,7 @@
             android:text="取消"
             android:textSize="13sp"
             app:cornerRadius="10dp"
-            android:textColor="@color/ios_text_primary"
+            android:textColor="?attr/auroraTextPrimary"
             app:backgroundTint="?attr/auroraFill"
             app:rippleColor="#22000000" />
     </LinearLayout>

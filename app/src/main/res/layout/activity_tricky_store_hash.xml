@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="设置哈希值"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -57,7 +57,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="当前哈希值"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="16sp" />
 
                 <TextView
@@ -67,14 +67,14 @@
                     android:layout_marginTop="8dp"
                     android:fontFamily="monospace"
                     android:text="—"
-                    android:textColor="@color/explore_slate_500"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="13sp" />
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="0.5dp"
                     android:layout_marginTop="12dp"
-                    android:background="@color/ios_separator" />
+                    android:background="?attr/auroraSeparator" />
 
                 <TextView
                     android:layout_width="match_parent"
@@ -82,7 +82,7 @@
                     android:layout_marginTop="12dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="历史哈希值"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="16sp" />
 
                 <TextView
@@ -92,14 +92,14 @@
                     android:layout_marginTop="8dp"
                     android:fontFamily="monospace"
                     android:text="—"
-                    android:textColor="@color/explore_slate_500"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="13sp" />
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="0.5dp"
                     android:layout_marginTop="12dp"
-                    android:background="@color/ios_separator" />
+                    android:background="?attr/auroraSeparator" />
 
                 <TextView
                     android:layout_width="match_parent"
@@ -107,7 +107,7 @@
                     android:layout_marginTop="12dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="设置哈希值"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="16sp" />
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -128,7 +128,7 @@
                         android:fontFamily="monospace"
                         android:inputType="textNoSuggestions"
                         android:maxLines="1"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 

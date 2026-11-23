@@ -59,6 +59,21 @@ public final class OverlayWindowStyle {
     /** 监视器圆角（dp）：复刻 shape_corner 的 5dp。 */
     public static final int MONITOR_CORNER_DP = 5;
 
+    // ─── 帧率记录窗专属：毛玻璃（dark glass）配色 ───
+    // 只作用于帧率悬浮窗，其余五个监视窗仍用上面的星野深色胶囊。
+    // 比原底色更通透（0x99→0x8A），加一圈白色高光描边模拟玻璃边缘反光；
+    // 白字仍清晰，也不会在浅色应用上“糊成一片”。
+    /** 毛玻璃底：深灰 54% 透明。 */
+    public static final int FPS_GLASS_BG = 0x8A1C1C20;
+    /** 毛玻璃描边：白 40% 高光。 */
+    public static final int FPS_GLASS_STROKE = 0x66FFFFFF;
+    /** 记录中毛玻璃底：红 60% 透明。 */
+    public static final int FPS_GLASS_RECORD_BG = 0x99C62828;
+    /** 记录中毛玻璃描边：浅红白 50%。 */
+    public static final int FPS_GLASS_RECORD_STROKE = 0x80FFCDD2;
+    /** 毛玻璃圆角（dp）：比普通胶囊略大，玻璃卡片观感。 */
+    public static final int FPS_GLASS_CORNER_DP = 6;
+
     /** dp 转 px 换算。 */
     public static int dpToPx(Context context, int dp) {
         return Math.round(dp * context.getResources().getDisplayMetrics().density);
@@ -116,6 +131,43 @@ public final class OverlayWindowStyle {
                 android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 1));
         div.setBackgroundColor(MONITOR_DIVIDER);
         return div;
+    }
+
+    /**
+     * 通用毛玻璃背景：与帧率记录窗同一套深灰半透明底 + 白色高光描边 + 圆角，
+     * 供系统监视窗等需要 compact 玻璃质感的窗口覆写 createWindowBackground() 使用。
+     * 纯色 + 描边，不叠加任何渐变。
+     */
+    public static GradientDrawable createGlassBackground(Context context) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(dpToPx(context, FPS_GLASS_CORNER_DP));
+        bg.setColor(FPS_GLASS_BG);
+        bg.setStroke(dpToPx(context, 1), FPS_GLASS_STROKE);
+        return bg;
+    }
+
+    /**
+     * 帧率记录窗毛玻璃背景（常态）：深灰半透明底 + 白色高光描边 + 6dp 圆角。
+     * 仅由 {@code FpsOverlayWindow} 通过覆写 createWindowBackground() 使用。
+     */
+    public static GradientDrawable createFpsGlassBackground(Context context) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(dpToPx(context, FPS_GLASS_CORNER_DP));
+        bg.setColor(FPS_GLASS_BG);
+        bg.setStroke(dpToPx(context, 1), FPS_GLASS_STROKE);
+        return bg;
+    }
+
+    /** 帧率记录窗毛玻璃背景（记录中）：红色半透明底 + 浅红高光描边。 */
+    public static GradientDrawable createFpsGlassRecordingBackground(Context context) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(dpToPx(context, FPS_GLASS_CORNER_DP));
+        bg.setColor(FPS_GLASS_RECORD_BG);
+        bg.setStroke(dpToPx(context, 1), FPS_GLASS_RECORD_STROKE);
+        return bg;
     }
 
     /**

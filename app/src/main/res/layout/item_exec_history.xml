@@ -19,6 +19,6 @@
     android:minHeight="48dp"
     android:paddingHorizontal="14dp"
     android:paddingVertical="10dp"
-    android:textColor="@color/ios_text_primary"
+    android:textColor="?attr/auroraTextPrimary"
     android:textSize="12sp"
     tools:text="shell pm list packages" />

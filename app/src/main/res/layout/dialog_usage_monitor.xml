@@ -15,7 +15,7 @@
         android:layout_height="wrap_content"
         android:text="使用监视器"
         android:textAppearance="@style/Widget.IOS.SubsectionTitle"
-        android:textColor="@color/ios_text_primary"
+        android:textColor="?attr/auroraTextPrimary"
         android:textSize="17sp"
         android:textStyle="bold" />
 
@@ -27,7 +27,7 @@
         android:layout_marginBottom="10dp"
         android:text="CPU/GPU/电池/内存 圆环监控、进程、线程、温度与帧率，开关状态自动保存。"
         android:textAppearance="@style/Widget.IOS.Body"
-        android:textColor="@color/ios_text_secondary"
+        android:textColor="?attr/auroraTextSecondary"
         android:textSize="13sp"
         android:lineSpacingMultiplier="1.15" />
 
@@ -68,7 +68,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="系统监视器"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -77,7 +77,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="CPU · GPU · 电池 · 内存 四环监控"
-                        android:textColor="@color/ios_text_secondary"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -92,7 +92,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0.5dp"
-                android:background="@color/ios_separator" />
+                android:background="?attr/auroraSeparator" />
 
             <!-- 进程监视器 -->
             <LinearLayout
@@ -121,7 +121,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="进程监视器"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -130,7 +130,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="查看与监控运行中的进程"
-                        android:textColor="@color/ios_text_secondary"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -145,7 +145,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0.5dp"
-                android:background="@color/ios_separator" />
+                android:background="?attr/auroraSeparator" />
 
             <!-- 线程监视器 -->
             <LinearLayout
@@ -174,7 +174,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="线程监视器"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -183,7 +183,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="监控线程数量与运行状态"
-                        android:textColor="@color/ios_text_secondary"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -198,7 +198,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0.5dp"
-                android:background="@color/ios_separator" />
+                android:background="?attr/auroraSeparator" />
 
             <!-- 迷你监视器 -->
             <LinearLayout
@@ -227,7 +227,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="迷你监视器"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -236,7 +236,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="单行显示 CPU/GPU 频率 · FPS · 电池温度"
-                        android:textColor="@color/ios_text_secondary"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -251,7 +251,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0.5dp"
-                android:background="@color/ios_separator" />
+                android:background="?attr/auroraSeparator" />
 
             <!-- 帧率记录器 -->
             <LinearLayout
@@ -280,7 +280,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="帧率记录器"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -289,7 +289,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="记录应用与游戏实时帧率"
-                        android:textColor="@color/ios_text_secondary"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="12sp" />
                 </LinearLayout>
 
@@ -304,7 +304,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0.5dp"
-                android:background="@color/ios_separator" />
+                android:background="?attr/auroraSeparator" />
 
             <!-- 温度监视器 -->
             <LinearLayout
@@ -333,7 +333,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="温度监视器"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -342,7 +342,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="监控电池与 CPU 温度变化"
-                        android:textColor="@color/ios_text_secondary"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="12sp" />
                 </LinearLayout>
 

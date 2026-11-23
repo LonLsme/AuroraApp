@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="全局机型伪装"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -57,7 +57,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-medium"
                     android:text="当前属性"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="16sp" />
 
                 <TextView
@@ -65,7 +65,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="实时读取当前系统属性，用于核对伪装结果"
-                    android:textColor="@color/explore_slate_500"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
 
                 <TextView
@@ -74,7 +74,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="当前品牌：—"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
 
                 <TextView
@@ -83,7 +83,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="当前机型：—"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
 
                 <TextView
@@ -92,7 +92,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="当前设备代号：—"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
 
                 <TextView
@@ -101,14 +101,14 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="当前指纹：—"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="13sp" />
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="0.5dp"
                     android:layout_marginTop="12dp"
-                    android:background="@color/ios_separator" />
+                    android:background="?attr/auroraSeparator" />
 
                 <TextView
                     android:layout_width="match_parent"
@@ -116,7 +116,7 @@
                     android:layout_marginTop="12dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="伪装配置"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="16sp" />
 
                 <TextView
@@ -124,7 +124,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="品牌/制造商/机型/设备代号为必填，指纹可选"
-                    android:textColor="@color/explore_slate_500"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -145,7 +145,7 @@
                         android:hint="品牌（ro.product.brand）"
                         android:inputType="textNoSuggestions"
                         android:maxLines="1"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -167,7 +167,7 @@
                         android:hint="制造商（ro.product.manufacturer）"
                         android:inputType="textNoSuggestions"
                         android:maxLines="1"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -189,7 +189,7 @@
                         android:hint="机型（ro.product.model）"
                         android:inputType="textNoSuggestions"
                         android:maxLines="1"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -211,7 +211,7 @@
                         android:hint="设备代号（ro.product.device）"
                         android:inputType="textNoSuggestions"
                         android:maxLines="1"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -220,7 +220,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="留空则不覆盖当前指纹"
-                    android:textColor="@color/explore_slate_500"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="12sp" />
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -241,7 +241,7 @@
                         android:hint="指纹（ro.build.fingerprint）"
                         android:inputType="textNoSuggestions"
                         android:maxLines="2"
-                        android:textColor="@color/explore_slate_800"
+                        android:textColor="?attr/auroraTextPrimary"
                         android:textSize="14sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 

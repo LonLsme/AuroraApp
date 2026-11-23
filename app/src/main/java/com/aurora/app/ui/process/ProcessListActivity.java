@@ -26,6 +26,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.aurora.app.R;
 import com.aurora.app.core.monitor.ProcessMonitor;
 import com.aurora.app.core.root.RootShell;
+import com.aurora.app.ui.theme.ThemeColors;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
@@ -273,14 +274,14 @@ public class ProcessListActivity extends AppCompatActivity {
         TextView tvLabel = new TextView(this);
         tvLabel.setText(label);
         tvLabel.setTextSize(13);
-        tvLabel.setTextColor(getColor(R.color.ios_text_secondary));
+        tvLabel.setTextColor(ThemeColors.textSecondary(this));
         row.addView(tvLabel, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 0.42f));
 
         TextView tvValue = new TextView(this);
         tvValue.setText(value);
         tvValue.setTextSize(13);
-        tvValue.setTextColor(getColor(R.color.ios_text_primary));
+        tvValue.setTextColor(ThemeColors.textPrimary(this));
         tvValue.setTypeface(android.graphics.Typeface.MONOSPACE);
         row.addView(tvValue, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 0.58f));

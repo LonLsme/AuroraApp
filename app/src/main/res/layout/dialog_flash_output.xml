@@ -17,7 +17,7 @@
     android:fontFamily="monospace"
     android:padding="12dp"
     android:scrollbars="vertical"
-    android:textColor="@color/ios_text_secondary"
+    android:textColor="?attr/auroraTextSecondary"
     android:textIsSelectable="true"
     android:textSize="11sp"
     tools:text="$ fastboot flash boot '/storage/emulated/0/Android/data/com.aurora.app/files/flash/boot.img'&#10;Sending 'boot' (65536 KB) OKAY [  1.732s]&#10;Writing 'boot' OKAY [  0.352s]&#10;Finished. Total time: 2.084s" />

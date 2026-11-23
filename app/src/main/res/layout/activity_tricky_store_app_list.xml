@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="Tricky Store"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <ScrollView
@@ -54,7 +54,7 @@
                 app:boxCornerRadiusTopStart="10dp"
                 app:boxStrokeColor="@color/ios_separator"
                 app:startIconDrawable="@drawable/ic_search_tricky_store"
-                app:startIconTint="@color/explore_slate_500">
+                app:startIconTint="?attr/auroraTextSecondary">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etSearchApps"
@@ -64,7 +64,7 @@
                     android:imeOptions="actionSearch"
                     android:inputType="text"
                     android:maxLines="1"
-                    android:textColor="@color/explore_slate_800"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="14sp" />
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -101,7 +101,7 @@
                             android:layout_weight="1"
                             android:fontFamily="sans-serif-medium"
                             android:text="用户应用"
-                            android:textColor="@color/explore_slate_800"
+                            android:textColor="?attr/auroraTextPrimary"
                             android:textSize="16sp" />
 
                         <CheckBox
@@ -109,7 +109,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="全选"
-                            android:textColor="@color/explore_slate_500"
+                            android:textColor="?attr/auroraTextSecondary"
                             android:textSize="12sp" />
 
                         <TextView
@@ -118,7 +118,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
                             android:text="展开"
-                            android:textColor="@color/explore_slate_500"
+                            android:textColor="?attr/auroraTextSecondary"
                             android:textSize="13sp" />
                     </LinearLayout>
 
@@ -137,7 +137,7 @@
                         android:layout_marginTop="10dp"
                         android:gravity="center"
                         android:text="未读取到用户应用"
-                        android:textColor="@color/explore_slate_500"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="13sp"
                         android:visibility="gone" />
 
@@ -183,7 +183,7 @@
                             android:layout_weight="1"
                             android:fontFamily="sans-serif-medium"
                             android:text="系统应用"
-                            android:textColor="@color/explore_slate_800"
+                            android:textColor="?attr/auroraTextPrimary"
                             android:textSize="16sp" />
 
                         <CheckBox
@@ -191,7 +191,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="全选"
-                            android:textColor="@color/explore_slate_500"
+                            android:textColor="?attr/auroraTextSecondary"
                             android:textSize="12sp" />
 
                         <TextView
@@ -200,7 +200,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
                             android:text="展开"
-                            android:textColor="@color/explore_slate_500"
+                            android:textColor="?attr/auroraTextSecondary"
                             android:textSize="13sp" />
                     </LinearLayout>
 
@@ -219,7 +219,7 @@
                         android:layout_marginTop="10dp"
                         android:gravity="center"
                         android:text="未读取到系统应用"
-                        android:textColor="@color/explore_slate_500"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="13sp"
                         android:visibility="gone" />
 

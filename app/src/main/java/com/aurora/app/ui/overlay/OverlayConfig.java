@@ -47,6 +47,32 @@ public final class OverlayConfig {
     }
 
     /**
+     * 进程悬浮窗是否「钉住」：钉住后窗口不可拖动，避免误触滑走。
+     * 状态持久化，下次打开仍是钉住形态。
+     */
+    public static boolean isPinned(Context context, MonitorType type) {
+        return prefs(context).getBoolean(type.prefKey + "_pinned", false);
+    }
+
+    /** 保存进程悬浮窗的钉住状态。 */
+    public static void setPinned(Context context, MonitorType type, boolean pinned) {
+        prefs(context).edit().putBoolean(type.prefKey + "_pinned", pinned).apply();
+    }
+
+    /**
+     * 进程悬浮窗是否只显示应用进程（默认 true）。
+     * false = 同时显示内核线程 / 原生守护进程等无包名的进程。
+     */
+    public static boolean isAppsOnly(Context context, MonitorType type) {
+        return prefs(context).getBoolean(type.prefKey + "_apps_only", true);
+    }
+
+    /** 保存进程悬浮窗的过滤模式。 */
+    public static void setAppsOnly(Context context, MonitorType type, boolean appsOnly) {
+        prefs(context).edit().putBoolean(type.prefKey + "_apps_only", appsOnly).apply();
+    }
+
+    /**
      * 读取已保存的窗口 X 坐标。
      *
      * <p>返回 {@code null} 表示从未保存过位置（首次使用），调用方应回退到默认布局。

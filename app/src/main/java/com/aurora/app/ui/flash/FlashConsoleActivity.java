@@ -313,11 +313,24 @@ public abstract class FlashConsoleActivity extends AppCompatActivity {
      * 这也是「探测」与「刷写」不会互相踩的原因。
      */
     protected void runConsoleCommand(String command) {
-        runConsoleCommand(command, null);
+        runConsoleCommand(command, null, true);
     }
 
     /** 跑一条命令，并在结束时把完整输出回传给 {@code callback}（可为 null）。 */
     protected void runConsoleCommand(String command, final CommandCallback callback) {
+        runConsoleCommand(command, callback, true);
+    }
+
+    /**
+     * 跑一条命令，可指定是否把原始输出逐行回显到输出区。
+     *
+     * <p>{@code echoOutput = false} 用于「输出会很长、界面上不看原文」的命令 ——
+     * 典型是 {@code pm list packages}：目标机上几百个应用就是几百行，灌进输出区
+     * 只会把页面拉长、把真正要看的结果挤走。此时原文仍然完整收进 {@code sink}
+     * 交给 {@code callback} 解析，只是不进输出区、也不进「保存日志」的缓冲。
+     * 命令本身与退出码照旧写一行，用户仍然知道刚才跑了什么。
+     */
+    protected void runConsoleCommand(String command, final CommandCallback callback, final boolean echoOutput) {
         if (FlashRuntime.get().isBusy()) {
             toast("已有任务在执行");
             if (callback != null) {
@@ -336,7 +349,9 @@ public abstract class FlashConsoleActivity extends AppCompatActivity {
                     @Override
                     public void onLine(String line) {
                         sink.append(line).append('\n');
-                        appendLine(line);
+                        if (echoOutput) {
+                            appendLine(line);
+                        }
                         // 切回主线程再回调：子类的进度条 / 状态文字都只能在这里动。
                         // 只要覆写过 wantsConsoleLine() 的页面才排这次 post
                         if (wantsConsoleLine()) {

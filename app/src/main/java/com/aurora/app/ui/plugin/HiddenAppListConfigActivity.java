@@ -24,6 +24,7 @@ import androidx.appcompat.widget.Toolbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.aurora.app.R;
+import com.aurora.app.ui.theme.ThemeColors;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -223,7 +224,7 @@ public class HiddenAppListConfigActivity extends AppCompatActivity {
         tv.setText(title == null ? "" : title);
         tv.setTextSize(13f);
         tv.setTypeface(tv.getTypeface(), android.graphics.Typeface.BOLD);
-        tv.setTextColor(getResources().getColor(R.color.explore_slate_500, getTheme()));
+        tv.setTextColor(ThemeColors.textSecondary(this));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT

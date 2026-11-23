@@ -47,7 +47,7 @@
             android:contentDescription="返回"
             android:scaleType="centerInside"
             android:src="@drawable/ic_arrow_back"
-            android:tint="@color/ios_text_primary" />
+            android:tint="?attr/auroraTextPrimary" />
 
         <!-- 大标题（与设置页同级：30sp medium） -->
         <TextView
@@ -58,7 +58,7 @@
             android:layout_marginBottom="14dp"
             android:fontFamily="sans-serif-medium"
             android:text="关于"
-            android:textColor="@color/ios_text_primary"
+            android:textColor="?attr/auroraTextPrimary"
             android:textSize="30sp" />
 
         <!-- ===================== 头部卡：图标 + 名称 + 版本 ===================== -->
@@ -90,7 +90,7 @@
                     android:layout_marginTop="12dp"
                     android:fontFamily="sans-serif-medium"
                     android:text="Aurora"
-                    android:textColor="@color/ios_text_primary"
+                    android:textColor="?attr/auroraTextPrimary"
                     android:textSize="22sp" />
 
                 <TextView
@@ -100,7 +100,7 @@
                     android:layout_marginTop="4dp"
                     android:fontFamily="sans-serif"
                     android:text="--"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="14sp" />
 
                 <TextView
@@ -108,7 +108,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:text="面向 Root 用户的 Android 玩机工具箱"
-                    android:textColor="@color/ios_text_secondary"
+                    android:textColor="?attr/auroraTextSecondary"
                     android:textSize="13sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -160,7 +160,7 @@
                         android:layout_marginStart="12dp"
                         android:fontFamily="sans-serif"
                         android:text="--"
-                        android:textColor="@color/ios_text_secondary"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="14sp" />
                 </LinearLayout>
 
@@ -187,7 +187,7 @@
                         android:layout_marginStart="12dp"
                         android:fontFamily="sans-serif"
                         android:text="--"
-                        android:textColor="@color/ios_text_secondary"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="14sp" />
                 </LinearLayout>
 
@@ -214,7 +214,7 @@
                         android:layout_marginStart="12dp"
                         android:fontFamily="sans-serif"
                         android:text="--"
-                        android:textColor="@color/ios_text_secondary"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="14sp" />
                 </LinearLayout>
 
@@ -241,7 +241,7 @@
                         android:layout_marginStart="12dp"
                         android:fontFamily="sans-serif"
                         android:text="--"
-                        android:textColor="@color/ios_text_secondary"
+                        android:textColor="?attr/auroraTextSecondary"
                         android:textSize="14sp" />
                 </LinearLayout>
             </LinearLayout>
@@ -311,7 +311,7 @@
                         android:layout_marginStart="8dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 上游项目：本项目的基础 -->
@@ -353,7 +353,7 @@
                         android:layout_marginStart="8dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 开源协议 -->
@@ -395,7 +395,7 @@
                         android:layout_marginStart="8dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -463,7 +463,7 @@
                         android:layout_marginStart="8dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 星野Scene：监视悬浮窗的视觉与采集思路参考（无公开仓库链接，故不可点） -->
@@ -578,7 +578,7 @@
                         android:layout_marginStart="8dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- GitHub -->
@@ -607,7 +607,7 @@
                         android:layout_marginStart="8dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 抖音 -->
@@ -651,7 +651,7 @@
                         android:layout_marginStart="8dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -665,7 +665,7 @@
             android:gravity="center"
             android:lineSpacingMultiplier="1.2"
             android:text="基于 violet_Box（紫罗兰Box，© Smart-Paocai）二次开发&#10;遵循 GNU General Public License v3.0"
-            android:textColor="@color/ios_text_secondary"
+            android:textColor="?attr/auroraTextSecondary"
             android:textSize="12sp" />
 
     </LinearLayout>

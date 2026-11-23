@@ -40,7 +40,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/ios_text_primary"
+                android:textColor="?attr/auroraTextPrimary"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 tools:text="Aurora" />
@@ -53,7 +53,7 @@
                 android:ellipsize="end"
                 android:fontFamily="monospace"
                 android:maxLines="2"
-                android:textColor="@color/ios_text_secondary"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="11sp"
                 tools:text="com.aurora.app" />
         </LinearLayout>
@@ -65,6 +65,6 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="更多操作"
             app:srcCompat="@drawable/ic_ms_more_vert"
-            app:tint="@color/ios_text_secondary" />
+            app:tint="?attr/auroraTextSecondary" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

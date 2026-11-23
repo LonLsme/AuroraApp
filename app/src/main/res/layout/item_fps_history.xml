@@ -17,7 +17,7 @@
             android:layout_weight="1"
             android:text="08-29 20:00 · 5:30"
             android:textAppearance="@style/Widget.IOS.Body"
-            android:textColor="@color/ios_text_secondary" />
+            android:textColor="?attr/auroraTextSecondary" />
 
         <TextView
             android:id="@+id/tvFpsHistoryStats"
@@ -25,12 +25,12 @@
             android:layout_height="wrap_content"
             android:text="均 59.9 / 高 60.0 / 低 42.1"
             android:textAppearance="@style/Widget.IOS.Body"
-            android:textColor="@color/ios_text_primary" />
+            android:textColor="?attr/auroraTextPrimary" />
     </LinearLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="0.5dp"
         android:layout_marginTop="6dp"
-        android:background="@color/ios_separator" />
+        android:background="?attr/auroraSeparator" />
 </LinearLayout>

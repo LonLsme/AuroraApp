@@ -9,7 +9,7 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@android:id/background">
         <shape android:shape="rectangle">
-            <solid android:color="@color/ios_separator" />
+            <solid android:color="?attr/auroraSeparator" />
             <corners android:radius="999dp" />
         </shape>
     </item>

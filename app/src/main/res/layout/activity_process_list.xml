@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="进程管理"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <LinearLayout
@@ -48,8 +48,8 @@
             android:inputType="text"
             android:maxLines="1"
             android:padding="10dp"
-            android:textColor="@color/ios_text_primary"
-            android:textColorHint="@color/ios_text_secondary"
+            android:textColor="?attr/auroraTextPrimary"
+            android:textColorHint="?attr/auroraTextSecondary"
             android:textSize="13sp" />
 
         <!-- 排序 -->
@@ -92,7 +92,7 @@
             android:layout_marginTop="8dp"
             android:paddingStart="8dp"
             android:text="加载中..."
-            android:textColor="@color/ios_text_secondary"
+            android:textColor="?attr/auroraTextSecondary"
             android:textSize="12sp" />
 
         <androidx.recyclerview.widget.RecyclerView

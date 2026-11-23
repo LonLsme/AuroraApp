@@ -54,7 +54,7 @@
                 android:contentDescription="返回"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_arrow_back"
-                android:tint="@color/ios_text_primary" />
+                android:tint="?attr/auroraTextPrimary" />
 
             <View
                 android:layout_width="0dp"
@@ -69,7 +69,7 @@
                 android:maxWidth="180dp"
                 android:singleLine="true"
                 android:text="未连接设备"
-                android:textColor="@color/ios_text_secondary"
+                android:textColor="?attr/auroraTextSecondary"
                 android:textSize="13sp"
                 tools:text="Fastboot 已连接 · 45850c2f" />
         </LinearLayout>
@@ -81,7 +81,7 @@
             android:layout_marginTop="2dp"
             android:fontFamily="sans-serif-medium"
             android:text="设备重启"
-            android:textColor="@color/ios_text_primary"
+            android:textColor="?attr/auroraTextPrimary"
             android:textSize="30sp" />
 
         <!-- ───────── 第一行：保存日志 / 终止 ───────── -->
@@ -268,7 +268,7 @@
             android:padding="14dp"
             android:scrollbars="vertical"
             android:text="选择重启模式"
-            android:textColor="@color/ios_text_secondary"
+            android:textColor="?attr/auroraTextSecondary"
             android:textIsSelectable="true"
             android:textSize="11sp" />
     </LinearLayout>

@@ -19,12 +19,12 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@android:color/transparent"
             app:title="帧率记录"
-            app:titleTextColor="@color/ios_text_primary" />
+            app:titleTextColor="?attr/auroraTextPrimary" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -77,7 +77,7 @@
                         android:layout_marginTop="12dp"
                         android:text="开始记录"
                         android:textAllCaps="false"
-                        android:textColor="@color/ios_text_primary"
+                        android:textColor="?attr/auroraTextPrimary"
                         app:backgroundTint="?attr/auroraBackgroundElevated"
                         app:cornerRadius="14dp"
                         app:strokeColor="@color/ios_separator"
@@ -154,7 +154,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
                                 android:text="--"
-                                android:textColor="@color/ios_text_primary"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="22sp"
                                 android:fontFamily="sans-serif-medium" />
                         </LinearLayout>
@@ -177,7 +177,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
                                 android:text="--"
-                                android:textColor="@color/ios_text_primary"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="22sp"
                                 android:fontFamily="sans-serif-medium" />
                         </LinearLayout>
@@ -200,7 +200,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
                                 android:text="--"
-                                android:textColor="@color/ios_text_primary"
+                                android:textColor="?attr/auroraTextPrimary"
                                 android:textSize="22sp"
                                 android:fontFamily="sans-serif-medium" />
                         </LinearLayout>
@@ -275,7 +275,7 @@
                         android:layout_marginTop="8dp"
                         android:text="暂无历史记录"
                         android:textAppearance="@style/Widget.IOS.Body"
-                        android:textColor="@color/ios_text_secondary" />
+                        android:textColor="?attr/auroraTextSecondary" />
 
                     <LinearLayout
                         android:id="@+id/layoutFpsHistory"

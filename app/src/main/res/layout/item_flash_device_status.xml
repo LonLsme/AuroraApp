@@ -19,7 +19,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fontFamily="sans-serif-medium"
-        android:textColor="@color/ios_text_primary"
+        android:textColor="?attr/auroraTextPrimary"
         android:textSize="14sp"
         tools:text="ADB设备" />
 
@@ -28,7 +28,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:textColor="@color/ios_text_secondary"
+        android:textColor="?attr/auroraTextSecondary"
         android:textSize="12sp"
         tools:text="未连接设备" />
 </LinearLayout>

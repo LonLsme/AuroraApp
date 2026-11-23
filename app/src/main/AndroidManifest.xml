@@ -46,8 +46,9 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.Aurora">
+        <!-- 启动入口：先判 ROOT。已授予直接进主界面（用户看不到此页），未授予显示引导页 -->
         <activity
-            android:name=".ui.main.MainActivity"
+            android:name=".ui.guide.RootGuideActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -55,6 +56,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="true" />
         <activity
             android:name=".ui.settings.ThemeActivity"
             android:exported="false" />

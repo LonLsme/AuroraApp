@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    图钉图标：由外部 SVG 转换而来（48 viewport / 4 描边 / round join）。
+    描边颜色在这里给白色，运行时由 ToolIconView 用 setTint 改为
+    “未钉住=白 90% / 已钉住=主题绿”，避免再拆两份资源。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M10.6963,17.5042 C13.3347,14.8657 16.4701,14.9387 19.8781,16.8076 L32.62,9.74509 L31.8989,4.78683 L43.2126,16.1005 L38.2656,15.3907 L31.1918,28.1214 C32.9752,31.7589 33.1337,34.6647 30.4953,37.3032 C30.4953,37.3032 26.235,33.0429 22.7171,29.525 L6.44305,41.5564 L18.4382,25.2461 C14.9202,21.7281 10.6963,17.5042 10.6963,17.5042 Z"
+        android:strokeColor="#E6FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="butt"
+        android:strokeLineJoin="round" />
+</vector>

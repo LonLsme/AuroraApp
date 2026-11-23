@@ -30,6 +30,7 @@ import com.aurora.app.core.device.DeviceReader;
 import com.aurora.app.core.device.DeviceSnapshot;
 import com.aurora.app.core.shell.AdbBridge;
 import com.aurora.app.core.shell.ShellManager;
+import com.aurora.app.ui.theme.ThemeColors;
 import com.aurora.app.ui.widget.CpuRingGaugeView;
 
 import java.util.ArrayList;
@@ -579,8 +580,8 @@ public class DeviceFragment extends Fragment {
         if (ctx == null) {
             return;
         }
-        int colorVariant = ContextCompat.getColor(ctx, R.color.fluent_on_surface_variant);
-        int colorOnSurface = ContextCompat.getColor(ctx, R.color.fluent_on_surface);
+        int colorVariant = ThemeColors.textSecondary(ctx);
+        int colorOnSurface = ThemeColors.textPrimary(ctx);
         Locale loc = Locale.getDefault();
 
         int count = Math.min(cores.length, cpuCoreRingHolders.size());
@@ -666,21 +667,20 @@ public class DeviceFragment extends Fragment {
         }
         if (raw == null || raw.isEmpty()) {
             tvSelinuxStatus.setText("—");
-            tvSelinuxStatus.setTextColor(ContextCompat.getColor(getContext(),
-                    R.color.fluent_on_surface_variant));
+            tvSelinuxStatus.setTextColor(ThemeColors.textSecondary(getContext()));
             return;
         }
         String label = formatSelinuxShort(raw);
         tvSelinuxStatus.setText(label);
-        int colorRes;
+        int color;
         if (isPermissive(label)) {
-            colorRes = R.color.fluent_orange;
+            color = ContextCompat.getColor(getContext(), R.color.fluent_orange);
         } else if ("严格模式".equals(label)) {
-            colorRes = R.color.fluent_green_600;
+            color = ContextCompat.getColor(getContext(), R.color.fluent_green_600);
         } else {
-            colorRes = R.color.fluent_on_surface_variant;
+            color = ThemeColors.textSecondary(getContext());
         }
-        tvSelinuxStatus.setTextColor(ContextCompat.getColor(getContext(), colorRes));
+        tvSelinuxStatus.setTextColor(color);
     }
 
     /**
@@ -696,21 +696,23 @@ public class DeviceFragment extends Fragment {
         }
         BootloaderState value = state == null ? BootloaderState.UNKNOWN : state;
         tvBootloaderState.setText(value.label);
-        int colorRes;
+        // 语义色（橙 / 绿）走资源，其余走主题槽位：两者都是「什么意思用什么色」，
+        // 区别只在于语义色本身不随深浅色与强调色变化，所以不需要包装成属性。
+        int color;
         switch (value) {
             case UNLOCKED:
             case VERIFY_FAILED:
-                colorRes = R.color.fluent_orange;
+                color = ContextCompat.getColor(getContext(), R.color.fluent_orange);
                 break;
             case LOCKED:
             case LOCKED_SELF_SIGNED:
-                colorRes = R.color.fluent_green_600;
+                color = ContextCompat.getColor(getContext(), R.color.fluent_green_600);
                 break;
             default:
-                colorRes = R.color.fluent_on_surface_variant;
+                color = ThemeColors.textSecondary(getContext());
                 break;
         }
-        tvBootloaderState.setTextColor(ContextCompat.getColor(getContext(), colorRes));
+        tvBootloaderState.setTextColor(color);
     }
 
     private boolean isPermissive(String shortStatus) {

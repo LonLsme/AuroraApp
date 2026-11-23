@@ -5,6 +5,8 @@
     <color name="ios_card">#1C1C1E</color>
     <color name="ios_text_primary">#F2F2F7</color>
     <color name="ios_text_secondary">#8E8E93</color>
+    <!-- 第三级文字色（深色）：比 secondary 再退一档，但要保证在纯黑/AMOLED 上仍可辨 -->
+    <color name="ios_text_tertiary">#636366</color>
     <color name="ios_fill_tertiary">#2C2C2E</color>
     <color name="ios_separator">#38383A</color>
     <color name="ios_accent">#00E676</color>

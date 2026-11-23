@@ -17,6 +17,8 @@ import java.util.Locale;
 /**
  * 帧率悬浮窗（单行形态 + 一键记录控制）：
  * <ul>
+ *   <li><b>外观</b>：外框比其它监视窗更紧凑（3dp 内边距），深灰半透明毛玻璃底 +
+ *       白色高光描边；帧率数字字号保持 13sp 不变（框小、字不小）。记录态切红色毛玻璃；</li>
  *   <li>折叠小窗：实时 FPS（系统级采样，与 {@link FpsRecorder} 同源，无单帧耗时）；
  *       帧率数字区固定宽度，不因位数变化抖动窗口；</li>
  *   <li><b>单击 = 记录开关</b>：未记录时开始记录（底色变透明红，同时窗口下方
@@ -52,6 +54,21 @@ public final class FpsOverlayWindow extends OverlayWindow {
     }
 
     /**
+     * 帧率窗外框收紧：基类默认 5dp 内边距改为 3dp，窗口整体更小一圈；
+     * 帧率数字本身字号（13sp）与固定宽度不变，读数依旧清晰。
+     */
+    @Override
+    protected int contentPaddingDp() {
+        return 3;
+    }
+
+    /** 帧率窗专属毛玻璃配色，其余监视窗不受影响。 */
+    @Override
+    protected android.graphics.drawable.Drawable createWindowBackground() {
+        return OverlayWindowStyle.createFpsGlassBackground(context);
+    }
+
+    /**
      * 折叠小窗：单行紧凑显示「FPS」。
      *
      * <p>不再显示单帧耗时 ms 与记录时长（用户要求减少宽度），单行只保留帧率数字；
@@ -70,14 +87,17 @@ public final class FpsOverlayWindow extends OverlayWindow {
 
         valueView = new TextView(context);
         valueView.setTextColor(OverlayWindowStyle.MONITOR_TEXT);
-        valueView.setTextSize(13);
+        valueView.setTextSize(13); // 数字字号保持不变（用户要求：框变小但数字不改小）
         valueView.setTypeface(Typeface.DEFAULT_BOLD);
         valueView.setIncludeFontPadding(false);
         valueView.setText("--");
         valueView.setGravity(Gravity.CENTER);
-        // 固定宽度：容纳 3 位数字 + 安全余量，位数变化不抖动
+        // 毛玻璃底上给数字加一层轻阴影，浅色应用背景也不糊；不改变字号/数字尺寸
+        valueView.setShadowLayer(OverlayWindowStyle.dpToPx(context, 2), 0f,
+                OverlayWindowStyle.dpToPx(context, 1), 0x66000000);
+        // 固定宽度：容纳 3 位数字 + 安全余量，位数变化不抖动（30dp 仍够 13sp 三位数字）
         LinearLayout.LayoutParams valueLp = new LinearLayout.LayoutParams(
-                OverlayWindowStyle.dpToPx(context, 36), LinearLayout.LayoutParams.WRAP_CONTENT);
+                OverlayWindowStyle.dpToPx(context, 30), LinearLayout.LayoutParams.WRAP_CONTENT);
         valueView.setLayoutParams(valueLp);
         row.addView(valueView);
         col.addView(row);
@@ -190,8 +210,8 @@ public final class FpsOverlayWindow extends OverlayWindow {
             hideDurationPickerRow();
         }
         setWindowBackground(recording
-                ? OverlayWindowStyle.createWindowBackgroundRecording(context)
-                : OverlayWindowStyle.createMonitorBackground(context));
+                ? OverlayWindowStyle.createFpsGlassRecordingBackground(context)
+                : OverlayWindowStyle.createFpsGlassBackground(context));
     }
 
     // ───────────────── 时长选择行（窗口内嵌） ─────────────────
@@ -226,7 +246,7 @@ public final class FpsOverlayWindow extends OverlayWindow {
         row.setPadding(0, pad, 0, 0);
 
         TextView title = OverlayWindowStyle.createMonitorTitleView(context, "时长(分)");
-        title.setPadding(0, 0, OverlayWindowStyle.dpToPx(context, 6), 0);
+        title.setPadding(0, 0, OverlayWindowStyle.dpToPx(context, 4), 0);
         row.addView(title);
 
         for (int minutes : DURATION_MINUTES) {
@@ -235,14 +255,15 @@ public final class FpsOverlayWindow extends OverlayWindow {
             btn.setTextColor(OverlayWindowStyle.MONITOR_TEXT);
             btn.setTextSize(12);
             btn.setGravity(Gravity.CENTER);
-            int hp = OverlayWindowStyle.dpToPx(context, 10);
-            int vp = OverlayWindowStyle.dpToPx(context, 5);
+            // 展开行也跟着收紧一档，但按钮仍保留足够触控面积
+            int hp = OverlayWindowStyle.dpToPx(context, 8);
+            int vp = OverlayWindowStyle.dpToPx(context, 4);
             btn.setPadding(hp, vp, hp, vp);
             btn.setBackground(OverlayWindowStyle.createPickerButtonBackground(context));
             LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT);
-            blp.setMarginStart(OverlayWindowStyle.dpToPx(context, 4));
+            blp.setMarginStart(OverlayWindowStyle.dpToPx(context, 3));
             btn.setLayoutParams(blp);
             btn.setOnClickListener(v -> {
                 FpsRecorder.get().setMaxDurationSec(minutes * 60L);

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 12+ 的系统启动画面（SplashScreen API）覆盖。
+    version 限定符的优先级高于 night，所以这里同时接管日间与夜间：
+    开屏固定纯白、不显示应用图标、无动画，避免深色模式下先闪一下深色底。
+    低版本（API 24-30）没有这些属性，继续走 Theme.Aurora 原本的 windowBackground。
+-->
+<resources>
+    <style name="Theme.Aurora" parent="Base.Theme.Aurora">
+        <item name="android:windowSplashScreenBackground">@android:color/white</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_blank</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/white</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
+    </style>
+</resources>

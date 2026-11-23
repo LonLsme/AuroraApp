@@ -45,7 +45,7 @@
             android:layout_marginBottom="14dp"
             android:fontFamily="sans-serif-medium"
             android:text="设置"
-            android:textColor="@color/ios_text_primary"
+            android:textColor="?attr/auroraTextPrimary"
             android:textSize="30sp" />
 
         <!-- ===================== 通用 ===================== -->
@@ -160,7 +160,7 @@
                         android:layout_marginStart="8dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="@color/ios_text_secondary" />
+                        android:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -223,7 +223,7 @@
                     android:layout_marginStart="8dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_chevron_right"
-                    android:tint="@color/ios_text_secondary" />
+                    android:tint="?attr/auroraTextSecondary" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -291,7 +291,7 @@
                     android:layout_marginStart="8dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_chevron_right"
-                    android:tint="@color/ios_text_secondary" />
+                    android:tint="?attr/auroraTextSecondary" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

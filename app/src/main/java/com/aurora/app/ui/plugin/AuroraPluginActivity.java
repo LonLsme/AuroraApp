@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat;
 
 import com.aurora.app.R;
 import com.aurora.app.ui.main.MainActivity;
+import com.aurora.app.ui.theme.ThemeColors;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -165,7 +166,7 @@ public class AuroraPluginActivity extends AppCompatActivity {
             return;
         }
         tvHiddenAppListMeta.setText("状态：检测中…");
-        tvHiddenAppListMeta.setTextColor(ContextCompat.getColor(this, R.color.explore_slate_500));
+        tvHiddenAppListMeta.setTextColor(ThemeColors.textSecondary(this));
         startHiddenAppListLoading();
         ioExecutor.execute(() -> {
             DetectionResult result = detectLikelyHiddenAppListXposedModule();

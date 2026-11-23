@@ -51,7 +51,7 @@
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
             android:layout_marginTop="12dp"
-            android:background="@color/ios_separator" />
+            android:background="?attr/auroraSeparator" />
 
         <LinearLayout
             android:id="@+id/layoutClusterFreq"
@@ -71,7 +71,7 @@
                     android:layout_weight="1"
                     android:text="最低频率"
                     android:textAppearance="@style/Widget.IOS.Body"
-                    android:textColor="@color/ios_text_secondary" />
+                    android:textColor="?attr/auroraTextSecondary" />
 
                 <TextView
                     android:id="@+id/tvClusterMinFreq"
@@ -85,7 +85,7 @@
                 android:id="@+id/seekClusterMin"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:progressBackgroundTint="@color/ios_separator"
+                android:progressBackgroundTint="?attr/auroraSeparator"
                 android:progressTint="@color/explore_blue_600"
                 android:thumbTint="@color/explore_blue_600" />
 
@@ -101,7 +101,7 @@
                     android:layout_weight="1"
                     android:text="最高频率"
                     android:textAppearance="@style/Widget.IOS.Body"
-                    android:textColor="@color/ios_text_secondary" />
+                    android:textColor="?attr/auroraTextSecondary" />
 
                 <TextView
                     android:id="@+id/tvClusterMaxFreq"
@@ -115,7 +115,7 @@
                 android:id="@+id/seekClusterMax"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:progressBackgroundTint="@color/ios_separator"
+                android:progressBackgroundTint="?attr/auroraSeparator"
                 android:progressTint="@color/explore_blue_600"
                 android:thumbTint="@color/explore_blue_600" />
         </LinearLayout>
