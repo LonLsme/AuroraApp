@@ -1,6 +1,7 @@
 package com.aurora.app.core.flash;
 
 import android.content.Context;
+import android.os.SystemClock;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -165,21 +166,39 @@ public final class FlashRuntime {
     }
 
     /**
-     * 清理 adb / fastboot 残留进程。
+     * 清理 <b>本应用自带</b> 的 adb / fastboot 残留进程。
      *
-     * <p>刷机中断、异常退出后常有 pkill 不干净的残留进程占住设备，
-     * 这是专门留一个「清理」入口的原因。
+     * <p>刷机中断、异常退出后常有残留进程占住设备，这是留一个「清理」入口的原因。
+     * 注意不能 {@code pkill -9 adb}：那会把用户自己开的 adb、设备页正在用的 adb server、
+     * 甚至其他刷机工具一起杀掉，表现为「刷完机设备列表空了」。
+     * 这里用 {@code -f} + 路径片段，只命中 flash_tools/bin 下的这两个二进制；
+     * 模式里写 {@code [a]db} 是为了不让 pkill 匹配到自己的命令行。
      */
     public static void killResidualProcesses() {
+        Process process = null;
         try {
-            ProcessBuilder builder = new ProcessBuilder("su", "-c",
-                    "pkill -9 adb 2>/dev/null; pkill -9 fastboot 2>/dev/null; true");
+            String script = "pkill -9 -f 'flash_tools/bin/[a]db' 2>/dev/null; "
+                    + "pkill -9 -f 'flash_tools/bin/[f]astboot' 2>/dev/null; true";
+            ProcessBuilder builder = new ProcessBuilder("su", "-c", script);
             builder.redirectErrorStream(true);
-            Process process = builder.start();
-            process.waitFor();
+            process = builder.start();
+            // 有超时：这个清理跑在刷机单线程池上，卡住会把后续任务一起堵死
+            long deadline = SystemClock.elapsedRealtime() + 5000L;
+            while (SystemClock.elapsedRealtime() < deadline) {
+                try {
+                    process.exitValue();
+                    break;
+                } catch (IllegalThreadStateException running) {
+                    Thread.sleep(50L);
+                }
+            }
             process.destroy();
         } catch (Exception e) {
             Log.w(TAG, "清理残留进程失败", e);
+        } finally {
+            if (process != null) {
+                process.destroy();
+            }
         }
     }
 

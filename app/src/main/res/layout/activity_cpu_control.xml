@@ -1,103 +1,183 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<!--
+  CPU 控制页（参考设计稿）。
+
+  顶部是芯片图的视觉头：芯片图铺满、底部渐隐到页面底色，标题与副标题压在图左侧。
+  返回按钮不用 Toolbar —— 设计稿的标题是两行（主标题 + 一行说明），Toolbar 只放得下一行。
+
+  【头图随内容滚走，顶部另有一条覆盖式标题栏】
+  188dp 的图固定占着，列表可视区就只剩半屏，所以要让它能"让位"。做法：
+    · 头图是滚动内容的第一块，跟着列表一起滚走（图不删除，滚回顶部即恢复）；
+    · cpuHeaderCompact 是贴在屏幕顶部的 64dp 标题栏，只随滚动改透明度，**不改任何尺寸**。
+  为什么不改头部高度：上一版每帧把 FrameLayout 从 188dp 收到 64dp，会让滚动容器的边界跟着变，
+  手指按住拖动时容器顶端在移动，表现为「按住下滑时画面抽搐」。这里全程只改 alpha，
+  滚动过程中没有一次布局变化，也就没有这个反馈回路。
+
+  列表部分是 NestedScrollView：集群数因机型而异，卡片会撑高，必须能滚。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/ios_background_grouped"
+    android:background="@color/cpu_page_bg"
     android:fitsSystemWindows="true">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?attr/auroraBackgroundElevated"
-        android:fitsSystemWindows="true"
-        app:elevation="0dp">
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbarCpuControl"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@android:color/transparent"
-            app:title="CPU控制"
-            app:titleTextColor="?attr/auroraTextPrimary" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0.5dp"
-            android:background="?attr/auroraSeparator" />
-    </com.google.android.material.appbar.AppBarLayout>
-
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/scrollCpu"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:paddingBottom="16dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        android:clipToPadding="false"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="@dimen/ios_screen_edge"
-            android:paddingTop="12dp"
-            android:paddingBottom="24dp">
+            android:orientation="vertical">
 
-            <com.google.android.material.card.MaterialCardView
+            <!-- ═══ 芯片头图 + 标题（随内容滚走） ═══ -->
+            <FrameLayout
+                android:id="@+id/layoutCpuHeader"
+                android:layout_width="match_parent"
+                android:layout_height="188dp">
+
+                <ImageView
+                    android:id="@+id/imgCpuHero"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@null"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/cpu_hero" />
+
+                <!-- 深色模式的冷调压暗（浅色下是透明占位） -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_cpu_hero_dim" />
+
+                <!-- 底部渐隐到页面底色，让图片与卡片区自然衔接 -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_cpu_hero_fade" />
+
+                <LinearLayout
+                    android:id="@+id/cpuHeaderExpanded"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="6dp">
+
+                    <ImageView
+                        android:id="@+id/btnCpuBack"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="返回"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_arrow_back"
+                        android:tint="?attr/auroraTextPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:includeFontPadding="false"
+                        android:text="CPU 控制"
+                        android:textColor="?attr/auroraTextPrimary"
+                        android:textSize="26sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:includeFontPadding="false"
+                        android:text="调节 CPU 频率，平衡性能与功耗"
+                        android:textColor="?attr/auroraTextSecondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <!-- ═══ 集群卡片 ═══ -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="?attr/auroraCard"
-                app:cardCornerRadius="@dimen/ios_card_corner"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp">
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="24dp">
 
+                <LinearLayout
+                    android:id="@+id/layoutCpuClusters"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+                <!-- 底部提示：与设计稿同形态的浅色说明条 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="@dimen/ios_card_padding">
+                    android:layout_marginTop="16dp"
+                    android:background="@drawable/bg_cpu_hint"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="12dp">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_settings_info"
+                        android:tint="?attr/auroraAccent" />
 
                     <TextView
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="Root 状态"
-                        android:textAppearance="@style/Widget.IOS.SubsectionTitle" />
-
-                    <TextView
-                        android:id="@+id/tvCpuRootStatus"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="检测中..."
-                        android:textAppearance="@style/Widget.IOS.Body" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCpuRefresh"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:text="刷新状态"
-                        android:textAllCaps="false"
-                        android:textColor="?attr/auroraTextPrimary"
-                        app:backgroundTint="?attr/auroraBackgroundElevated"
-                        app:cornerRadius="14dp"
-                        app:strokeColor="@color/ios_separator"
-                        app:strokeWidth="1dp" />
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="合理调节频率可以降低功耗，延长续航；修改需要 Root 权限，部分内核会随温控越过上限，重启后恢复默认。"
+                        android:textColor="?attr/auroraTextSecondary"
+                        android:textSize="12sp" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <LinearLayout
-                android:id="@+id/layoutCpuClusters"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/ios_section_gap"
-                android:orientation="vertical" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:layout_marginHorizontal="4dp"
-                android:text="频率与调度器修改需要 Root 权限；部分内核会随温控策略越过上限，且重启后恢复默认。"
-                android:textAppearance="@style/Widget.IOS.Caption" />
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <!--
+      收起态标题栏：固定贴在屏幕顶部，只随滚动改透明度。
+      visibility 跟着一起切：alpha=0 时如果仍是 VISIBLE，它会挡住下面 64dp 的点击。
+    -->
+    <LinearLayout
+        android:id="@+id/cpuHeaderCompact"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_gravity="top"
+        android:alpha="0"
+        android:background="@color/cpu_page_bg"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp"
+        android:visibility="invisible">
+
+        <ImageView
+            android:id="@+id/btnCpuBackCompact"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="返回"
+            android:padding="8dp"
+            android:src="@drawable/ic_arrow_back"
+            android:tint="?attr/auroraTextPrimary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:fontFamily="sans-serif-medium"
+            android:includeFontPadding="false"
+            android:text="CPU 控制"
+            android:textColor="?attr/auroraTextPrimary"
+            android:textSize="18sp" />
+    </LinearLayout>
+</FrameLayout>

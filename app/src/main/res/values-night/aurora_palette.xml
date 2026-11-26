@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  品牌强调色覆盖层（深色）。
+
+  与 values/aurora_palette.xml 同源，只是深浅两套 tone（浅色 tone 40 / 深色 tone 80）。
+-->
+<resources>
+    <style name="ThemeOverlay.Aurora.Palette" parent="">
+        <item name="auroraAccent">#FF91CDFC</item>
+        <item name="auroraOnAccent">#FF143347</item>
+    </style>
+</resources>

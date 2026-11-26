@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 底部说明条：浅蓝圆角底，与芯片图标同色系，比灰底更贴合这一页的冷色调。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/cpu_soft" />
+    <corners android:radius="14dp" />
+</shape>

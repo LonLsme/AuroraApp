@@ -14,6 +14,12 @@
     aurora_mi_flash 等      上一次选的固件目录 / 文件，路径在新机上必然失效。
     font_library_backup     字体备份，体积大，备份它会拖累整个备份流程。
     aurora_update           上次检查更新的时间戳，只对当前设备有意义。
+    selinux_manager_pref    开机自动改 SELinux 的开关。恢复到新机后会静默设置
+                            permissive，属于安全策略被越权改变，必须排除。
+    aurora_display_guard    待确认的屏幕改动快照。带着旧机的 wm size 恢复，
+                            新机开机可能直接是一块「黑屏」，必须排除。
+    aurora_usage_monitor    6 个悬浮窗的开关与位置，换机后会自己弹出来。
+    hidden_app_list_detector 旧机的包名 / 证书钉扎配置，在新机上没有意义。
 
   注意：API 31+ 走 data_extraction_rules.xml，两份必须同步改。
 -->
@@ -28,6 +34,10 @@
     <exclude domain="sharedpref" path="device_id_modify.xml" />
     <exclude domain="sharedpref" path="global_device_spoof.xml" />
     <exclude domain="sharedpref" path="font_library_backup.xml" />
+    <exclude domain="sharedpref" path="selinux_manager_pref.xml" />
+    <exclude domain="sharedpref" path="aurora_display_guard.xml" />
+    <exclude domain="sharedpref" path="aurora_usage_monitor.xml" />
+    <exclude domain="sharedpref" path="hidden_app_list_detector.xml" />
     <!-- 缓存目录本来就不该进备份，显式排除以免极少数 ROM 把它算进去 -->
     <exclude domain="external" path="." />
 </full-backup-content>

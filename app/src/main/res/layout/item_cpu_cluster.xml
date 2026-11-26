@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  CPU 集群卡片（参考设计稿）。
+
+  结构自上而下：
+    1) 头部：芯片图标块 + 「CPU0-1 / 大核 · 性能核心」+ 右侧当前频率胶囊；
+    2) 最低频率：图标 + 文案 + 数值，下面跟一条滑杆；
+    3) 最高频率：同上；
+    4) 调度器：整行可点，弹项目统一的选择菜单（AuroraChoiceMenu）。
+
+  颜色全部走语义色 / cpu_soft，深浅色都有对应值；卡片零阴影零描边，靠 18dp 圆角与留白分层。
+-->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="12dp"
     app:cardBackgroundColor="?attr/auroraCard"
-    app:cardCornerRadius="@dimen/ios_card_corner"
+    app:cardCornerRadius="18dp"
     app:cardElevation="0dp"
     app:strokeWidth="0dp">
 
@@ -13,134 +24,231 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/ios_card_padding">
+        android:padding="16dp">
 
+        <!-- ═══ 头部 ═══ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/tvClusterName"
+            <FrameLayout
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_cpu_chip_tile"
+                android:padding="10dp">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_cpu_chip"
+                    android:tint="?attr/auroraAccent" />
+            </FrameLayout>
+
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
                 android:layout_weight="1"
-                android:text="CPU0-3"
-                android:textAppearance="@style/Widget.IOS.SubsectionTitle" />
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvClusterName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:includeFontPadding="false"
+                    android:text="CPU0-1"
+                    android:textColor="?attr/auroraTextPrimary"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/tvClusterTier"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:includeFontPadding="false"
+                    android:text="大核 · 性能核心"
+                    android:textColor="?attr/auroraTextSecondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tvClusterCurFreq"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_cpu_freq_pill"
+                android:fontFamily="sans-serif-medium"
+                android:includeFontPadding="false"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
                 android:text="1805 MHz"
                 android:textColor="?attr/auroraAccent"
-                android:textSize="15sp"
-                android:fontFamily="sans-serif-medium" />
+                android:textSize="13sp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvClusterSummary"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="调度器 schedutil"
-            android:textAppearance="@style/Widget.IOS.Caption" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0.5dp"
-            android:layout_marginTop="12dp"
-            android:background="?attr/auroraSeparator" />
-
+        <!-- ═══ 频率 ═══ -->
         <LinearLayout
             android:id="@+id/layoutClusterFreq"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:orientation="vertical">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_cpu_min_freq"
+                    android:tint="?attr/auroraTextSecondary" />
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
                     android:layout_weight="1"
+                    android:includeFontPadding="false"
                     android:text="最低频率"
-                    android:textAppearance="@style/Widget.IOS.Body"
-                    android:textColor="?attr/auroraTextSecondary" />
+                    android:textColor="?attr/auroraTextPrimary"
+                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/tvClusterMinFreq"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:includeFontPadding="false"
                     android:text="806 MHz"
-                    android:textAppearance="@style/Widget.IOS.Body" />
+                    android:textColor="?attr/auroraTextPrimary"
+                    android:textSize="15sp" />
             </LinearLayout>
 
             <SeekBar
                 android:id="@+id/seekClusterMin"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxHeight="3dp"
+                android:minHeight="3dp"
                 android:progressBackgroundTint="?attr/auroraSeparator"
-                android:progressTint="@color/explore_blue_600"
-                android:thumbTint="@color/explore_blue_600" />
+                android:progressTint="?attr/auroraAccent"
+                android:splitTrack="false"
+                android:thumb="@drawable/seek_cpu_thumb" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="10dp"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_cpu_max_freq"
+                    android:tint="?attr/auroraTextSecondary" />
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
                     android:layout_weight="1"
+                    android:includeFontPadding="false"
                     android:text="最高频率"
-                    android:textAppearance="@style/Widget.IOS.Body"
-                    android:textColor="?attr/auroraTextSecondary" />
+                    android:textColor="?attr/auroraTextPrimary"
+                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/tvClusterMaxFreq"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:includeFontPadding="false"
                     android:text="1805 MHz"
-                    android:textAppearance="@style/Widget.IOS.Body" />
+                    android:textColor="?attr/auroraTextPrimary"
+                    android:textSize="15sp" />
             </LinearLayout>
 
             <SeekBar
                 android:id="@+id/seekClusterMax"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxHeight="3dp"
+                android:minHeight="3dp"
                 android:progressBackgroundTint="?attr/auroraSeparator"
-                android:progressTint="@color/explore_blue_600"
-                android:thumbTint="@color/explore_blue_600" />
+                android:progressTint="?attr/auroraAccent"
+                android:splitTrack="false"
+                android:thumb="@drawable/seek_cpu_thumb" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/tvClusterNoFreq"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="10dp"
             android:text="该集群未暴露可用频率表，仅支持切换调度器"
-            android:textAppearance="@style/Widget.IOS.Caption"
+            android:textColor="?attr/auroraTextSecondary"
+            android:textSize="12sp"
             android:visibility="gone" />
 
-        <HorizontalScrollView
+        <!-- ═══ 调度器：整行可点，右侧显示当前值 + 下拉箭头 ═══ -->
+        <LinearLayout
+            android:id="@+id/layoutClusterGovernors"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="44dp"
             android:layout_marginTop="12dp"
-            android:overScrollMode="never"
-            android:scrollbars="none">
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <LinearLayout
-                android:id="@+id/layoutClusterGovernors"
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_cpu_governor"
+                android:tint="?attr/auroraTextSecondary" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:includeFontPadding="false"
+                android:text="调度器"
+                android:textColor="?attr/auroraTextPrimary"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvClusterGovernor"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal" />
-        </HorizontalScrollView>
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:includeFontPadding="false"
+                android:maxWidth="150dp"
+                android:singleLine="true"
+                android:text="schedutil"
+                android:textColor="?attr/auroraTextSecondary"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_down"
+                android:tint="?attr/auroraTextSecondary" />
+        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

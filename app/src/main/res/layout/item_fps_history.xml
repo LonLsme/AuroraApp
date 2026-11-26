@@ -1,36 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    历史会话行：应用图标 + 应用名 +（时间 · 时长 · 分辨率）+ 平均帧率。
+    点击整行进会话详情页，可导出 CSV / 图片。
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <ImageView
+        android:id="@+id/ivFpsHistoryIcon"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:importantForAccessibility="no" />
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:orientation="horizontal">
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvFpsHistoryApp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="应用名"
+            android:textAppearance="@style/Widget.IOS.Body"
+            android:textColor="?attr/auroraTextPrimary" />
 
         <TextView
             android:id="@+id/tvFpsHistoryTime"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="08-29 20:00 · 5:30"
-            android:textAppearance="@style/Widget.IOS.Body"
-            android:textColor="?attr/auroraTextSecondary" />
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="11-25 15:30 · 5:00 · 1080x2400"
+            android:textColor="?attr/auroraTextSecondary"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:gravity="end|center_vertical"
+        android:orientation="vertical">
 
         <TextView
             android:id="@+id/tvFpsHistoryStats"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="均 59.9 / 高 60.0 / 低 42.1"
-            android:textAppearance="@style/Widget.IOS.Body"
-            android:textColor="?attr/auroraTextPrimary" />
-    </LinearLayout>
+            android:text="59.9"
+            android:textColor="?attr/auroraTextPrimary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0.5dp"
-        android:layout_marginTop="6dp"
-        android:background="?attr/auroraSeparator" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="平均 FPS"
+            android:textColor="?attr/auroraTextSecondary"
+            android:textSize="10sp" />
+    </LinearLayout>
 </LinearLayout>

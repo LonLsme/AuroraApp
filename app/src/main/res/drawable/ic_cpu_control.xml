@@ -1,30 +1,41 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <!-- 顶部引脚 -->
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!--
+        CPU 芯片图标：由设计稿 SVG 原样转换为 VectorDrawable。
+        viewport 与源文件一致（48×48），pathData 未重新采样，
+        strokeWidth 4 / 圆角连接 / 圆端点均照搬源文件。
+        源文件里那些 d="M14.9092 2V8V2Z" 且 fill="none" 的路径是零面积的
+        描边占位块，本身不产生任何像素，这里直接省略；真正可见的引脚
+        合并到下方第三条 path 绘制，几何位置完全相同。
+        描边色运行时由调用方 app:tint 覆盖。
+    -->
+
+    <!-- 芯片外框 -->
     <path
-        android:fillColor="#FF000000"
-        android:pathData="M9,4 h1.6 v2.5 h-1.6 z M11.2,4 h1.6 v2.5 h-1.6 z M13.4,4 h1.6 v2.5 h-1.6 z" />
-    <!-- 底部引脚 -->
+        android:fillColor="@android:color/transparent"
+        android:pathData="M38,8 H10 C8.895,8 8,8.895 8,10 V38 C8,39.105 8.895,40 10,40 H38 C39.105,40 40,39.105 40,38 V10 C40,8.895 39.105,8 38,8 Z"
+        android:strokeColor="#FF333333"
+        android:strokeLineJoin="round"
+        android:strokeWidth="4" />
+
+    <!-- 芯片内核方框 -->
     <path
-        android:fillColor="#FF000000"
-        android:pathData="M9,17.5 h1.6 v2.5 h-1.6 z M11.2,17.5 h1.6 v2.5 h-1.6 z M13.4,17.5 h1.6 v2.5 h-1.6 z" />
-    <!-- 左侧引脚 -->
+        android:fillColor="@android:color/transparent"
+        android:pathData="M30,18 H18 V30 H30 V18 Z"
+        android:strokeColor="#FF333333"
+        android:strokeLineJoin="round"
+        android:strokeWidth="4" />
+
+    <!-- 上下左右共 12 根引脚 -->
     <path
-        android:fillColor="#FF000000"
-        android:pathData="M4,9 h2.5 v1.6 h-2.5 z M4,11.2 h2.5 v1.6 h-2.5 z M4,13.4 h2.5 v1.6 h-2.5 z" />
-    <!-- 右侧引脚 -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M17.5,9 h2.5 v1.6 h-2.5 z M17.5,11.2 h2.5 v1.6 h-2.5 z M17.5,13.4 h2.5 v1.6 h-2.5 z" />
-    <!-- 芯片主体 -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M8,6.5 h8 a1.5,1.5 0 0 1 1.5,1.5 v8 a1.5,1.5 0 0 1 -1.5,1.5 h-8 a1.5,1.5 0 0 1 -1.5,-1.5 v-8 a1.5,1.5 0 0 1 1.5,-1.5 z" />
-    <!-- 内核 -->
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M9.8,9.8 h4.4 v4.4 h-4.4 z" />
+        android:fillColor="@android:color/transparent"
+        android:pathData="M14.909,2 V8 M14.909,40 V46 M24,2 V8 M24,40 V46 M33.091,2 V8 M33.091,40 V46 M2,14.909 H8 M40,14.909 H46 M2,24 H8 M40,24 H46 M2,33.091 H8 M40,33.091 H46"
+        android:strokeColor="#FF333333"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="4" />
 </vector>

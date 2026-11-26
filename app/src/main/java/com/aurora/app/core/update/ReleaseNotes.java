@@ -1,5 +1,6 @@
 package com.aurora.app.core.update;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -111,12 +112,31 @@ public final class ReleaseNotes {
         s = TASK_ITEM.matcher(s).replaceAll("· ");
         s = BULLET.matcher(s).replaceAll("· ");
         s = CHECKBOX.matcher(s).replaceAll("");
-        s = BOLD.matcher(s).replaceAll(m -> m.group(1) != null ? m.group(1) : m.group(2));
+        s = replaceBoldWithGroup(s);
         s = STRIKE.matcher(s).replaceAll("$1");
         s = CODE.matcher(s).replaceAll("$1");
         s = TRAILING_SPACE.matcher(s).replaceAll("");
         s = MANY_BLANK.matcher(s).replaceAll("\n\n");
         return s.trim();
+    }
+
+    /**
+     * 把 {@code **粗体**} / {@code __粗体__} 统一还原成纯文字。
+     *
+     * <p>{@code Matcher.replaceAll(Function)} 是 API 34 才有的重载，minSdk 24 上直接调用
+     * 会 {@code NoSuchMethodError}；而 {@code replaceAll("$1")} 只能取一个分组。
+     * 这里手动遍历，取「第一个非空分组」，语义与原来的 lambda 完全一致。
+     */
+    private static String replaceBoldWithGroup(String input) {
+        Matcher matcher = BOLD.matcher(input);
+        StringBuffer out = new StringBuffer();
+        while (matcher.find()) {
+            String replacement = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+            matcher.appendReplacement(out,
+                    Matcher.quoteReplacement(replacement == null ? "" : replacement));
+        }
+        matcher.appendTail(out);
+        return out.toString();
     }
 
     /**

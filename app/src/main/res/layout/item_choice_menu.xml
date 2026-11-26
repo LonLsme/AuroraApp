@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  选择菜单的一行：左标签、右打勾（未选中时不可见但仍占位，避免文字左右跳动）。
+  文字颜色与字重在代码里按选中态设置（AuroraChoiceMenu）。
+
+  尺寸收紧过的原因：菜单宽度按内容自适应，行内每多 4dp 内边距都会让整张菜单变宽，
+  最终会比「触发它的那行文字」宽出许多。48dp 行高 + 16dp 左内边距在这个尺度下最耐看。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="14dp">
+
+    <TextView
+        android:id="@+id/tvMenuLabel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:fontFamily="sans-serif"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:textSize="16sp" />
+
+    <ImageView
+        android:id="@+id/ivMenuCheck"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="10dp"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_check"
+        android:tint="?attr/auroraAccent" />
+</LinearLayout>

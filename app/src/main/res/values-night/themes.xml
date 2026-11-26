@@ -23,16 +23,4 @@
     </style>
 
     <style name="Theme.Aurora" parent="Base.Theme.Aurora" />
-
-    <!-- AMOLED 纯黑覆盖层：深色本身已把背景压到纯黑，这里把卡片/工具栏也压平 -->
-    <style name="ThemeOverlay.Aurora.Amoled" parent="">
-        <item name="auroraCard">#FF000000</item>
-        <item name="auroraBackgroundElevated">#FF000000</item>
-        <item name="auroraFill">#FF0D0D0D</item>
-        <item name="colorSurface">#FF000000</item>
-        <item name="colorSurfaceContainer">#FF000000</item>
-        <item name="colorSurfaceContainerHigh">#FF0D0D0D</item>
-        <item name="colorSurfaceContainerHighest">#FF121212</item>
-        <item name="android:colorBackground">#FF000000</item>
-    </style>
 </resources>

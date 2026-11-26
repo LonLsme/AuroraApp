@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 调色盘：设置页「主题色」行前置图标。统一 24dp / 1.8 描边 / 圆头圆角，运行时由 tint 着色。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M12,3.2a8.8,8.8 0 1 0 0,17.6c1.1,0 2,-0.9 2,-2 0,-0.5 -0.2,-1 -0.55,-1.35 -0.35,-0.35 -0.55,-0.85 -0.55,-1.35 0,-1.1 0.9,-2 2,-2h2.3A4.8,4.8 0 0 0 21.6,9.3C21.6,5.9 17.3,3.2 12,3.2Z"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.8" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M7.6,11.2a1.05,1.05 0 1 0 0.01,0"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.8" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M11,7.9a1.05,1.05 0 1 0 0.01,0"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.8" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M15.4,8.6a1.05,1.05 0 1 0 0.01,0"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.8" />
+</vector>

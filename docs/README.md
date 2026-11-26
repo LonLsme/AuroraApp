@@ -15,7 +15,7 @@
 | [`FEATURES.md`](FEATURES.md) | 现在到底有哪些功能？每个页面是干嘛的？ | 想知道「有没有做 X」「这个页面在哪」时 |
 | [`subsystems/FLASH.md`](subsystems/FLASH.md) | 刷机链路怎么设计的？命令怎么发出去的？ | 改刷机相关功能时 |
 | [`subsystems/QDL.md`](subsystems/QDL.md) | 高通 9008 深刷是怎么实现的？ | 改 QDL 页或接写入类命令时 |
-| [`subsystems/THEME.md`](subsystems/THEME.md) | 主题/强调色/AMOLED 是怎么算出来又套上去的？ | 改配色、加语义色、调字号时 |
+| [`subsystems/THEME.md`](subsystems/THEME.md) | 固定配色是怎么算出来又套上去的？色彩模式与字号怎么生效？ | 改配色、加语义色、调字号时 |
 | [`subsystems/MONITOR.md`](subsystems/MONITOR.md) | 监视悬浮窗的窗口体系与采集器怎么组织的？ | 加监视指标、调悬浮窗交互时 |
 | [`subsystems/SYSTEM_DATA.md`](subsystems/SYSTEM_DATA.md) | 为什么某些指标读不到？Android 各版本限制了哪些路径？ | 遇到「数据全是 0 / 显示 --」时 |
 | [`subsystems/UPDATE.md`](subsystems/UPDATE.md) | 自动更新怎么检查、下载、校验、装上？发版流水线有哪些约定？ | 改更新逻辑、发版、排查「检查更新失败」时 |

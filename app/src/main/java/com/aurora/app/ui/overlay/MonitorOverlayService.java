@@ -49,21 +49,35 @@ public class MonitorOverlayService extends Service {
 
     /** 启动一个监视窗口（服务未运行会自动拉起）。 */
     public static void startOverlay(Context context, MonitorType type) {
-        Intent intent = command(context, ACTION_START, type);
-        ContextCompat.startForegroundService(context, intent);
+        send(context, command(context, ACTION_START, type), "start");
     }
 
     /** 停止一个监视窗口。 */
     public static void stopOverlay(Context context, MonitorType type) {
-        Intent intent = command(context, ACTION_STOP, type);
-        ContextCompat.startForegroundService(context, intent);
+        send(context, command(context, ACTION_STOP, type), "stop");
     }
 
     /** 停止全部监视窗口。 */
     public static void stopAllOverlays(Context context) {
         Intent intent = new Intent(context, MonitorOverlayService.class);
         intent.setAction(ACTION_STOP_ALL);
-        ContextCompat.startForegroundService(context, intent);
+        send(context, intent, "stopAll");
+    }
+
+    /**
+     * 下发命令并兜住 Android 12+ 的「后台启动前台服务」限制。
+     *
+     * <p>关闭悬浮窗是双击窗口触发的，那一刻应用很可能在后台；服务若因系统回收
+     * 已经不在了，{@code startForegroundService} 会抛
+     * {@code ForegroundServiceStartNotAllowedException}。这种场景本来也没有窗口可停，
+     * 忽略即可，不能让它把用户正在用的别的页面带崩。
+     */
+    private static void send(Context context, Intent intent, String what) {
+        try {
+            ContextCompat.startForegroundService(context, intent);
+        } catch (Throwable t) {
+            Log.w(TAG, "下发 " + what + " 命令失败（多半是后台启动前台服务受限）", t);
+        }
     }
 
     private static Intent command(Context context, String action, MonitorType type) {
@@ -150,8 +164,11 @@ public class MonitorOverlayService extends Service {
         }
     }
 
-    /** 创建低打扰通知渠道（API 26+ 必需）。 */
+    /** 创建低打扰通知渠道（API 26+ 必需；低版本上没有这个类，必须先判版本）。 */
     private void createNotificationChannel() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
+            return;
+        }
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (nm == null) {
             return;
@@ -159,7 +176,10 @@ public class MonitorOverlayService extends Service {
         NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
                 "使用监视器",
-                NotificationManager.IMPORTANCE_MIN);
+                // IMPORTANCE_MIN 的渠道在部分 ROM 上会被系统直接压成「不显示」，
+                // 前台服务通知用 LOW：不出声、不弹窗，但一定在通知栏里，
+                // 用户才有地方点进去关掉监视窗。
+                NotificationManager.IMPORTANCE_LOW);
         channel.setDescription("悬浮监视窗口运行中");
         nm.createNotificationChannel(channel);
     }
@@ -192,19 +212,28 @@ public class MonitorOverlayService extends Service {
         }
     }
 
-    /** 构建前台服务通知：显示当前运行的窗口数量。 */
+    /** 构建前台服务通知：显示当前运行的窗口数量；点击回到主界面。 */
     private Notification buildNotification(int count) {
         // count 为 0 表示本次命令执行后已无窗口，服务即将停止，
         // 这则通知只用于满足 startForegroundService 的调用契约，随即会被移除。
         String contentText = count > 0
                 ? count + " 个监视窗口运行中"
                 : "正在停止监视窗口";
+        Intent openApp = new Intent(this, com.aurora.app.ui.main.MainActivity.class);
+        openApp.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        android.app.PendingIntent contentIntent = android.app.PendingIntent.getActivity(
+                this,
+                0,
+                openApp,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                        | android.app.PendingIntent.FLAG_IMMUTABLE);
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("使用监视器")
                 .setContentText(contentText)
                 .setSmallIcon(R.drawable.ic_monitor_speed)
+                .setContentIntent(contentIntent)
                 .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
     }
 }

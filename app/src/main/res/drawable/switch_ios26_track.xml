@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  开关轨道：纯色胶囊，无描边（截图里的轨道是平的，没有任何边框）。
+
+  高度保持 28dp 不变 —— 这是 SwitchCompat 计算滑块内缩与滑动行程的基准，
+  改高度会让既有布局的行高与滑块位置一起变。
+-->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_checked="true">
         <shape android:shape="rectangle">
             <size android:height="28dp" />
             <corners android:radius="999dp" />
-            <!-- 开启：蓝色（iOS 风格） -->
             <solid android:color="@color/switch_track_on" />
-            <stroke android:width="1dp" android:color="@color/switch_track_stroke" />
         </shape>
     </item>
 
@@ -14,9 +18,7 @@
         <shape android:shape="rectangle">
             <size android:height="28dp" />
             <corners android:radius="999dp" />
-            <!-- 关闭：灰色（iOS 风格） -->
             <solid android:color="@color/switch_track_off" />
-            <stroke android:width="1dp" android:color="@color/switch_track_stroke" />
         </shape>
     </item>
 </selector>

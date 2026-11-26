@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.aurora.app.R;
+import com.aurora.app.core.util.NotificationPermission;
 
 import java.io.File;
 import java.io.IOException;
@@ -146,13 +147,15 @@ public class PayloadActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
         PayloadCore.CancelToken token = cancelToken;
         if (token != null) {
             token.cancel();
         }
         ioExecutor.shutdownNow();
+        // 任务随页面取消，前台服务也必须一起撤掉，否则通知会永远挂着
+        PayloadUnpackService.stop(getApplicationContext());
         closeInspection();
+        super.onDestroy();
     }
 
     // ───────────────────────────── 初始化 ─────────────────────────────
@@ -338,6 +341,10 @@ public class PayloadActivity extends AppCompatActivity {
         cancelToken = new PayloadCore.CancelToken();
         beginBusy("正在提取…");
         resetProgressStats(totalBytesFinal);
+        // 解包可能持续十几分钟：挂前台服务，退到后台/锁屏时进程不会被回收。
+        // 顺便申请一次通知权限，让用户能看到「后台正在解包」并随时停止。
+        NotificationPermission.requestIfNeeded(this);
+        PayloadUnpackService.start(this);
 
         ioExecutor.execute(() -> {
             try {
@@ -518,6 +525,7 @@ public class PayloadActivity extends AppCompatActivity {
         btnRead.setAlpha(1f);
         btnExtract.setEnabled(true);
         btnExtract.setAlpha(1f);
+        PayloadUnpackService.stop(this);
     }
 
     private void applyFilter() {

@@ -116,7 +116,7 @@
                         android:text="启用开机自动切换"
                         android:textAppearance="@style/Widget.IOS.Body"
                         android:thumb="@drawable/switch_ios26_thumb"
-                        android:track="@drawable/switch_ios26_track"
+                        app:track="@drawable/switch_ios26_track"
                         android:splitTrack="false" />
 
                     <RadioGroup

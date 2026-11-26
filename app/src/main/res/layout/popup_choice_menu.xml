@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  下拉选择菜单的外观容器（由 AuroraChoiceMenu 使用：设置页的可选项、CPU 控制的调度器）。
+
+  形态对齐设计稿：一张 20dp 圆角的浮层，纯色底、零描边，选项之间没有分隔线，
+  靠 48dp 行高与内边距拉开呼吸感。
+
+  【为什么外面套一层 ScrollView】选项条数不受控：设置页只有 3～4 项，
+  而 CPU 调度器在部分内核上有十来项（performance / schedutil / interactive / …），
+  不限高时菜单会比可用高度还高、底部被屏幕裁掉。限高与滚动由 AuroraChoiceMenu
+  按屏高算，这里只提供可滚的容器。
+
+  【为什么用 FrameLayout 而不是 MaterialCardView】MaterialCardView 会按主题的
+  materialCardViewStyle 叠一层「表面色调覆盖层」——白底会被主色染成淡蓝，
+  而且即使把 cardElevation 写成 0dp，也可能被主题样式里的取值抢先。
+  这里改用纯 FrameLayout + 形状 drawable，颜色与圆角完全由我们控制，
+  阴影交给 PopupWindow 的 elevation（与开关那次踩的是同一类坑：少依赖组件默认值）。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <ScrollView
+        android:id="@+id/menuScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:overScrollMode="ifContentScrolls"
+        android:scrollbars="vertical">
+
+        <LinearLayout
+            android:id="@+id/menuContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+    </ScrollView>
+</FrameLayout>

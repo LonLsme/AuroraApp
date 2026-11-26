@@ -17,6 +17,7 @@ import com.aurora.app.R;
 import com.aurora.app.core.display.DisplayController;
 import com.aurora.app.core.display.DisplayGuard;
 import com.aurora.app.core.root.RootShell;
+import com.aurora.app.ui.overlay.OverlayWindowManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -409,6 +410,8 @@ public class DisplayTuneActivity extends AppCompatActivity {
                 String desc = "分辨率 → " + width + "x" + height
                         + (density > 0 ? " · " + density + "dpi" : "");
                 DisplayGuard.markPending(this, desc);
+                // 密度变了：已存在的悬浮窗还是按旧 density 算出的 px，重建一次才会恢复原尺寸
+                mainHandler.postDelayed(this::recreateOverlays, 600);
                 startCountdown(desc);
             });
         });
@@ -418,6 +421,17 @@ public class DisplayTuneActivity extends AppCompatActivity {
      * 还原为物理分辨率。这是「回到安全状态」的操作，本身不会再让界面坏掉，
      * 所以不走倒计时，直接执行并把待确认状态清掉。
      */
+    /**
+     * 分辨率 / 密度变化后重建悬浮窗：让 dp / sp 按新的 DisplayMetrics 重新换算。
+     * 延迟 600ms 是等系统把新配置广播到本进程 —— 立刻重建仍会读到旧 density。
+     */
+    private void recreateOverlays() {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        OverlayWindowManager.getInstance().recreateAll(getApplicationContext());
+    }
+
     private void onResetSize() {
         toast("正在还原…");
         executor.execute(() -> {
@@ -438,6 +452,7 @@ public class DisplayTuneActivity extends AppCompatActivity {
                     etHeight.setText("");
                     etDensity.setText("");
                     reload();
+                    mainHandler.postDelayed(this::recreateOverlays, 600);
                 }
             });
         });

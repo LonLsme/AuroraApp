@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  主题切换的退场：快速淡出（160ms）。
+
+  比入场更短，是为了"旧画面先退、新画面再进"的重叠尽量小 ——
+  两段等长会让中间出现明显的半透明空档。
+-->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="160"
+    android:fromAlpha="1.0"
+    android:interpolator="@android:interpolator/fast_out_linear_in"
+    android:toAlpha="0.0" />

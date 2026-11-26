@@ -6,6 +6,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -43,6 +44,8 @@ import java.util.concurrent.Executors;
  * 开关打开 → {@link #show()}；开关关闭 → {@link #hide()}。
  */
 public abstract class OverlayWindow {
+
+    private static final String TAG = "OverlayWindow";
 
     /** 所有窗口共享的单线程采集池：串行执行，避免并发 IO 抢占。 */
     private static final ExecutorService DATA_EXECUTOR = Executors.newSingleThreadExecutor();
@@ -168,19 +171,30 @@ public abstract class OverlayWindow {
     /**
      * 显示悬浮窗：构建内容视图 → 添加到 WindowManager → 启动定时刷新。
      * 重复调用会被忽略（幂等）。
+     *
+     * @return 是否真的挂上了窗口。权限被收回、ROM 拦截 addView 时返回 {@code false}，
+     * 并自行清理，不会把异常抛给调用方（否则会连累整个前台服务）。
      */
-    public final void show() {
+    public final boolean show() {
         if (running) {
-            return;
+            return true;
         }
-        running = true;
         rootView = buildContentView();
         applyInitialPosition();
         installDrag(rootView);
-        windowManager.addView(rootView, params);
+        try {
+            windowManager.addView(rootView, params);
+        } catch (Throwable t) {
+            // 常见于「用户刚在系统设置里关掉悬浮窗权限」或部分 ROM 直接拒绝
+            Log.w(TAG, "addView 失败: " + type, t);
+            rootView = null;
+            return false;
+        }
+        running = true;
         onShown();
         refreshHandler.removeCallbacks(refreshTask);
         refreshHandler.post(refreshTask);
+        return true;
     }
 
     /**

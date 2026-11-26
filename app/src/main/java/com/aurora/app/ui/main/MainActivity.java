@@ -74,6 +74,8 @@ import com.aurora.app.ui.settings.SettingsFragment;
 import com.aurora.app.ui.theme.ThemeColors;
 import com.aurora.app.ui.update.UpdateDialog;
 import com.aurora.app.core.update.UpdateChecker;
+import com.aurora.app.core.util.NotificationPermission;
+import com.aurora.app.core.util.ProcessCompat;
 import com.aurora.app.ui.widget.AuroraSwitchStyler;
 
 import androidx.appcompat.app.AlertDialog;
@@ -94,6 +96,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.view.WindowInsetsCompat;
 
@@ -297,6 +300,10 @@ public class MainActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("Aurora");
         }
+        // 补一次工具栏自带菜单的染色：菜单实际由 onCreateOptionsMenu 提供（布局上的 app:menu
+        // 若真生效会 inflate 出两份四个图标，而实际只有两个），这里覆盖「预装菜单」那条路径，
+        // 方法幂等，对空菜单调用没有副作用。
+        tintToolbarMenuIcons(toolbar.getMenu());
         ensureToolbarVisible();
         // 顶栏「快捷重启」按钮的按压过渡：此时菜单刚 inflate，ActionView 可能还没布局，
         // bindQuickRebootActionAnimation() 内部会 post 到工具栏再去取。
@@ -411,9 +418,8 @@ public class MainActivity extends AppCompatActivity {
         appliedThemeRevision = ThemeManager.getRevision(this);
         currentTab = defaultTab;
         BottomBarState.INSTANCE.setSelectedTab(defaultTab);
-        // 同步底栏效果开关初值（Compose 侧据此决定 blur / 液态玻璃是否生效）
-        BottomBarState.INSTANCE.setLiquidGlass(ThemeManager.isLiquidGlassEnabled(this));
-        BottomBarState.INSTANCE.setBlur(ThemeManager.isBlurEnabled(this));
+        // 同步底栏效果档位初值（Compose 侧据此决定模糊 / 折射 / 高光是否生效）
+        BottomBarState.INSTANCE.setBarEffect(ThemeManager.getBarEffect(this));
 
         // 页面 Fragment 的安装由 setupTabPager() 内部完成（需要先收集 pageViews，
         // 见 installPageFragments() 的说明）。此处再幂等地补一次，覆盖 setupTabPager()
@@ -480,26 +486,36 @@ public class MainActivity extends AppCompatActivity {
      * 检查失败要看详情，用户自己会去设置页点「检查更新」。
      */
     private void maybeAutoCheckUpdate() {
-        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+        mainHandler.postDelayed(autoCheckRunnable, 3000L);
+    }
+
+    /**
+     * 启动后的静默更新检查。抽成字段是为了在 {@code onDestroy} 里能 remove，
+     * 否则页面 3 秒内被关掉时，匿名 Runnable 会继续持有 Activity。
+     */
+    private final Runnable autoCheckRunnable = new Runnable() {
+        @Override
+        public void run() {
             if (isFinishing() || isDestroyed()) {
                 return;
             }
-            UpdateChecker.autoCheckIfDue(this, ThemeManager.isCheckUpdateEnabled(this), result -> {
-                if (result == null || result.release == null) {
-                    return;
-                }
-                // 用户对这个版本点过「稍后」→ 不再自动打扰；想装的话手动检查仍能看到
-                if (result.release.tag.equals(UpdateChecker.getDismissedTag(this))) {
-                    return;
-                }
-                runOnUiThread(() -> {
-                    if (!isFinishing() && !isDestroyed()) {
-                        UpdateDialog.show(this, result, null);
-                    }
-                });
-            });
-        }, 3000L);
-    }
+            UpdateChecker.autoCheckIfDue(MainActivity.this,
+                    ThemeManager.isCheckUpdateEnabled(MainActivity.this), result -> {
+                        if (result == null || result.release == null) {
+                            return;
+                        }
+                        // 用户对这个版本点过「稍后」→ 不再自动打扰；想装的话手动检查仍能看到
+                        if (result.release.tag.equals(UpdateChecker.getDismissedTag(MainActivity.this))) {
+                            return;
+                        }
+                        runOnUiThread(() -> {
+                            if (!isFinishing() && !isDestroyed()) {
+                                UpdateDialog.show(MainActivity.this, result, null);
+                            }
+                        });
+                    });
+        }
+    };
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
@@ -508,12 +524,25 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_TAB, currentTab);
     }
 
+    /**
+     * 供设置页即时应用「滑动切换导航页面」开关。
+     *
+     * <p>只改 ViewPager2 的输入开关，不重建本 Activity —— 重建这个 God Activity 有明显卡顿，
+     * 而这个开关本身不需要重新解析任何资源。
+     */
+    public void applySwipeTabsEnabled(boolean enabled) {
+        if (mainPager != null) {
+            mainPager.setUserInputEnabled(enabled);
+        }
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
-        // 从「主题」子页返回：强调色 / 字号 / 动态取色变更后，重建一次以套用新配色。
-        // 色彩模式变更由 setDefaultNightMode 自动重建（onCreate 已同步 appliedThemeRevision），
-        // 因此这里不会重复重建 —— 避免"重建两次"卡死。
+        // 色彩模式 / 字号属于资源层，变更后必须重建才能生效。设置页改完会直接重建本 Activity，
+        // 重建后的 onCreate 已把 appliedThemeRevision 同步为最新，所以这里只是兜底：
+        // 万一有其它入口改了主题版本号，回到前台时补一次重建。
+        // （色彩模式变更由 setDefaultNightMode 自动重建，此处不会叠加成二次重建 —— 那会明显卡顿。）
         int revision = ThemeManager.getRevision(this);
         if (appliedThemeRevision != revision) {
             appliedThemeRevision = revision;
@@ -532,8 +561,7 @@ public class MainActivity extends AppCompatActivity {
         }
         // 底栏视觉/交互开关：只改 Compose 状态与 ViewPager2 的一个开关，
         // 无需重建本 Activity（重建这个 God Activity 有明显卡顿）。
-        BottomBarState.INSTANCE.setLiquidGlass(ThemeManager.isLiquidGlassEnabled(this));
-        BottomBarState.INSTANCE.setBlur(ThemeManager.isBlurEnabled(this));
+        BottomBarState.INSTANCE.setBarEffect(ThemeManager.getBarEffect(this));
         if (mainPager != null) {
             mainPager.setUserInputEnabled(ThemeManager.isSwipeTabsEnabled(this));
         }
@@ -575,6 +603,8 @@ public class MainActivity extends AppCompatActivity {
         if (flashPage != null) {
             flashPage.release();
         }
+        mainHandler.removeCallbacks(autoCheckRunnable);
+        mainHandler.removeCallbacks(exploreResumeRefresh);
         super.onDestroy();
     }
 
@@ -694,7 +724,7 @@ public class MainActivity extends AppCompatActivity {
             process = new ProcessBuilder("su", "-c", command)
                     .redirectErrorStream(true)
                     .start();
-            boolean finished = process.waitFor(25, TimeUnit.SECONDS);
+            boolean finished = ProcessCompat.waitFor(process, (25) * 1000L);
             if (!finished) {
                 process.destroy();
                 return -1;
@@ -1012,7 +1042,7 @@ public class MainActivity extends AppCompatActivity {
                 Process process = null;
                 try {
                     process = new ProcessBuilder(suBin, "-c", command).redirectErrorStream(true).start();
-                    boolean finished = process.waitFor(1500, TimeUnit.MILLISECONDS);
+                    boolean finished = ProcessCompat.waitFor(process, 1500);
                     if (finished && process.exitValue() == 0) {
                         success = true;
                         break;
@@ -1063,7 +1093,7 @@ public class MainActivity extends AppCompatActivity {
             Process process = null;
             try {
                 process = new ProcessBuilder(suBin, "-c", script).redirectErrorStream(true).start();
-                if (process.waitFor(3000, TimeUnit.MILLISECONDS)) {
+                if (ProcessCompat.waitFor(process, 3000)) {
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                         StringBuilder sb = new StringBuilder();
                         String line;
@@ -1207,7 +1237,38 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(android.view.Menu menu) {
         getMenuInflater().inflate(R.menu.toolbar_menu, menu);
+        tintToolbarMenuIcons(menu);
         return true;
+    }
+
+    /**
+     * 给顶栏菜单图标按当前主题上色。
+     *
+     * <p>「监视器」与「电源」两个图标是纯黑的矢量图（{@code #FF000000}）：浅色下顶栏是
+     * {@code #F2F2F7}，黑图标正好；深色下顶栏背景是 {@code #000000}，黑图标压黑底直接看不见。
+     * 这里不另做一套 drawable —— 形状一样、只是颜色不同，复制一份矢量图以后改形状要改两处；
+     * 也不在矢量图里写 {@code ?attr} 填充，平台 VectorDrawable 对主题属性的解析随 API 浮动，
+     * 在菜单这条 inflate 路径上不一定带 themed Resources。改成 inflate 之后按正文色统一染色，
+     * 深浅切换会重建 Activity，自然重新走一遍。
+     *
+     * <p>幂等：对同一批 {@link android.view.MenuItem} 重复调用只是重设一次带 tint 的 Drawable，
+     * 所以 {@code setupToolbar()} 里对工具栏已有的菜单再补一次也没有副作用。
+     */
+    private void tintToolbarMenuIcons(android.view.Menu menu) {
+        if (menu == null) {
+            return;
+        }
+        int color = ThemeColors.textPrimary(this);
+        for (int i = 0; i < menu.size(); i++) {
+            android.view.MenuItem item = menu.getItem(i);
+            Drawable icon = item.getIcon();
+            if (icon == null) {
+                continue;
+            }
+            icon = icon.mutate();
+            DrawableCompat.setTint(icon, color);
+            item.setIcon(icon);
+        }
     }
 
     @Override
@@ -1309,6 +1370,9 @@ public class MainActivity extends AppCompatActivity {
                 return; // 状态暂不保存，等授权成功后统一保存并开启
             }
             prefs.edit().putBoolean(type.prefKey, true).apply();
+            // 前台服务通知是用户了解「后台正在监控」的唯一入口，
+            // Android 13+ 未授权时顺手申请一次（拒绝也照常运行）
+            NotificationPermission.requestIfNeeded(this);
             MonitorOverlayService.startOverlay(this, type);
         } else {
             prefs.edit().putBoolean(type.prefKey, false).apply();
@@ -1755,7 +1819,7 @@ public class MainActivity extends AppCompatActivity {
             Process process = null;
             try {
                 process = new ProcessBuilder(command).redirectErrorStream(true).start();
-                boolean finished = process.waitFor(1200, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1200);
                 if (!finished) {
                     process.destroy();
                     continue;
@@ -1809,7 +1873,7 @@ public class MainActivity extends AppCompatActivity {
                 process = new ProcessBuilder(suBin, "-c", "[ -e \"" + absolutePath + "\" ]")
                         .redirectErrorStream(true)
                         .start();
-                boolean finished = process.waitFor(1200, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1200);
                 if (finished && process.exitValue() == 0) {
                     return true;
                 }

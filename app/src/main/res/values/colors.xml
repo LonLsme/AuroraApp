@@ -8,9 +8,15 @@
     <color name="ios_semantic_negative">#FF5252</color>
     <color name="ios_separator">#E0E0E0</color>
     <color name="ios_background">#F5F5F5</color>
-    <color name="ios_accent">#00C853</color>
+    <color name="ios_accent">#0B79AC</color>
     <color name="ios_card">#FFFFFF</color>
     <color name="ios_background_grouped">#F2F2F7</color>
+    <!-- 设置页页面底色：浅色为极浅灰，分组卡片（白）才浮得起来；深色见 values-night -->
+    <color name="settings_page_background">#F2F2F7</color>
+    <!-- CPU 控制页：页面底色略偏蓝，与顶部芯片图的冷色调衔接 -->
+    <color name="cpu_page_bg">#F4F7FC</color>
+    <!-- 芯片图标底片 / 当前频率胶囊的浅蓝底 -->
+    <color name="cpu_soft">#E8F1FE</color>
     <color name="ios_background_elevated">#FFFFFF</color>
     <color name="ios_text_primary">#000000</color>
     <color name="ios_text_secondary">#6C6C70</color>
@@ -51,19 +57,19 @@
     <color name="nav_floating_surface">#66FFFFFF</color>
     <color name="nav_floating_stroke">#26FFFFFF</color>
     <color name="nav_item_text">#1F2937</color>
-    <color name="nav_item_accent">#00C853</color>
+    <color name="nav_item_accent">#0B79AC</color>
     <!-- stitch_fluent_root_system / code.html tokens（实心表面 + 描边，避免半透明叠阴影发脏） -->
     <color name="fluent_background">#f3f4f8</color>
     <color name="fluent_glass_card">#FFFFFFFF</color>
     <color name="fluent_card_stroke">#E6E7EF</color>
     <color name="fluent_cell_stroke">#EBECF2</color>
-    <color name="fluent_primary">#00C853</color>
+    <color name="fluent_primary">#0B79AC</color>
     <color name="fluent_secondary">#00618f</color>
     <color name="fluent_on_surface">#2d2f32</color>
     <color name="fluent_on_surface_variant">#5a5b5f</color>
     <color name="fluent_surface_container_low">#f0f0f5</color>
     <color name="fluent_surface_container">#e7e8ed</color>
-    <color name="fluent_primary_container">#B9F6CA</color>
+    <color name="fluent_primary_container">#CBE6FF</color>
     <color name="fluent_android_green">#3DDC84</color>
     <color name="fluent_root_badge_bg">#80DCFCE7</color>
     <color name="fluent_root_badge_text">#15803d</color>
@@ -102,9 +108,8 @@
     <color name="nav_glass_stroke">#99D5DCE6</color>
     <color name="nav_glass_highlight">#66FFFFFF</color>
     <color name="nav_item_active_bg">#E8D4F8E7</color>
-    <color name="switch_track_on">#3370FF</color>
-    <color name="switch_track_off">#E5E5EA</color>
-    <color name="switch_track_stroke">#33000000</color>
+    <color name="switch_track_on">#FF0B79AC</color>
+    <color name="switch_track_off">#FFE9E9EB</color>
     <color name="dialog_stroke">#1A000000</color>
 
     <!--

@@ -30,9 +30,9 @@ import com.aurora.app.ui.theme.ThemeManager;
  * {@code NoActionBar}，{@code getSupportActionBar()} 恒为 null，用系统 ActionBar 既拿不到
  * 标题也拿不到返回键 —— 旧版本本页因此没有任何返回入口，只能靠系统返回键退出。
  *
- * <p>颜色全部走 {@code @color/ios_*} 语义色，主题（强调色 / AMOLED 覆盖层）由
+ * <p>颜色全部走 {@code @color/ios_*} 语义色，主题（品牌配色覆盖层）由
  * {@code ThemeManager.init()} 注册的 Activity 生命周期回调自动套用，本类无需再调 setTheme。
- * 字号缩放靠 {@link #attachBaseContext(Context)}，与 {@code ThemeActivity} 同一套做法。
+ * 字号缩放靠 {@link #attachBaseContext(Context)}，与 {@code MainActivity} 同一套做法。
  */
 public class AboutActivity extends AppCompatActivity {
 

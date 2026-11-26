@@ -511,12 +511,23 @@ public final class ProcessOverlayWindow extends OverlayWindow {
                             Toast.makeText(context.getApplicationContext(),
                                     result.isSuccess()
                                             ? "已结束 " + (info.pkg != null ? info.pkg : info.name)
-                                            : "结束失败（需要 Root 权限）",
+                                            : killFailureMessage(result),
                                     Toast.LENGTH_SHORT).show();
                         } catch (Exception ignored) {
                         }
                     }));
         });
+    }
+
+    /** 把「超时 / 无 root / 命令失败」区分开，别一律甩一句「需要 Root 权限」。 */
+    private static String killFailureMessage(RootShell.Result result) {
+        if (result.timedOut) {
+            return "结束超时（命令无响应），请稍后重试";
+        }
+        if (!result.isSuccess() && result.out != null && result.out.contains("Permission denied")) {
+            return "结束失败（需要 Root 权限）";
+        }
+        return "结束失败（Root 授权或命令被拒绝）";
     }
 
     @Override

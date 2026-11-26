@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+
+    <!--
+        欧加真线刷图标：由设计稿 SVG 原样转换为 VectorDrawable。
+        viewport 沿用源文件 1024×1024，pathData 未重新采样。
+        填充色保留源文件的 #d81e06，实际显示颜色由调用方 app:tint 决定。
+    -->
+
+    <!-- 左侧竖条与横线 -->
+    <path
+        android:fillColor="#FFD81E06"
+        android:pathData="M478.798,714.225 v-348.613 H294.040 v71.594 h113.162 v277.020 h-113.162 v71.595 h295.279 v-71.595 z" />
+
+    <!-- 外框 + 右下角加号 -->
+    <path
+        android:fillColor="#FFD81E06"
+        android:pathData="M877.688,453.464 h-82.027 v478.645 H94.769 V219.501 h477.990 V137.474 H12.742 V1014.135 H877.688 v-82.026 z M870.852,144.399 V5.890 h-71.595 v138.509 H660.748 v71.595 h138.509 v138.509 h71.595 V215.994 h138.509 v-71.595 z" />
+</vector>

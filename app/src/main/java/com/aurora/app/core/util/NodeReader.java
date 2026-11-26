@@ -7,7 +7,9 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -40,11 +42,24 @@ public final class NodeReader {
     private static final long PROBE_COOLDOWN_MS = 0L;
     /** root 探测/读取失败后的退避时间（无 root 时避免反复卡超时）。 */
     private static final long FAIL_BACKOFF_MS = 15_000L;
-    /** root 路径缓存上限：超过后清空重建。 */
-    private static final int ROOT_PATHS_LIMIT = 32;
+    /**
+     * root 路径缓存上限。
+     *
+     * <p>一台机器光 {@code /sys/class/thermal} 就有 40 个上下热区，再加上
+     * {@code power_supply} 与 {@code /proc/stat} 等，总量必然超过 32。以前满了就
+     * {@code clear()} 全清，等于每轮都要把所有路径重新「普通读失败 → root 探测」一遍，
+     * 正是这套缓存想避免的 SELinux 审计刷屏与读数抖动。现在按 LRU 只淘汰最旧的一条。
+     */
+    private static final int ROOT_PATHS_LIMIT = 96;
 
-    /** 已知需要 root 才能读的路径（普通读失败、root cat 成功过）。 */
-    private static final Set<String> ROOT_PATHS = new HashSet<>();
+    /** 已知需要 root 才能读的路径（普通读失败、root cat 成功过）；LRU 淘汰最旧一条。 */
+    private static final Map<String, Boolean> ROOT_PATHS =
+            new LinkedHashMap<String, Boolean>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+                    return size() > ROOT_PATHS_LIMIT;
+                }
+            };
 
     private static volatile long lastProbeAtMs = 0L;
     private static volatile long lastFailAtMs = 0L;
@@ -138,7 +153,7 @@ public final class NodeReader {
     /** 已确认走 root 读取的路径集合（只读快照）。 */
     public static Set<String> knownRootPaths() {
         synchronized (ROOT_PATHS) {
-            return Collections.unmodifiableSet(new HashSet<>(ROOT_PATHS));
+            return Collections.unmodifiableSet(new HashSet<>(ROOT_PATHS.keySet()));
         }
     }
 
@@ -199,16 +214,14 @@ public final class NodeReader {
 
     private static void rememberRootPath(String path) {
         synchronized (ROOT_PATHS) {
-            if (ROOT_PATHS.size() >= ROOT_PATHS_LIMIT) {
-                ROOT_PATHS.clear();
-            }
-            ROOT_PATHS.add(path);
+            // LinkedHashMap(accessOrder=true) + removeEldestEntry 负责淘汰最旧路径
+            ROOT_PATHS.put(path, Boolean.TRUE);
         }
     }
 
     private static boolean containsPath(String path) {
         synchronized (ROOT_PATHS) {
-            return ROOT_PATHS.contains(path);
+            return ROOT_PATHS.containsKey(path);
         }
     }
 }

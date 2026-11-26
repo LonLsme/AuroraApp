@@ -170,8 +170,8 @@ public final class DisplayGuard {
         }
 
         // ③ 刷新率设置：原来是 null 就删除键，否则写回原值
-        restoreSetting("peak_refresh_rate", origPeak);
-        restoreSetting("user_refresh_rate", origUserRate);
+        restoreSetting("peak_refresh_rate", origPeak, hasSnapshot);
+        restoreSetting("user_refresh_rate", origUserRate, hasSnapshot);
         // ④ 显示模式打回改动前的那个模式号。
         //    这里<b>不能</b>硬编码 0：模式号 0 在多数机器上是 60Hz，
         //    硬打 0 会把用户原本的 120Hz 直接降成 60Hz（实测踩过）。
@@ -203,11 +203,28 @@ public final class DisplayGuard {
         return new DisplayController.OpResult(true, "已还原屏幕设置");
     }
 
-    private static void restoreSetting(String key, String original) {
-        if (original == null || original.isEmpty() || "null".equals(original)) {
+    /**
+     * 写回 / 删除一条 {@code settings system} 键。
+     *
+     * <p>关键区分：{@code "null"}（系统本身没设过）该删；<b>空串</b>（快照时读取失败）
+     * 既不知道原值、也不代表原值为空 —— 这时必须跳过，否则会把用户原本的 120Hz 上限
+     * 当成「原本不存在」直接删掉，表现为「回滚之后反而更差了」。
+     */
+    private static void restoreSetting(String key, String original, boolean haveSnapshot) {
+        String value = original == null ? "" : original.trim();
+        if (!haveSnapshot) {
+            // 没有快照（快照时没 root）：无法得知原值，仍按旧行为删除，交给系统默认策略
+            RootShell.get().exec("settings delete system " + key, 6000L);
+            return;
+        }
+        if (value.isEmpty()) {
+            Log.w(TAG, "快照中缺少 " + key + "，跳过还原以免误删用户设置");
+            return;
+        }
+        if ("null".equals(value)) {
             RootShell.get().exec("settings delete system " + key, 6000L);
         } else {
-            RootShell.get().exec("settings put system " + key + " " + original, 6000L);
+            RootShell.get().exec("settings put system " + key + " " + value, 6000L);
         }
     }
 

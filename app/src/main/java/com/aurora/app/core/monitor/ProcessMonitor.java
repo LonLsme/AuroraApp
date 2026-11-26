@@ -279,6 +279,20 @@ public final class ProcessMonitor {
         return out;
     }
 
+    /** 内核页大小（KB）。Android 15 起已有 16KB 页机型，写死 4KB 会让内存读数小 4 倍。 */
+    private static final long PAGE_SIZE_KB = readPageSizeKb();
+
+    private static long readPageSizeKb() {
+        try {
+            long bytes = android.system.Os.sysconf(android.system.OsConstants._SC_PAGESIZE);
+            if (bytes >= 1024L) {
+                return bytes / 1024L;
+            }
+        } catch (Throwable ignored) {
+        }
+        return 4L;
+    }
+
     /** 解析单行 "文件名|stat内容"。 */
     private static ProcEntry parseStatLine(String text) {
         int bar = text.indexOf('|');
@@ -300,7 +314,7 @@ public final class ProcessMonitor {
                 return null;
             }
             long ticks = Long.parseLong(rest[11]) + Long.parseLong(rest[12]);
-            long resKb = Long.parseLong(rest[21]) * 4L;   // rss 字段单位为页，页大小 4KB
+            long resKb = Long.parseLong(rest[21]) * PAGE_SIZE_KB;   // rss 字段单位为页
             return new ProcEntry(pid, comm, null, ticks, resKb, 0L,
                     "", null, null, rest[0]);
         } catch (Exception ignored) {

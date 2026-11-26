@@ -1,4 +1,5 @@
 package com.aurora.app.ui.plugin;
+import com.aurora.app.core.util.ProcessCompat;
 
 import android.os.Bundle;
 import android.content.SharedPreferences;
@@ -299,7 +300,7 @@ public class GlobalDeviceSpoofActivity extends AppCompatActivity {
             Process process = null;
             try {
                 process = new ProcessBuilder(suCmd).redirectErrorStream(true).start();
-                boolean finished = process.waitFor(1800, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1800);
                 if (!finished || process.exitValue() != 0) {
                     continue;
                 }
@@ -325,7 +326,7 @@ public class GlobalDeviceSpoofActivity extends AppCompatActivity {
             Process process = null;
             try {
                 process = new ProcessBuilder(suCmd).redirectErrorStream(true).start();
-                boolean finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, timeoutMs);
                 if (finished && process.exitValue() == 0) {
                     return new ShellExecResult(true, "");
                 }

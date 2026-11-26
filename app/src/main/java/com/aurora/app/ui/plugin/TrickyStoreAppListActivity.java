@@ -1,4 +1,5 @@
 package com.aurora.app.ui.plugin;
+import com.aurora.app.core.util.ProcessCompat;
 
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -431,7 +432,7 @@ public class TrickyStoreAppListActivity extends AppCompatActivity {
                     writer.write(content.toString());
                     writer.flush();
                 }
-                boolean finished = process.waitFor(1500, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1500);
                 if (finished && process.exitValue() == 0) {
                     return true;
                 }
@@ -455,7 +456,7 @@ public class TrickyStoreAppListActivity extends AppCompatActivity {
                 process = new ProcessBuilder(suBin, "-c", "cat \"" + TRICKY_STORE_TARGET_FILE + "\"")
                         .redirectErrorStream(true)
                         .start();
-                boolean finished = process.waitFor(1500, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1500);
                 if (!finished) {
                     process.destroy();
                     continue;

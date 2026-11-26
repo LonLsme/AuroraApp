@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  深色模式：给亮色芯片图压一层冷调遮罩，避免整块发白发刺眼。
+
+  方向很重要 —— 芯片在本图右侧、标题压在左侧，所以「左边深、右边浅」：
+  左边压够保证标题读得清，右边留出亮度让芯片还看得出形状。
+  （之前写反了：右深左浅，结果芯片被压成一块灰影。）
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="0"
+        android:endColor="#3D101822"
+        android:startColor="#B3101822"
+        android:type="linear" />
+</shape>

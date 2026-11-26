@@ -20,6 +20,17 @@
         <exclude domain="sharedpref" path="device_id_modify.xml" />
         <exclude domain="sharedpref" path="global_device_spoof.xml" />
         <exclude domain="sharedpref" path="font_library_backup.xml" />
+        <!--
+          以下三份是「本机状态 / 本机安全策略」，迁移到新设备会直接改变那台机器的系统行为：
+          - selinux_manager_pref：开机自动 setenforce 0，新机莫名变成 permissive（安全风险）
+          - aurora_display_guard：待确认快照带着旧机的 wm size，恢复后可能直接把新机打成黑屏
+          - aurora_usage_monitor：6 个悬浮窗的开关与坐标，新机上会自己弹出来
+          - hidden_app_list_detector：迁移的是旧机的包名与证书，在新机上没有意义
+        -->
+        <exclude domain="sharedpref" path="selinux_manager_pref.xml" />
+        <exclude domain="sharedpref" path="aurora_display_guard.xml" />
+        <exclude domain="sharedpref" path="aurora_usage_monitor.xml" />
+        <exclude domain="sharedpref" path="hidden_app_list_detector.xml" />
         <exclude domain="external" path="." />
     </cloud-backup>
     <device-transfer>
@@ -33,6 +44,10 @@
         <exclude domain="sharedpref" path="device_id_modify.xml" />
         <exclude domain="sharedpref" path="global_device_spoof.xml" />
         <exclude domain="sharedpref" path="font_library_backup.xml" />
+        <exclude domain="sharedpref" path="selinux_manager_pref.xml" />
+        <exclude domain="sharedpref" path="aurora_display_guard.xml" />
+        <exclude domain="sharedpref" path="aurora_usage_monitor.xml" />
+        <exclude domain="sharedpref" path="hidden_app_list_detector.xml" />
         <exclude domain="external" path="." />
     </device-transfer>
 </data-extraction-rules>

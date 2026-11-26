@@ -80,9 +80,11 @@ public final class PowerMonitor {
     };
 
     /**
-     * 内核功率节点（µW）。存在时优先使用：功率由内核按实际拓扑算好，
-     * 既不需要猜 current_now 的单位，也不受双电芯串联 / 并联折算影响。
-     * 只读 battery/bms 路径——{@code usb/power_now} 是充电器输入功率，含义不同。
+     * 内核功率节点（µW）。功率由内核按实际拓扑算好，能绕开 current_now 的单位与串并联问题，
+     * 但<b>不能无条件相信</b>：实测小米 HyperOS 3 的 {@code battery/power_now} 返回恒定值
+     * （约 10W，充电为正 / 放电为负），并不是实时功率。因此只作为
+     * {@link #readPowerW} 里的交叉校验项 —— 与电压×电流对得上才采用。
+     * 只读 battery/bms 路径：{@code usb/power_now} 是充电器输入功率，含义不同。
      */
     private static final String[] POWER_NOW_PATHS = {
             "/sys/class/power_supply/battery/power_now",
@@ -116,8 +118,10 @@ public final class PowerMonitor {
     /** 标定结果：0 未知 / 1 µA / 2 mA。判定后整个进程不再改动。 */
     private static volatile int currentUnit = UNIT_UNKNOWN;
 
-    /** current_max 是否已探测过：节点读一次就够，避免每轮都做 root cat。 */
-    private static volatile boolean maxProbed;
+    /** current_max 探测时间：节点读一次通常就够，但 root 可能晚于首次采样才授权。 */
+    private static volatile long maxProbedAtMs;
+    /** 单位仍未知时，重新探测 current_max 的最小间隔。 */
+    private static final long MAX_PROBE_RETRY_MS = 60_000L;
 
     // ─── charge_counter 标定状态（跨调用累计）───
     private static long lastCounterUah = Long.MIN_VALUE;
@@ -138,28 +142,50 @@ public final class PowerMonitor {
         Intent battery = stickyBatteryIntent(context);
         int status = statusOf(battery);
 
-        // ① 内核功率节点（µW）：单位 / 串并联 / 换算都由内核负责，最接近真实功耗
-        long powerUw = readPowerNowUw();
-        if (powerUw != Long.MIN_VALUE) {
-            double kernelWatts = applyStatusSign(status, powerUw / 1e6d);
-            return Math.abs(kernelWatts) < POWER_DEADBAND_W ? 0d : kernelWatts;
+        // 实测支路：电压 × 电流
+        int milliVolts = voltageMvOf(context, battery);
+        long rawCurrent = milliVolts > 0 ? readCurrentRaw(context) : Long.MIN_VALUE;
+        double measuredWatts = Double.NaN;
+        if (milliVolts > 0 && rawCurrent != Long.MIN_VALUE && rawCurrent != 0L) {
+            measuredWatts = applyStatusSign(status, wattsOf(milliVolts, rawCurrent));
         }
 
-        // ② 电压 × 电流（电流单位已标定）
-        int milliVolts = voltageMvOf(context, battery);
-        if (milliVolts <= 0) {
-            return Double.NaN;
+        // 内核 power_now（µW）：只在「与实测对得上」时采信。
+        // 实测小米 HyperOS 3：该节点返回恒定值（约 10W），并不是实时功率。
+        // 无条件优先会让充电显示 +10.00W、放电显示 -10.00W，且数值一动不动。
+        long powerUw = readPowerNowUw();
+        double kernelWatts = Double.NaN;
+        if (powerUw != Long.MIN_VALUE) {
+            kernelWatts = applyStatusSign(status, powerUw / 1e6d);
         }
-        long rawCurrent = readCurrentRaw(context);
-        if (rawCurrent == Long.MIN_VALUE) {
-            // 所有来源都读不到（无 root + SELinux 拦截 + 厂商未实现 BATTERY 属性）
-            return Double.NaN;
+
+        if (!Double.isNaN(measuredWatts)) {
+            // 两边吻合时用内核值（它已经把串并联、单位换算处理好，读数也更平滑）
+            if (!Double.isNaN(kernelWatts) && closeEnough(kernelWatts, measuredWatts)) {
+                return deadband(kernelWatts);
+            }
+            // 对不上：说明该 ROM 的 power_now 不是实时值，以实测为准
+            return deadband(measuredWatts);
         }
         if (rawCurrent == 0L) {
-            // 真实零电流：满电静置、旁路供电。显示 0.00W，而不是误报成不支持
+            // 真实零电流（满电静置 / 旁路供电）：就是 0W，不能拿内核的桩值
             return 0d;
         }
-        double watts = applyStatusSign(status, wattsOf(milliVolts, rawCurrent));
+        if (!Double.isNaN(kernelWatts)) {
+            // 拿不到电流时的最后一路
+            return deadband(kernelWatts);
+        }
+        return Double.NaN;
+    }
+
+    /** 两个功率读数是否「对得上」：偏差不超过 max(0.5W, 40%)。 */
+    private static boolean closeEnough(double kernelWatts, double measuredWatts) {
+        double diff = Math.abs(kernelWatts - measuredWatts);
+        return diff <= Math.max(0.5d, Math.abs(measuredWatts) * 0.4d);
+    }
+
+    /** 死区归零：避免 ±0.00W 来回跳。 */
+    private static double deadband(double watts) {
         return Math.abs(watts) < POWER_DEADBAND_W ? 0d : watts;
     }
 
@@ -258,8 +284,10 @@ public final class PowerMonitor {
      * 加锁是因为多个悬浮窗可能在不同线程同时首次取功耗，避免重复探测 root 节点。
      */
     private static synchronized void maybeResolveUnit(Context context, long rawCurrent) {
-        if (currentUnit == UNIT_UNKNOWN && !maxProbed) {
-            maxProbed = true;
+        long now = System.currentTimeMillis();
+        if (currentUnit == UNIT_UNKNOWN
+                && (maxProbedAtMs == 0L || now - maxProbedAtMs >= MAX_PROBE_RETRY_MS)) {
+            maxProbedAtMs = now;
             long max = readCurrentMaxRaw();
             if (max > 0) {
                 // µA 机型的上限是百万级，mA 机型是千级，量级不重叠，无需再交叉验证
@@ -400,7 +428,8 @@ public final class PowerMonitor {
         if (battery != null) {
             int mv = battery.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1);
             if (mv > 0) {
-                return mv;
+                // 个别 ROM 这里给的是 µV（如 4400000），按量级归一，避免把 4.4V 当成 4400V
+                return mv > 100_000 ? mv / 1000 : mv;
             }
         }
         // sysfs 普通读（内核多为 µV）

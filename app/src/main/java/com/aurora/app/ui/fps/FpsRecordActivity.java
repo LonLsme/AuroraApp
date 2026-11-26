@@ -1,10 +1,12 @@
 package com.aurora.app.ui.fps;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -15,6 +17,8 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.aurora.app.R;
 import com.aurora.app.core.monitor.FpsRecorder;
+import com.aurora.app.core.monitor.FpsSessionData;
+import com.aurora.app.core.monitor.FpsSessionStore;
 import com.aurora.app.ui.theme.ThemeColors;
 import com.google.android.material.button.MaterialButton;
 
@@ -118,9 +122,13 @@ public class FpsRecordActivity extends AppCompatActivity {
 
     /** 刷新按钮与状态文案。 */
     private void updateControls() {
-        boolean recording = FpsRecorder.get().isRecording();
+        FpsRecorder recorder = FpsRecorder.get();
+        boolean recording = recorder.isRecording();
         btnToggle.setText(recording ? "停止记录" : "开始记录");
-        tvState.setText(recording ? "正在记录系统帧率..." : "未开始记录");
+        String label = recording ? recorder.sessionLabel() : "";
+        tvState.setText(recording
+                ? (label.isEmpty() ? "正在记录系统帧率..." : "正在记录 · " + label)
+                : "未开始记录");
         tvState.setTextColor(recording
                 ? getColor(R.color.ios_semantic_positive)
                 : ThemeColors.textSecondary(this));
@@ -149,28 +157,60 @@ public class FpsRecordActivity extends AppCompatActivity {
             tvState.setText("采样不可用：请确认已授权 Root");
             tvState.setTextColor(getColor(R.color.ios_semantic_negative));
         } else if (s.recording) {
-            tvState.setText("正在记录系统帧率...");
+            String label = FpsRecorder.get().sessionLabel();
+            tvState.setText(label.isEmpty() ? "正在记录系统帧率..." : "正在记录 · " + label);
         }
         chart.setData(s.fpsSeries);
     }
 
-    /** 渲染历史会话列表。 */
+    /** 渲染历史会话列表（读文件存储的摘要，点击进详情）。 */
     private void renderHistory() {
         if (!viewCreated) {
             return;
         }
-        List<FpsRecorder.HistoryEntry> history = FpsRecorder.loadHistory(this);
+        List<FpsSessionData> history = FpsSessionStore.loadSummaries(this);
         layoutHistory.removeAllViews();
         tvNoHistory.setVisibility(history.isEmpty() ? View.VISIBLE : View.GONE);
         SimpleDateFormat df = new SimpleDateFormat("MM-dd HH:mm", Locale.CHINA);
-        for (FpsRecorder.HistoryEntry e : history) {
+        for (FpsSessionData e : history) {
             View row = LayoutInflater.from(this)
                     .inflate(R.layout.item_fps_history, layoutHistory, false);
-            ((TextView) row.findViewById(R.id.tvFpsHistoryTime)).setText(
-                    df.format(new Date(e.endTimeMs)) + " · " + formatDuration(e.durationSec));
-            ((TextView) row.findViewById(R.id.tvFpsHistoryStats)).setText(String.format(
-                    Locale.CHINA, "均 %.1f / 高 %.1f / 低 %.1f",
-                    e.avgFps, e.maxFps, e.minFps));
+
+            ImageView icon = row.findViewById(R.id.ivFpsHistoryIcon);
+            TextView app = row.findViewById(R.id.tvFpsHistoryApp);
+            TextView time = row.findViewById(R.id.tvFpsHistoryTime);
+            TextView stats = row.findViewById(R.id.tvFpsHistoryStats);
+
+            String label = e.appName;
+            if (label == null || label.isEmpty()) {
+                label = e.packageName;
+            }
+            if (label == null || label.isEmpty()) {
+                label = "未知应用";
+            }
+            app.setText(label);
+            if (e.packageName != null && !e.packageName.isEmpty()) {
+                try {
+                    icon.setImageDrawable(getPackageManager().getApplicationIcon(e.packageName));
+                } catch (Exception ignored) {
+                    icon.setImageResource(R.drawable.ic_monitor_fps);
+                }
+            } else {
+                icon.setImageResource(R.drawable.ic_monitor_fps);
+            }
+
+            String timeText = df.format(new Date(e.startTimeMs)) + " · " + formatDuration(e.durationSec);
+            if (e.viewSize != null && !e.viewSize.isEmpty()) {
+                timeText += " · " + e.viewSize;
+            }
+            time.setText(timeText);
+
+            // 摘要对象里 fps = [平均, 最高, 最低]
+            float avg = e.fps.length > 0 ? e.fps[0] : 0f;
+            stats.setText(String.format(Locale.CHINA, "%.1f", avg));
+
+            row.setOnClickListener(v -> startActivity(new Intent(this, FpsSessionDetailActivity.class)
+                    .putExtra(FpsSessionDetailActivity.EXTRA_SESSION_TIME, e.startTimeMs)));
             layoutHistory.addView(row);
         }
     }

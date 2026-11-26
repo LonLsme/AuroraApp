@@ -12,32 +12,31 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatDelegate;
 
 /**
- * 全局主题引擎（参考 KernelSU Manager 的 ThemeController / ColorMode / ColorPaletteScreen，
- * 按 AuroraApp 的 Java + XML View 架构落地）。
+ * 全局主题引擎。
+ *
+ * <p><b>职责范围收窄说明</b>：早期版本曾提供「强调色 / 调色板风格 / 色彩规范」三类自定义项，
+ * 现在配色由开发者固定（{@link AuroraPalette}），App 内只保留<b>色彩模式</b>这一个入口
+ * （跟随系统 / 浅色 / 深色）。因此本类不再有强调色相关的键、读写方法与覆盖层索引表。
  *
  * <p>职责：
  * <ul>
- *   <li>持久化主题偏好（色彩模式 / 强调色 / 调色板风格 / 色彩规范 / 字号 / 液态玻璃）；</li>
+ *   <li>持久化主题偏好（色彩模式 / 字号 / 液态玻璃 / 底栏模糊 / 滑动切页）；</li>
  *   <li>{@link #applyGlobal(Context)} 设置 AppCompatDelegate 夜间模式（全局生效）；</li>
- *   <li>{@link #applyToActivity(Activity)} 在 Activity 创建前叠加强调色覆盖层与 AMOLED 覆盖层；</li>
+ *   <li>{@link #applyToActivity(Activity)} 在 Activity 创建前叠加固定的品牌配色覆盖层；</li>
  *   <li>{@link #init(Application)} 注册生命周期回调，让所有 Activity 自动套用主题，无需逐个改动。</li>
  * </ul>
  *
- * <p><b>配色为何分两套</b>：KernelSU 是纯 Compose，颜色由 materialkolor 运行时现算。本项目的
- * 主 UI 是 XML View，主题属性只能来自静态资源，因此：
- * <ul>
- *   <li>XML 层：由 {@link AuroraPalette} 在构建前预生成 {@code ThemeOverlay.Aurora.Accent.*}
- *       （见 {@link AccentOverlays}），运行时按「强调色 × 风格」叠加；</li>
- *   <li>Compose 层（底部导航 / 主题页 / 预览卡）：直接调用 {@link AuroraPalette#generate} 现算。</li>
- * </ul>
- * 两者同源（同一个 {@link AuroraPalette}），因此 XML 与 Compose 的配色始终一致。
+ * <p><b>配色为何分两套</b>：本项目的 UI 主体是 XML View，主题属性只能来自静态资源，
+ * 因此强调色由 {@code res/values/aurora_palette.xml}（深色在 {@code values-night}）固化；
+ * Compose 层（底部导航 / 主题页）则直接调用 {@link AuroraPalette#generate(boolean)} 现算。
+ * 两者算法同源（同一个 {@link AuroraPalette} + 同一个种子色），配色始终一致。
  */
 public final class ThemeManager {
 
     /** 偏好存储名（遵循项目「各功能独立 PREFS_NAME」的约定）。 */
     public static final String PREFS_NAME = "aurora_settings";
 
-    // ===== 色彩模式（对齐 KernelSU 的 ColorMode 语义） =====
+    // ===== 色彩模式 =====
 
     /** 跟随系统。 */
     public static final int MODE_SYSTEM = 0;
@@ -45,33 +44,33 @@ public final class ThemeManager {
     public static final int MODE_LIGHT = 1;
     /** 强制深色。 */
     public static final int MODE_DARK = 2;
-    /** 强制深色 + 纯黑（AMOLED）：背景与卡片全部 #000000。 */
-    public static final int MODE_DARK_AMOLED = 3;
-
-    /** 色彩模式数量。 */
-    public static final int MODE_COUNT = 4;
-
-    /** 强调色数量：0 = 默认（品牌绿），1..15 = KernelSU 预设色板。 */
-    public static final int ACCENT_COUNT = AuroraPalette.KEY_COUNT;
-
-    /** 强调色种子色表（转发自 {@link AuroraPalette}，保持单一数据源）。 */
-    public static final int[] ACCENT_COLORS = AuroraPalette.SEED_COLORS;
-
-    /** 调色板风格数量。 */
-    public static final int PALETTE_STYLE_COUNT = AuroraPalette.STYLE_COUNT;
-
-    /** 色彩规范数量。 */
-    public static final int COLOR_SPEC_COUNT = AuroraPalette.SPEC_COUNT;
 
     /** 字号可选范围（与 KernelSU 的 pageScale 0.8~1.1 思路一致，这里作用于全局字号）。 */
     public static final float FONT_SCALE_MIN = 0.85f;
     public static final float FONT_SCALE_MAX = 1.30f;
 
+    // ===== 底栏效果：互斥三档 =====
+
+    /*
+     * 旧版本是两个独立布尔（液态玻璃 / 背景模糊），4 种组合里「玻璃关 + 模糊开」与
+     * 「玻璃开 + 模糊开」在观感上几乎无法区分 —— 折射与提饱和都依赖背景里的明暗与色彩，
+     * 而底栏下方多为纯色留白，于是用户会觉得液态玻璃开关失效。
+     * 现在收敛成三档：磨砂只有模糊、没有边沿高光；玻璃 = 折射 + 提饱和 + 满高光 + 更透的底。
+     */
+
+    /** 不透明：不模糊、不折射，底栏退化为实心胶囊。 */
+    public static final int BAR_EFFECT_OPAQUE = 0;
+    /** 磨砂：只做背景模糊，无边沿高光。 */
+    public static final int BAR_EFFECT_FROSTED = 1;
+    /** 液态玻璃：折射 + 提饱和 + 模糊，边沿高光拉满。 */
+    public static final int BAR_EFFECT_GLASS = 2;
+    /** 默认档位（沿用既有观感）。 */
+    public static final int BAR_EFFECT_DEFAULT = BAR_EFFECT_GLASS;
+
     private static final String KEY_THEME_MODE = "theme_mode";
-    private static final String KEY_ACCENT_INDEX = "accent_index";
-    private static final String KEY_PALETTE_STYLE = "palette_style";
-    private static final String KEY_COLOR_SPEC = "color_spec";
     private static final String KEY_FONT_SCALE = "font_scale";
+    private static final String KEY_BAR_EFFECT = "bottom_bar_effect";
+    /** 旧版两个布尔键：不再参与读取，只在写入时同步，供装回旧版本时保持观感一致。 */
     private static final String KEY_LIQUID_GLASS = "liquid_glass";
     private static final String KEY_BLUR = "bottom_bar_blur";
     private static final String KEY_SWIPE_TABS = "swipe_tabs";
@@ -86,8 +85,7 @@ public final class ThemeManager {
      * 偏好实例缓存。
      *
      * <p>{@code getSharedPreferences()} 每次都要走一次系统侧的缓存查找与锁，
-     * 而 Compose 侧每次重组都会读 3~8 个键（主题页滚动时尤其密集），
-     * 这里缓存成静态引用后取键就是一次内存查表。
+     * 而 Compose 侧每次重组都会读几个键，缓存成静态引用后取键就是一次内存查表。
      * 用 ApplicationContext 获取，避免长期持有 Activity 引用。
      */
     private static volatile SharedPreferences sPrefs;
@@ -119,13 +117,23 @@ public final class ThemeManager {
 
     // ===== 色彩模式 =====
 
+    /**
+     * 当前色彩模式。
+     *
+     * <p>旧版本存在第 4 种模式「深色（纯黑）」（存值 3），该模式已随配色自定义一起移除。
+     * 读到越界值时归一到深色，避免老用户升级后落到「跟随系统」而被系统浅色模式突然刷白。
+     */
     public static int getThemeMode(Context context) {
-        return getPrefs(context).getInt(KEY_THEME_MODE, MODE_SYSTEM);
+        int mode = getPrefs(context).getInt(KEY_THEME_MODE, MODE_SYSTEM);
+        if (mode < MODE_SYSTEM) {
+            return MODE_SYSTEM;
+        }
+        return Math.min(mode, MODE_DARK);
     }
 
     /** @return 是否发生了实际变化（未变化则调用方无需重建界面）。 */
     public static boolean setThemeMode(Context context, int mode) {
-        int clamped = Math.max(MODE_SYSTEM, Math.min(MODE_DARK_AMOLED, mode));
+        int clamped = Math.max(MODE_SYSTEM, Math.min(MODE_DARK, mode));
         if (clamped == getThemeMode(context)) {
             return false;
         }
@@ -134,73 +142,16 @@ public final class ThemeManager {
         return true;
     }
 
-    /** 当前是否 AMOLED 纯黑模式。 */
-    public static boolean isAmoled(Context context) {
-        return getThemeMode(context) == MODE_DARK_AMOLED;
-    }
-
     /** 当前实际是否深色（用于 Compose 侧配色判定）。 */
     public static boolean isDark(Context context, boolean systemInDark) {
         int mode = getThemeMode(context);
         if (mode == MODE_LIGHT) {
             return false;
         }
-        if (mode == MODE_DARK || mode == MODE_DARK_AMOLED) {
+        if (mode == MODE_DARK) {
             return true;
         }
         return systemInDark;
-    }
-
-    // ===== 强调色 =====
-
-    /** @return 0 = 默认品牌绿；1..15 = 预设色索引。 */
-    public static int getAccentIndex(Context context) {
-        return getPrefs(context).getInt(KEY_ACCENT_INDEX, 0);
-    }
-
-    /** @return 是否发生了实际变化（未变化则调用方无需重建界面）。 */
-    public static boolean setAccentIndex(Context context, int index) {
-        int clamped = Math.max(0, Math.min(ACCENT_COUNT - 1, index));
-        if (clamped == getAccentIndex(context)) {
-            return false;
-        }
-        getPrefs(context).edit().putInt(KEY_ACCENT_INDEX, clamped).apply();
-        bumpRevision(context);
-        return true;
-    }
-
-    // ===== 调色板风格（对应 materialkolor PaletteStyle） =====
-
-    public static int getPaletteStyle(Context context) {
-        return getPrefs(context).getInt(KEY_PALETTE_STYLE, AuroraPalette.STYLE_TONAL_SPOT);
-    }
-
-    /** @return 是否发生了实际变化（未变化则调用方无需重建界面）。 */
-    public static boolean setPaletteStyle(Context context, int styleIndex) {
-        int clamped = Math.max(0, Math.min(PALETTE_STYLE_COUNT - 1, styleIndex));
-        if (clamped == getPaletteStyle(context)) {
-            return false;
-        }
-        getPrefs(context).edit().putInt(KEY_PALETTE_STYLE, clamped).apply();
-        bumpRevision(context);
-        return true;
-    }
-
-    // ===== 色彩规范（2021 / 2025） =====
-
-    public static int getColorSpec(Context context) {
-        return getPrefs(context).getInt(KEY_COLOR_SPEC, AuroraPalette.SPEC_2025);
-    }
-
-    /** @return 是否发生了实际变化（未变化则调用方无需重建界面）。 */
-    public static boolean setColorSpec(Context context, int specIndex) {
-        int clamped = Math.max(0, Math.min(COLOR_SPEC_COUNT - 1, specIndex));
-        if (clamped == getColorSpec(context)) {
-            return false;
-        }
-        getPrefs(context).edit().putInt(KEY_COLOR_SPEC, clamped).apply();
-        bumpRevision(context);
-        return true;
     }
 
     // ===== 字号 =====
@@ -222,37 +173,64 @@ public final class ThemeManager {
 
     // ===== 底栏视觉效果 =====
 
-    /** 是否启用液态玻璃（折射 + 色彩增强）。默认开启（沿用既有观感）。 */
-    public static boolean isLiquidGlassEnabled(Context context) {
-        return getPrefs(context).getBoolean(KEY_LIQUID_GLASS, true);
+    /**
+     * 当前底栏效果档位，取值 {@link #BAR_EFFECT_OPAQUE} / {@link #BAR_EFFECT_FROSTED} /
+     * {@link #BAR_EFFECT_GLASS}。
+     *
+     * <p>老版本升级上来时偏好里没有新键：读到旧的两个布尔后按
+     * {@link #migrateLegacyBarEffect} 折算成档位并落盘一次，之后只认新键。
+     * 越界值（理论上不会出现）归一到默认档，避免升级后底栏变成不可预期的样子。
+     */
+    public static int getBarEffect(Context context) {
+        SharedPreferences prefs = getPrefs(context);
+        if (prefs.contains(KEY_BAR_EFFECT)) {
+            return normalizeBarEffect(prefs.getInt(KEY_BAR_EFFECT, BAR_EFFECT_DEFAULT));
+        }
+        int migrated = migrateLegacyBarEffect(prefs);
+        prefs.edit().putInt(KEY_BAR_EFFECT, migrated).apply();
+        return migrated;
+    }
+
+    /** 越界值归一到默认档。包内可见：单测直接覆盖边界（见 {@code ThemeManagerBarEffectTest}）。 */
+    static int normalizeBarEffect(int effect) {
+        return (effect >= BAR_EFFECT_OPAQUE && effect <= BAR_EFFECT_GLASS)
+                ? effect : BAR_EFFECT_DEFAULT;
+    }
+
+    /**
+     * 旧版「液态玻璃 / 背景模糊」两个布尔 → 三档。
+     *
+     * <p>玻璃开启时必然带模糊（玻璃本身就含模糊），与模糊开关的取值无关；
+     * 只有玻璃关闭时，模糊开关才决定是磨砂还是不透明。
+     *
+     * <p>包内可见供单测直调 —— 这段映射决定了老用户升级后底栏长什么样，值得锁死。
+     */
+    static int migrateLegacyBarEffect(SharedPreferences prefs) {
+        if (prefs.getBoolean(KEY_LIQUID_GLASS, true)) {
+            return BAR_EFFECT_GLASS;
+        }
+        return prefs.getBoolean(KEY_BLUR, true) ? BAR_EFFECT_FROSTED : BAR_EFFECT_OPAQUE;
     }
 
     /**
      * @return 是否发生了实际变化。
      *
-     * <p>注意：这里<b>刻意不递增 theme_revision</b>。液态玻璃只作用于 Compose 底栏，
-     * 由 {@code BottomBarState.liquidGlass} 状态流即时生效；若递增版本号，
+     * <p>注意：这里<b>刻意不递增 theme_revision</b>。底栏效果只作用于 Compose 底栏，
+     * 由 {@code BottomBarState.barEffect} 状态流即时生效；若递增版本号，
      * 宿主 MainActivity 会在 onResume 时无谓地重建一次（God Activity，重建有明显卡顿）。
+     *
+     * <p>旧的两个布尔键一并写回：它们不再被读取，只为「装回旧版本 APK」时观感不至于跳变。
      */
-    public static boolean setLiquidGlassEnabled(Context context, boolean on) {
-        if (on == isLiquidGlassEnabled(context)) {
+    public static boolean setBarEffect(Context context, int effect) {
+        int normalized = normalizeBarEffect(effect);
+        if (normalized == getBarEffect(context)) {
             return false;
         }
-        getPrefs(context).edit().putBoolean(KEY_LIQUID_GLASS, on).apply();
-        return true;
-    }
-
-    /** 是否启用底栏背景模糊（仅模糊，不含折射）。 */
-    public static boolean isBlurEnabled(Context context) {
-        return getPrefs(context).getBoolean(KEY_BLUR, true);
-    }
-
-    /** 与 {@link #setLiquidGlassEnabled} 同理：只走状态流，不递增主题版本号。 */
-    public static boolean setBlurEnabled(Context context, boolean on) {
-        if (on == isBlurEnabled(context)) {
-            return false;
-        }
-        getPrefs(context).edit().putBoolean(KEY_BLUR, on).apply();
+        getPrefs(context).edit()
+                .putInt(KEY_BAR_EFFECT, normalized)
+                .putBoolean(KEY_LIQUID_GLASS, normalized == BAR_EFFECT_GLASS)
+                .putBoolean(KEY_BLUR, normalized != BAR_EFFECT_OPAQUE)
+                .apply();
         return true;
     }
 
@@ -285,24 +263,6 @@ public final class ThemeManager {
         getPrefs(context).edit().putBoolean(KEY_CHECK_UPDATE, on).apply();
     }
 
-    // ===== 配色查询（供 Compose 侧使用） =====
-
-    /**
-     * 取当前实际生效的一套配色。
-     *
-     * @param systemInDark 系统是否处于深色（Compose 侧用 {@code isSystemInDarkTheme()} 传入）
-     */
-    public static AuroraPalette.Scheme currentScheme(Context context, boolean systemInDark) {
-        boolean dark = isDark(context, systemInDark);
-        return AuroraPalette.generate(getAccentIndex(context), getPaletteStyle(context),
-                getColorSpec(context), dark);
-    }
-
-    /** 取当前生效的强调色（ARGB）。 */
-    public static int currentAccentColor(Context context, boolean systemInDark) {
-        return currentScheme(context, systemInDark).primary;
-    }
-
     // ===== 应用 =====
 
     /** 全局：设置 AppCompatDelegate 夜间模式。在 {@link Application#onCreate()} 调用一次。 */
@@ -313,7 +273,6 @@ public final class ThemeManager {
                 night = AppCompatDelegate.MODE_NIGHT_NO;
                 break;
             case MODE_DARK:
-            case MODE_DARK_AMOLED:
                 night = AppCompatDelegate.MODE_NIGHT_YES;
                 break;
             default:
@@ -324,19 +283,16 @@ public final class ThemeManager {
     }
 
     /**
-     * 每个 Activity 在 {@code onCreate} 之前调用：叠加强调色 / AMOLED 覆盖层。
+     * 每个 Activity 在 {@code onCreate} 之前调用：叠加固定的品牌配色覆盖层。
      * 通过 {@link Application#registerActivityLifecycleCallbacks()} 的
      * {@code onActivityPreCreated} 注入。
+     *
+     * <p>覆盖层只有一套（{@code ThemeOverlay.Aurora.Palette}），深浅色由资源限定符区分，
+     * 因此这里不再需要按偏好挑选 style。
      */
     public static void applyToActivity(Activity activity) {
         activity.setTheme(R.style.Theme_Aurora);
-        int overlay = AccentOverlays.of(getAccentIndex(activity), getPaletteStyle(activity));
-        if (overlay != 0) {
-            activity.getTheme().applyStyle(overlay, true);
-        }
-        if (isAmoled(activity)) {
-            activity.getTheme().applyStyle(R.style.ThemeOverlay_Aurora_Amoled, true);
-        }
+        activity.getTheme().applyStyle(R.style.ThemeOverlay_Aurora_Palette, true);
         // 注：字号缩放不在这里处理。applyOverrideConfiguration 在 recreate() 后于部分 ROM
         // 会触发「配置变更→再次 relaunch」死循环导致卡死，改由 Activity.attachBaseContext
         // + createConfigurationContext 实现（见 wrapFontScale / MainActivity）。

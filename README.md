@@ -4,7 +4,7 @@
 刷机、分区、模块、SELinux、系统监视、主题定制 —— 全部收在一个应用里，不依赖任何云端账号。
 
 在 [violet_Box（紫罗兰Box）](https://github.com/Smart-Paocai/violet_Box)（GPL-3.0）基础上二次开发，
-界面按 Aurora Design System 重做（液态玻璃底栏、16 强调色 × 9 调色板、AMOLED 纯黑）。
+界面按 Aurora Design System 重做（液态玻璃底栏、开发者固定的品牌配色）。
 
 > Performance. Beautifully Controlled. —— 掌控每一瓦性能。
 
@@ -57,9 +57,9 @@ Aurora 在这里是**刷机主机**，操作对象是**用 USB 连着的那台�
 
 ### 主题
 
-4 种色彩模式（跟随系统 / 浅色 / 深色 / **AMOLED 纯黑**）× 16 种强调色 ×
-9 种调色板风格 × 2 种色彩规范（2021 / 2025），配色在运行时按 sRGB ↔ Lab ↔ LCh 现算，
-并同步生成 XML 覆盖层供 View 体系使用。支持字号缩放（0.85× ~ 1.30×）。
+3 种色彩模式（跟随系统 / 浅色 / 深色）。强调色与调色板配方由开发者固定
+（品牌绿 + TonalSpot + 2025 规范），App 内不提供配色自定义入口；配色在运行时按
+sRGB ↔ Lab ↔ LCh 现算，并与 XML 覆盖层同源。支持字号缩放（0.85× ~ 1.30×）。
 
 ### 监视悬浮窗
 
@@ -199,8 +199,8 @@ GH_TOKEN=ghp_xxx python scripts/publish_release.py v1.2.0
 ```
 AuroraApp/
 ├── app/src/main/
-│   ├── java/com/aurora/app/      131 个源文件 · 40,426 行
-│   │   ├── ui/                   表现层（22 个子包）：Activity / Fragment / 自定义 View / Compose
+│   ├── java/com/aurora/app/      138 个源文件 · 43,540 行
+│   │   ├── ui/                   表现层（23 个子包）：Activity / Fragment / 自定义 View / Compose
 │   │   ├── core/                 能力层（6 个子包）：root / flash / monitor / display / cpu / util
 │   │   ├── data/                 数据层：Root 检测、运行时探测、模型
 │   │   ├── receiver/             系统事件入口（USB 插拔等）
@@ -209,7 +209,7 @@ AuroraApp/
 │   │   ├── flash_tools.zip       刷机工具链：adb / fastboot / libksud / magiskboot / qdl（aarch64）
 │   │   └── aurora_box_module.zip 核心扩展模块（Magisk / KernelSU）
 │   └── res/
-│       ├── layout/               59 个布局
+│       ├── layout/               60 个布局
 │       └── values*/              attrs / colors / dimens / strings / themes + 自动生成的主题覆盖层
 ├── aurora_box_module/            Magisk / KernelSU 模块源码（独立打包，不参与 Gradle 构建）
 ├── docs/                         技术文档（见下方「文档地图」）
@@ -228,7 +228,7 @@ AuroraApp/
 
 | 项 | 值 |
 | --- | --- |
-| 语言 | Java 108 个文件 + Kotlin 8 个文件（Compose 组件） |
+| 语言 | Java 130 个文件 + Kotlin 8 个文件（Compose 组件） |
 | UI | XML View 为主 + Compose（底栏、主题页）、Material 3、自研 iOS / Miuix 风格组件 |
 | 构建 | AGP 9.1.1 · Kotlin 2.3.10 · Compose BOM 2026.02.01 · Gradle 9.5.1 |
 | Root 执行 | 自研 `RootShell`（**未使用 libsu**），统一 `su -c` + 固定环境前缀 |
@@ -248,7 +248,7 @@ AuroraApp/
 | [`docs/FEATURES.md`](docs/FEATURES.md) | 按页面组织的功能清单与完整 Activity 表 |
 | [`docs/subsystems/FLASH.md`](docs/subsystems/FLASH.md) | 刷机链路：工具链、执行引擎、设备探测、命令模板、11 个子页 |
 | [`docs/subsystems/QDL.md`](docs/subsystems/QDL.md) | 高通 QDL 9008 深刷 |
-| [`docs/subsystems/THEME.md`](docs/subsystems/THEME.md) | 主题引擎：调色板算法、覆盖层生成、attr 规则、AMOLED |
+| [`docs/subsystems/THEME.md`](docs/subsystems/THEME.md) | 主题引擎：调色板算法、固定配色、attr 规则、字号 |
 | [`docs/subsystems/MONITOR.md`](docs/subsystems/MONITOR.md) | 监视悬浮窗：窗口体系、拖动实现、图表控件、采集器 |
 | [`docs/subsystems/SYSTEM_DATA.md`](docs/subsystems/SYSTEM_DATA.md) | **数据读不到时先看这份**：Android 12+ 的采数权限边界 |
 | [`docs/subsystems/DEVICE.md`](docs/subsystems/DEVICE.md) | 设备页的 Root 判定、本机·外接双数据源、外接设备为什么可能看不到 |

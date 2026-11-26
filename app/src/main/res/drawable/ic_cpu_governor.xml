@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 调度器：推子（三条滑轨各带一个圆点），设置类操作的通用符号。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M4,7.2h16M4,16.8h16"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.8" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M9.2,7.2a1.9,1.9 0 1 0 0.01,0"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.8" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M15.2,16.8a1.9,1.9 0 1 0 0.01,0"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.8" />
+</vector>

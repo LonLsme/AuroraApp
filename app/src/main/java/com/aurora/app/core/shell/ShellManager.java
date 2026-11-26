@@ -152,14 +152,25 @@ public final class ShellManager {
         RootShell.get().invalidateRootCache();
     }
 
+    /** 等待本次检测结果的回调；检测期间再进来的调用者都登记在这里，结果统一派发一次。 */
+    private final java.util.List<Callback> pendingCallbacks = new java.util.ArrayList<>();
+
     /**
      * 后台检测一次通道，结果回主线程。
      *
      * <p>已在检测中时<b>不并发再跑</b>，只记一个「待重测」标记：并发重测没有意义，反而会让
      * 刚拿到手的结果被另一份更旧的结果覆盖。但标记不能丢 —— {@code su} 授权框刚关掉时
      * 上一轮检测可能还在跑，那一轮读到的是授权前的状态。
+     *
+     * <p>检测期间新加进来的回调以前会<b>永远收不到通知</b>（提前 return 时把 callback 丢了）。
+     * 现在统一登记，检测完成（含补测）后一次性派发。
      */
     public void detectAsync(Callback callback) {
+        synchronized (pendingCallbacks) {
+            if (callback != null) {
+                pendingCallbacks.add(callback);
+            }
+        }
         if (!detecting.compareAndSet(false, true)) {
             redetect.set(true);
             return;
@@ -177,12 +188,27 @@ public final class ShellManager {
             final State finalResult = result;
             state = finalResult;
             Log.i(TAG, "通道: " + finalResult.mode);
-            if (callback != null) {
-                mainHandler.post(() -> callback.onState(finalResult));
-            }
+
+            // 期间发生过授权状态变化（例如 su 弹窗刚关）：再测一轮，回调继续挂着等最终结果
             if (redetect.compareAndSet(true, false)) {
-                detectAsync(callback);
+                detectAsync(null);
+                return;
             }
+
+            java.util.List<Callback> toNotify;
+            synchronized (pendingCallbacks) {
+                toNotify = new java.util.ArrayList<>(pendingCallbacks);
+                pendingCallbacks.clear();
+            }
+            mainHandler.post(() -> {
+                for (Callback cb : toNotify) {
+                    try {
+                        cb.onState(finalResult);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "通道回调异常", t);
+                    }
+                }
+            });
         });
     }
 

@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ios_background_grouped">#000000</color>
+    <!-- 设置页页面底色：刻意不用纯黑，避免大面积刺眼；分组卡片 #1C1C1E 在其上仍能分层 -->
+    <color name="settings_page_background">#131316</color>
+    <!-- CPU 控制页：深色也避开纯黑 -->
+    <color name="cpu_page_bg">#121418</color>
+    <color name="cpu_soft">#16304A</color>
     <color name="ios_background_elevated">#1C1C1E</color>
     <color name="ios_card">#1C1C1E</color>
     <color name="ios_text_primary">#F2F2F7</color>
@@ -9,7 +14,7 @@
     <color name="ios_text_tertiary">#636366</color>
     <color name="ios_fill_tertiary">#2C2C2E</color>
     <color name="ios_separator">#38383A</color>
-    <color name="ios_accent">#00E676</color>
+    <color name="ios_accent">#91CDFC</color>
     <color name="ios_semantic_positive">#00E676</color>
     <color name="ios_semantic_negative">#FF5252</color>
     <!-- 玩机页文字在深色卡片上的对比度 -->
@@ -57,9 +62,9 @@
     <color name="fluent_surface_container">#2C2E34</color>
     <color name="fluent_on_surface">#E6E7EB</color>
     <color name="fluent_on_surface_variant">#9EA1A8</color>
-    <color name="fluent_primary">#00E676</color>
+    <color name="fluent_primary">#91CDFC</color>
     <color name="fluent_secondary">#7FD3FF</color>
-    <color name="fluent_primary_container">#12321F</color>
+    <color name="fluent_primary_container">#094B6D</color>
     <color name="fluent_android_green">#3DDC84</color>
     <color name="fluent_root_badge_bg">#80145A32</color>
     <color name="fluent_root_badge_text">#6EE7A0</color>
@@ -70,7 +75,7 @@
     <color name="nav_floating_surface">#CC1C1C1E</color>
     <color name="nav_floating_stroke">#26FFFFFF</color>
     <color name="nav_item_text">#E5E7EB</color>
-    <color name="nav_item_accent">#00E676</color>
+    <color name="nav_item_accent">#91CDFC</color>
 
     <!-- 玩机页（explore）色块：浅底 → 深底、深字 → 亮字 -->
     <color name="explore_slate_50">#12141A</color>
@@ -95,8 +100,7 @@
     <color name="nav_glass_stroke">#3394A3B8</color>
     <color name="nav_glass_highlight">#26FFFFFF</color>
     <color name="nav_item_active_bg">#E81B3A2A</color>
-    <color name="switch_track_on">#4A8CFF</color>
-    <color name="switch_track_off">#39393D</color>
-    <color name="switch_track_stroke">#33FFFFFF</color>
+    <color name="switch_track_on">#FF4A9BC7</color>
+    <color name="switch_track_off">#FF3A3A3C</color>
     <color name="dialog_stroke">#1FFFFFFF</color>
 </resources>

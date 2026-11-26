@@ -1,18 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_checked="true">
-        <shape android:shape="oval">
-            <size android:width="24dp" android:height="24dp" />
-            <solid android:color="#F2FFFFFF" />
-            <stroke android:width="0.5dp" android:color="#26000000" />
+<!--
+  开关滑块：白色圆钮 + 一圈柔和投影，并且**四周留白**（截图里的旋钮是浮在胶囊里的）。
+
+  三个要点（改之前先看这里，容易踩坑）：
+  1) SwitchCompat 把滑块的绘制边界当作"可移动范围"：边界多宽，圆钮就贴到轨道两端。
+     所以这里故意让滑块边界为 28dp（= 轨道高度），而圆钮只有 24dp ——
+     多出来的 4dp 由 gravity=center 均分成左右各 2dp 的留白，圆钮才不会贴边。
+  2) 底层那个透明矩形只负责撑出 28×25 的边界，本身不画任何颜色。
+  3) 投影用「同尺寸半透明黑圆下沉 1dp」模拟：圆形 drawable 画不出真模糊阴影，
+     它只会从圆钮下方露出一道很薄的暗边；容器高度留到 25dp 是为了不让这道暗边被裁掉。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 绘制边界：28dp 宽（左右各留 2dp）、25dp 高（垂向留 0.5dp + 底部 1dp 给投影） -->
+    <item>
+        <shape android:shape="rectangle">
+            <size
+                android:width="28dp"
+                android:height="25dp" />
+            <solid android:color="@android:color/transparent" />
         </shape>
     </item>
 
-    <item>
+    <!-- 柔和投影：与圆钮同尺寸，但在 25dp 容器里下沉 1dp -->
+    <item
+        android:gravity="center"
+        android:top="1dp">
         <shape android:shape="oval">
-            <size android:width="24dp" android:height="24dp" />
-            <solid android:color="#F2FFFFFF" />
-            <stroke android:width="0.5dp" android:color="#26000000" />
+            <size
+                android:width="24dp"
+                android:height="24dp" />
+            <solid android:color="#1A000000" />
         </shape>
     </item>
-</selector>
+
+    <!-- 白色圆钮 -->
+    <item android:gravity="center">
+        <shape android:shape="oval">
+            <size
+                android:width="24dp"
+                android:height="24dp" />
+            <solid android:color="#FFFFFFFF" />
+        </shape>
+    </item>
+</layer-list>

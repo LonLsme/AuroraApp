@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  品牌强调色覆盖层（浅色）。
+
+  App 内不再提供强调色自定义，这一套色由 AuroraPalette 固定生成（种子色 #FF0EA5E9，
+  TonalSpot 配方），深色值在 values-night/aurora_palette.xml。
+
+  覆盖层只固化 primary / onPrimary 两个槽位 —— XML 层的其余语义色来自
+  Base.Theme.Aurora 的静态属性，与这里的强调色共同组成完整主题。
+  改配色请改 AuroraPalette.SEED_COLOR 后同步这两个值（AuroraPalette.generate(boolean)
+  的 primary / onPrimary 即此处两值）。
+-->
+<resources>
+    <style name="ThemeOverlay.Aurora.Palette" parent="">
+        <item name="auroraAccent">#FF0B79AC</item>
+        <item name="auroraOnAccent">#FFFFFFFF</item>
+    </style>
+</resources>

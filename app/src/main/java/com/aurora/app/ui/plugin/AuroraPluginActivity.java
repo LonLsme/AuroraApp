@@ -1,4 +1,5 @@
 package com.aurora.app.ui.plugin;
+import com.aurora.app.core.util.ProcessCompat;
 
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -556,7 +557,7 @@ public class AuroraPluginActivity extends AppCompatActivity {
                 process = new ProcessBuilder(suCmd)
                         .redirectErrorStream(true)
                         .start();
-                boolean finished = process.waitFor(1200, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1200);
                 if (!finished) {
                     process.destroy();
                     continue;
@@ -600,7 +601,7 @@ public class AuroraPluginActivity extends AppCompatActivity {
                 process = new ProcessBuilder(suCmd)
                         .redirectErrorStream(true)
                         .start();
-                boolean finished = process.waitFor(800, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 800);
                 if (finished && process.exitValue() == 0) {
                     return true;
                 }
@@ -625,7 +626,7 @@ public class AuroraPluginActivity extends AppCompatActivity {
                 process = new ProcessBuilder(suCmd)
                         .redirectErrorStream(true)
                         .start();
-                boolean finished = process.waitFor(1200, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1200);
                 if (!finished || process.exitValue() != 0) {
                     continue;
                 }
@@ -700,11 +701,21 @@ public class AuroraPluginActivity extends AppCompatActivity {
     private static String getSigningCertSha256(PackageManager pm, String packageName) {
         if (pm == null || packageName == null || packageName.trim().isEmpty()) return "";
         try {
-            PackageInfo pi = pm.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES);
-            if (pi == null || pi.signingInfo == null) return "";
-            android.content.pm.Signature[] sigs = pi.signingInfo.hasMultipleSigners()
-                    ? pi.signingInfo.getApkContentsSigners()
-                    : pi.signingInfo.getSigningCertificateHistory();
+            android.content.pm.Signature[] sigs;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                // API 28+：按「当前 APK 签名 / 签名历史」取，能正确处理密钥轮换
+                PackageInfo pi = pm.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES);
+                android.content.pm.SigningInfo info = pi == null ? null : pi.signingInfo;
+                if (info == null) return "";
+                sigs = info.hasMultipleSigners()
+                        ? info.getApkContentsSigners()
+                        : info.getSigningCertificateHistory();
+            } else {
+                // API 24~27 没有 SigningInfo：直接读旧字段，否则老机器上一进页面就是
+                // NoSuchFieldError（表现为「选应用闪退」）
+                PackageInfo pi = pm.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
+                sigs = pi == null ? null : pi.signatures;
+            }
             if (sigs == null || sigs.length == 0 || sigs[0] == null) return "";
             byte[] cert = sigs[0].toByteArray();
             return sha256Hex(cert);
@@ -1088,7 +1099,7 @@ public class AuroraPluginActivity extends AppCompatActivity {
                 process = new ProcessBuilder(suCmd)
                         .redirectErrorStream(true)
                         .start();
-                boolean finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, timeoutMs);
                 if (!finished || process.exitValue() != 0) {
                     continue;
                 }
@@ -1121,7 +1132,7 @@ public class AuroraPluginActivity extends AppCompatActivity {
                 process = new ProcessBuilder(suCmd)
                         .redirectErrorStream(true)
                         .start();
-                boolean finished = process.waitFor(1200, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1200);
                 if (!finished) {
                     process.destroy();
                     continue;
@@ -1207,7 +1218,7 @@ public class AuroraPluginActivity extends AppCompatActivity {
                 process = new ProcessBuilder(suCmd)
                         .redirectErrorStream(true)
                         .start();
-                boolean finished = process.waitFor(1200, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1200);
                 if (finished && process.exitValue() == 0) {
                     return true;
                 }

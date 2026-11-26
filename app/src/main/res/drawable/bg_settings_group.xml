@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置页分组容器：单一圆角表面，零阴影、零描边。行与行之间用缩进的 0.5dp 细线分隔。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/auroraCard" />
+    <corners android:radius="16dp" />
+</shape>

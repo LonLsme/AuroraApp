@@ -1,4 +1,5 @@
 package com.aurora.app.ui.plugin;
+import com.aurora.app.core.util.ProcessCompat;
 
 import android.os.Build;
 import android.os.Bundle;
@@ -345,7 +346,7 @@ public class TrickyStoreSecurityPatchActivity extends AppCompatActivity {
                 process = new ProcessBuilder(suBin, "-c", "cat \"" + absolutePath + "\"")
                         .redirectErrorStream(true)
                         .start();
-                boolean finished = process.waitFor(1500, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1500);
                 if (!finished) {
                     process.destroy();
                     continue;
@@ -387,7 +388,7 @@ public class TrickyStoreSecurityPatchActivity extends AppCompatActivity {
                     writer.write(safe);
                     writer.flush();
                 }
-                boolean finished = process.waitFor(1500, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1500);
                 if (finished && process.exitValue() == 0) {
                     return true;
                 }

@@ -1,4 +1,5 @@
 package com.aurora.app.ui.plugin;
+import com.aurora.app.core.util.ProcessCompat;
 
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -1371,7 +1372,7 @@ public class HiddenAppListConfigActivity extends AppCompatActivity {
                 process = new ProcessBuilder(suCmd)
                         .redirectErrorStream(true)
                         .start();
-                boolean finished = process.waitFor(1600, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1600);
                 if (!finished) {
                     process.destroy();
                     continue;
@@ -1410,7 +1411,7 @@ public class HiddenAppListConfigActivity extends AppCompatActivity {
                     writer.write(data);
                     writer.flush();
                 }
-                boolean finished = process.waitFor(1800, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1800);
                 if (finished && process.exitValue() == 0) {
                     return true;
                 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 当前频率胶囊：全圆角浅蓝底，文字用 accent 色。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/cpu_soft" />
+    <corners android:radius="999dp" />
+</shape>

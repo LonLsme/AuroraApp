@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 深色模式：芯片图本身是亮色的，先把下半部分压暗再过渡到页面底色。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:centerColor="#CC121418"
+        android:endColor="@color/cpu_page_bg"
+        android:startColor="#40121418"
+        android:type="linear" />
+</shape>

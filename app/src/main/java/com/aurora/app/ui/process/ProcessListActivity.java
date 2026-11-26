@@ -255,10 +255,20 @@ public class ProcessListActivity extends AppCompatActivity {
 
     /** 以 root 异步执行命令并提示结果。 */
     private void killWithToast(String cmd, String okMsg) {
-        RootShell.get().execAsync(cmd, result -> mainHandler.post(() ->
-                Toast.makeText(this,
-                        result.isSuccess() ? okMsg : "执行失败（需要 Root 权限）",
-                        Toast.LENGTH_SHORT).show()));
+        RootShell.get().execAsync(cmd, result -> mainHandler.post(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            String message;
+            if (result.isSuccess()) {
+                message = okMsg;
+            } else if (result.timedOut) {
+                message = "执行超时（命令无响应），请重试";
+            } else {
+                message = "执行失败（Root 授权或命令被拒绝）";
+            }
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        }));
     }
 
     /** 详情对话框的一行键值对。 */

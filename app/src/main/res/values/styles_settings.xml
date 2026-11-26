@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  设置页（fragment_settings）专用样式。
+
+  设计目标：接近 Android 原生设置页 —— 整行可点、左侧统一线条图标、右侧当前值 / 轻量箭头，
+  行间只有一条从标题处缩进的 0.5dp 细线，不做逐项卡片、不加阴影与描边。
+  所有颜色走语义属性，深浅色与品牌强调色自动跟随。
+-->
+<resources>
+
+    <!-- 分组小标题：比行标题小一档、低对比，作为分隔而非装饰 -->
+    <style name="Widget.Aurora.Settings.GroupTitle" parent="">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">?attr/auroraTextSecondary</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <!-- 行标题：主色高对比，16sp 是原生设置页的常见档位 -->
+    <style name="Widget.Aurora.Settings.RowTitle" parent="">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">?attr/auroraTextPrimary</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+
+    <!-- 行尾当前值：次级灰，不抢标题 -->
+    <style name="Widget.Aurora.Settings.RowValue" parent="">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">?attr/auroraTextSecondary</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+
+    <!-- 行首图标：统一 24dp / 单色描边，由 tint 着色 -->
+    <style name="Widget.Aurora.Settings.RowIcon" parent="">
+        <item name="android:layout_width">24dp</item>
+        <item name="android:layout_height">24dp</item>
+        <item name="android:tint">?attr/auroraTextPrimary</item>
+        <item name="android:importantForAccessibility">no</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <!-- 行尾箭头 / 下拉指示：比图标小一档、低对比 -->
+    <style name="Widget.Aurora.Settings.RowTrailingIcon" parent="">
+        <item name="android:layout_width">18dp</item>
+        <item name="android:layout_height">18dp</item>
+        <item name="android:layout_marginStart">6dp</item>
+        <item name="android:tint">?attr/auroraTextSecondary</item>
+        <item name="android:importantForAccessibility">no</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+</resources>

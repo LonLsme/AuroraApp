@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  主题切换的入场：整体淡入 + 极轻微放大（0.985 → 1）。
+
+  为什么需要它：色彩模式与字号属于资源层，只能靠重建 Activity 生效，
+  系统默认的重建是"啪"地硬切一帧。叠一层 220ms 的淡入后，
+  观感上是新主题渐渐浮上来，而不是画面跳变。放大只在 1.5% 以内，
+  目的是让淡入有"层次"而不是单纯的透明度变化。
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_slow_in">
+    <alpha
+        android:duration="220"
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0" />
+    <scale
+        android:duration="220"
+        android:fromXScale="0.985"
+        android:fromYScale="0.985"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:toXScale="1.0"
+        android:toYScale="1.0" />
+</set>

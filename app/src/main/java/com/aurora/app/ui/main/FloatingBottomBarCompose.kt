@@ -74,6 +74,7 @@ import com.kyant.capsule.ContinuousCapsule
 import com.aurora.app.R
 import com.aurora.app.ui.animation.DampedDragAnimation
 import com.aurora.app.ui.animation.InteractiveHighlight
+import com.aurora.app.ui.theme.ThemeManager
 import com.aurora.app.ui.theme.rememberAuroraColorScheme
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
@@ -88,16 +89,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 fun attachMainScreen(composeView: ComposeView, nativeContentView: View, onTabSelected: (Int) -> Unit) {
     composeView.setContent {
         /*
-         * 底栏配色统一由 AuroraPalette（与 XML 侧 ThemeOverlay.Aurora.Accent.* 同源）生成，
-         * 因此强调色 / 调色板风格 / 色彩规范 / 深色模式都能在底栏正确体现，不会出现
-         * 「底栏一种强调色、tab 指示线另一种」的割裂。
+         * 底栏配色统一由 AuroraPalette（与 XML 侧 ThemeOverlay.Aurora.Palette 同源）生成，
+         * 因此深色 / 浅色都能在底栏正确体现，不会出现「底栏一种强调色、tab 指示线另一种」的割裂。
+         * 配色本身由开发者固定，这里只需要知道当前是不是深色。
          */
         val context = LocalContext.current
         val dark = isSystemInDarkTheme()
-        val scheme = rememberAuroraColorScheme(context, dark)
-        // 底栏效果开关：均由设置项控制，通过状态流即时生效（无需重建 MainActivity）
-        val glassEnabled by BottomBarState.liquidGlass.collectAsState()
-        val blurEnabled by BottomBarState.blur.collectAsState()
+        val scheme = rememberAuroraColorScheme(dark)
+        // 底栏效果档位：由设置项控制，通过状态流即时生效（无需重建 MainActivity）。
+        // 三档 → 两个布尔：磨砂只有模糊，玻璃必然含模糊，不透明两者都不要。
+        val barEffect by BottomBarState.barEffect.collectAsState()
+        val glassEnabled = barEffect == ThemeManager.BAR_EFFECT_GLASS
+        val blurEnabled = barEffect != ThemeManager.BAR_EFFECT_OPAQUE
         MaterialTheme(colorScheme = scheme) {
             val backdrop = rememberLayerBackdrop {
                 drawRect(Color.Transparent)
@@ -276,12 +279,15 @@ fun FloatingBottomBar(
     backdrop: Backdrop,
     tabsCount: Int,
     /**
-     * 液态玻璃：折射（lens）+ 色彩增强（vibrancy）。参考 KernelSU 的 `settings_enable_glass`。
+     * 液态玻璃：折射（lens）+ 色彩增强（vibrancy）+ 满边沿高光。参考 KernelSU 的 `settings_enable_glass`。
+     *
+     * <p>这两个布尔由设置页的三档折算而来（{@code ThemeManager.getBarEffect}）：
+     * 玻璃 → (true, true)，磨砂 → (false, true)，不透明 → (false, false)。
      */
     glassEnabled: Boolean = true,
     /**
-     * 模糊：仅做背景模糊。与液态玻璃相互独立（参考 KernelSU 的 `settings_enable_blur`），
-     * 两者都关闭时底栏退化为不透明胶囊。
+     * 背景模糊。玻璃档必然为 true（玻璃本身就含模糊）；为 false 且 [glassEnabled] 也为 false 时
+     * 底栏退化为不透明胶囊。
      */
     blurEnabled: Boolean = true,
     content: @Composable RowScope.() -> Unit
@@ -290,11 +296,23 @@ fun FloatingBottomBar(
     val accentColor = MaterialTheme.colorScheme.primary
     /** 任一效果开启即需要半透明底与交互高光；全关则退化为不透明底栏。 */
     val isTranslucent = glassEnabled || blurEnabled
-    val containerColor = if (isTranslucent) {
-        MaterialTheme.colorScheme.surfaceContainer.copy(0.4f)
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer
+    /**
+     * 液态玻璃要比磨砂更"透"、高光更实 —— 这是**不依赖背景内容**的那部分差异。
+     *
+     * <p>原因：折射与提饱和都要靠背景里的明暗与色彩才看得出来。背景若是一大片纯白
+     * （设置页、刷机页的卡片区就是），两者叠加也几乎没有像素变化。所以把差异落在
+     * 容器透明度与边沿高光上：玻璃 24% 不透明 + 高光拉满，磨砂 46% + 无高光。
+     * 「有边沿高光」与「没有边沿高光」是结构差异，任何背景下都看得见。
+     */
+    val glassAlpha = 0.24f
+    val frostedAlpha = 0.46f
+    val containerColor = when {
+        glassEnabled -> MaterialTheme.colorScheme.surfaceContainer.copy(glassAlpha)
+        blurEnabled -> MaterialTheme.colorScheme.surfaceContainer.copy(frostedAlpha)
+        else -> MaterialTheme.colorScheme.surfaceContainer
     }
+    /** 边沿高光只属于液态玻璃；磨砂与不透明都不画，避免磨砂看起来还是玻璃。 */
+    val highlightAlpha = if (glassEnabled) 1f else 0f
 
     val tabsBackdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
@@ -411,13 +429,17 @@ fun FloatingBottomBar(
                     shape = { ContinuousCapsule },
                     effects = {
                         if (isTranslucent) {
-                            if (glassEnabled) vibrancy()
-                            if (blurEnabled) blur(8f.dp.toPx())
+                            // 顺序有讲究：折射要吃到**清晰**的边缘，所以排在模糊之前；
+                            // 提饱和排在模糊之后，否则会被随后的模糊直接抹平。
+                            // 旧顺序（vibrancy → blur → lens）两个效果都被吃掉，
+                            // 实测开模糊后切换液态玻璃，底栏像素最大差只有 2/255（等于没反应）。
                             if (glassEnabled) lens(24f.dp.toPx(), 24f.dp.toPx())
+                            if (blurEnabled) blur(8f.dp.toPx())
+                            if (glassEnabled) vibrancy()
                         }
                     },
                     highlight = {
-                        Highlight.Default.copy(alpha = if (isTranslucent) 1f else 0f)
+                        Highlight.Default.copy(alpha = highlightAlpha)
                     },
                     shadow = {
                         Shadow.Default.copy(
@@ -458,13 +480,13 @@ fun FloatingBottomBar(
                         effects = {
                             if (isTranslucent) {
                                 val progress = dampedDragAnimation.pressProgress
-                                if (glassEnabled) vibrancy()
-                                if (blurEnabled) blur(8f.dp.toPx())
                                 if (glassEnabled) lens(24f.dp.toPx() * progress, 24f.dp.toPx() * progress)
+                                if (blurEnabled) blur(8f.dp.toPx())
+                                if (glassEnabled) vibrancy()
                             }
                         },
                         highlight = {
-                            Highlight.Default.copy(alpha = if (isTranslucent) dampedDragAnimation.pressProgress else 0f)
+                            Highlight.Default.copy(alpha = highlightAlpha * dampedDragAnimation.pressProgress)
                         },
                         onDrawSurface = { drawRect(containerColor) }
                     )
@@ -499,7 +521,7 @@ fun FloatingBottomBar(
                             }
                         },
                         highlight = {
-                            Highlight.Default.copy(alpha = if (isTranslucent) dampedDragAnimation.pressProgress else 0f)
+                            Highlight.Default.copy(alpha = highlightAlpha * dampedDragAnimation.pressProgress)
                         },
                         shadow = { Shadow(alpha = if (isTranslucent) dampedDragAnimation.pressProgress else 0f) },
                         innerShadow = {

@@ -17,9 +17,10 @@ import com.aurora.app.ui.selinux.SelinuxManagerActivity;
  * 重启读到的仍是改过的值），所以「改了没确认就重启」这种情况必须由开机时主动还原，
  * 否则用户会带着一个自己没点过确认、甚至可能已经看不清楚的分辨率启动系统。
  *
- * <p>注意 {@code LOCKED_BOOT_COMPLETED}（解锁前）不做屏幕还原：
- * 此时凭证加密存储还没挂载，读 SharedPreferences 会直接抛异常。
- * 屏幕还原只认解锁后的 {@code BOOT_COMPLETED}。
+ * <p>注意 {@code LOCKED_BOOT_COMPLETED}（解锁前）此时凭证加密存储还没挂载，读
+ * SharedPreferences 会直接抛异常，所以 SELinux 恢复与屏幕还原都只在用户解锁后执行；
+ * 解锁前那条广播直接忽略。整个处理过程放在 {@code goAsync()} 的后台线程里，
+ * 避免把 {@code su} 的等待时间堆到广播的 10 秒上限上。
  */
 public class BootCompletedReceiver extends BroadcastReceiver {
 
@@ -31,47 +32,42 @@ public class BootCompletedReceiver extends BroadcastReceiver {
             return;
         }
         String action = intent.getAction();
-        if (Intent.ACTION_BOOT_COMPLETED.equals(action) ||
-                Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)) {
-            SelinuxManagerActivity.applySelinuxModeForBoot(context);
+        boolean bootCompleted = Intent.ACTION_BOOT_COMPLETED.equals(action);
+        boolean lockedBoot = Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action);
+        if (!bootCompleted && !lockedBoot) {
+            return;
         }
-        if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
-            restoreDisplayIfPending(context);
-        }
-    }
 
-    /**
-     * 未确认的屏幕改动 → 开机还原。
-     *
-     * <p>走 {@code goAsync()} + 后台线程：root 命令可能要几百毫秒，
-     * 直接在 onReceive 的主线程里做会撞上广播超时（10 秒）并占住主线程。
-     */
-    private void restoreDisplayIfPending(Context context) {
-        if (!isUserUnlocked(context)) {
-            // 理论上 BOOT_COMPLETED 一定在解锁之后，这里只兜一层保险
-            Log.w(TAG, "用户尚未解锁，跳过屏幕还原");
-            return;
-        }
-        final Context appContext = context.getApplicationContext();
-        try {
-            if (!DisplayGuard.isPending(appContext)) {
-                return;
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "读取待确认标记失败", e);
-            return;
-        }
+        // 广播的 onReceive 在主线程，超时上限 10 秒。这里要跑 su（最长 60 秒），
+        // 绝不能同步执行：以前 SELinux 恢复就是直接调用，root 机器开机时会撞 ANR。
         final PendingResult pending = goAsync();
+        final Context appContext = context.getApplicationContext();
         new Thread(() -> {
             try {
-                boolean restored = DisplayGuard.restoreIfPending(appContext);
-                Log.i(TAG, "开机屏幕还原: " + (restored ? "已执行" : "无需执行"));
-            } catch (Exception e) {
-                Log.w(TAG, "开机屏幕还原失败", e);
+                boolean unlocked = isUserUnlocked(appContext);
+                if (!unlocked) {
+                    // 解锁前设备加密存储还没挂载：读 SharedPreferences 会抛
+                    // IllegalStateException（以前正是在这里让开机广播直接崩掉）。
+                    Log.i(TAG, "用户尚未解锁，跳过 SELinux / 屏幕还原");
+                    return;
+                }
+                try {
+                    SelinuxManagerActivity.applySelinuxModeForBoot(appContext);
+                } catch (Throwable t) {
+                    Log.w(TAG, "开机应用 SELinux 模式失败", t);
+                }
+                if (bootCompleted) {
+                    try {
+                        boolean restored = DisplayGuard.restoreIfPending(appContext);
+                        Log.i(TAG, "开机屏幕还原: " + (restored ? "已执行" : "无需执行"));
+                    } catch (Throwable t) {
+                        Log.w(TAG, "开机屏幕还原失败", t);
+                    }
+                }
             } finally {
                 pending.finish();
             }
-        }, "aurora-boot-display-restore").start();
+        }, "aurora-boot-restore").start();
     }
 
     private static boolean isUserUnlocked(Context context) {

@@ -60,7 +60,16 @@ public final class OverlayWindowManager {
         if (window == null) {
             return false;
         }
-        window.show();
+        // show() 内部已兜住 addView 异常并返回 false，这里再兜一层构造/测量阶段的异常，
+        // 保证单个窗口挂不上不会把前台服务（连同其它已运行的窗口）一起带崩。
+        try {
+            if (!window.show()) {
+                return false;
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("OverlayWindowManager", "启动悬浮窗失败: " + type, t);
+            return false;
+        }
         windows.put(type, window);
         return true;
     }
@@ -83,6 +92,41 @@ public final class OverlayWindowManager {
         int count = 0;
         for (MonitorType type : windows.keySet().toArray(new MonitorType[0])) {
             if (stop(type)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 重建所有正在显示的窗口，按当前 {@link android.util.DisplayMetrics} 重新排版。
+     *
+     * <p><b>为什么必须重建：</b>View 的 textSize / padding / LayoutParams 在创建那一刻就按当时的
+     * density 换算成了 px。之后 {@code wm density} 或系统「显示大小」变化，并不会让已存在的视图
+     * 重新换算 —— 表现就是悬浮窗在新分辨率下「大了一圈」：36dp 的窗口仍然是旧的 126px，
+     * 但屏幕的逻辑宽度已经从 411dp 变成了别的值。改完分辨率 / 密度调用本方法即可恢复原尺寸。
+     *
+     * <p>位置会先写回 {@link OverlayConfig}，重建后窗口仍停在原处（未拖动过的窗口走默认布局）。
+     *
+     * <p>必须在主线程调用（WindowManager 操作）。
+     *
+     * @return 成功重建的窗口数
+     */
+    public int recreateAll(Context context) {
+        if (windows.isEmpty()) {
+            return 0;
+        }
+        MonitorType[] types = windows.keySet().toArray(new MonitorType[0]);
+        for (MonitorType type : types) {
+            OverlayWindow window = windows.get(type);
+            if (window != null) {
+                OverlayConfig.setPosition(context, type, window.getWindowX(), window.getWindowY());
+            }
+        }
+        stopAll();
+        int count = 0;
+        for (MonitorType type : types) {
+            if (start(context, type)) {
                 count++;
             }
         }

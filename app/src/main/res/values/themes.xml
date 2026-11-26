@@ -46,7 +46,7 @@
 
     <!--
       MaterialAlertDialogBuilder 走这条：只把 m3 自带的 28dp 换成项目统一的 20dp，
-      并把容器底色换成 aurora 语义色（用 @color/ 写死会丢失 AMOLED 覆盖层）。
+      并把容器底色换成 aurora 语义色（用 @color/ 写死会丢失主题覆盖层）。
     -->
     <style name="ThemeOverlay.Aurora.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="alertDialogStyle">@style/Widget.Aurora.MaterialAlertDialog</item>
@@ -108,10 +108,25 @@
         <item name="cornerRadius">10dp</item>
     </style>
 
+    <!--
+      开关：柔和胶囊轨道 + 白色圆钮，圆钮四周留 2dp（留白靠 thumb drawable 的透明边界实现，
+      见 switch_ios26_thumb.xml 顶部注释）。
+
+      【踩坑记录，别改回去】SwitchCompat 的轨道属性叫 track，是**自定义属性**（app:track），
+      不是框架的 android:track；同样 splitTrack / switchMinWidth / thumbTint / trackTint
+      也都是自定义属性。写成 android:track 不会报错，但会被静默忽略 —— 轨道会退回主题
+      （Material3）的默认轨道：浅紫 14dp 高，和设计稿完全不是一回事。滑块 android:thumb
+      是框架属性，所以只换轨道时会出现「旋钮是自己的、轨道是系统的」这种诡异状态。
+      因此这里一律用不带前缀的自定义属性，并把主题继承来的 tint 清成 @null，
+      让 drawable 自己的颜色生效。
+    -->
     <style name="Widget.Aurora.Switch" parent="Widget.AppCompat.CompoundButton.Switch">
         <item name="android:thumb">@drawable/switch_ios26_thumb</item>
-        <item name="android:track">@drawable/switch_ios26_track</item>
-        <item name="android:splitTrack">false</item>
+        <item name="track">@drawable/switch_ios26_track</item>
+        <item name="thumbTint">@null</item>
+        <item name="trackTint">@null</item>
+        <item name="splitTrack">false</item>
+        <item name="switchMinWidth">48dp</item>
         <item name="android:minHeight">28dp</item>
         <item name="android:padding">0dp</item>
     </style>
@@ -131,7 +146,7 @@
         SmallTitle  → MiuixTheme.textStyles.subtitle   = 14sp / Bold
         BasicComponent 标题 → textStyles.headline1      = 17sp / Medium
         BasicComponent 摘要 → textStyles.body2          = 14sp
-      颜色沿用 Aurora 语义色，以便主题覆盖层（含 AMOLED）继续生效。
+      颜色沿用 Aurora 语义色，以便品牌配色覆盖层继续生效。
     -->
     <style name="Widget.Aurora.Miuix.GroupTitle" parent="TextAppearance.Material3.LabelLarge">
         <item name="android:textColor">@color/ios_text_secondary</item>
@@ -169,8 +184,7 @@
     <!-- ───────── Miuix 风格（刷机子页面：欧加真 / 设备重启 / 刷入 KernelSU） ─────────
          Miuix 是小米 HyperOS 的组件库观感：大圆角、浅填充按钮、零阴影卡片。
          这里全部用项目自己的 aurora* 属性表达，而不是直接引 @color/ ——
-         只有 attr 才会被「强调色覆盖层」与「AMOLED 色彩模式」改写，
-         写成 @color/ 的资源在运行时改不动。                                     -->
+         只有 attr 才会被「品牌配色覆盖层」改写，写死成 @color/ 的资源在运行时改不动。 -->
     <style name="Widget.Aurora.Miuix.Card" parent="Widget.Material3.CardView.Elevated">
         <item name="cardBackgroundColor">?attr/auroraCard</item>
         <item name="cardCornerRadius">@dimen/miuix_card_corner</item>
@@ -183,10 +197,9 @@
         <item name="backgroundTint">?attr/auroraFill</item>
         <item name="android:textColor">?attr/auroraAccent</item>
         <!--
-          1dp 细描边是必要的，不是装饰：AMOLED 色彩模式下 auroraCard 被覆盖成纯黑、
-          auroraFill 被覆盖成 #0D0D0D，而页面背景本身也是纯黑 —— 没有描边时
-          「页面上直接放的整行按钮」会与背景糊成一片。描边色不在覆盖层改写范围内，
-          三种模式下都稳定可辨。
+          1dp 细描边是必要的，不是装饰：深色模式下 auroraFill 与页面背景的明度很接近，
+          没有描边时「页面上直接放的整行按钮」会与背景糊成一片。描边色走
+          @color/ios_separator（深浅各一值），不在配色覆盖层的改写范围内，稳定可辨。
         -->
         <item name="strokeColor">@color/ios_separator</item>
         <item name="strokeWidth">1dp</item>
@@ -224,22 +237,8 @@
     </style>
 
     <!--
-      AMOLED 纯黑覆盖层：色彩模式选「深色（纯黑）」时叠加。
-      只改表面类属性——纯黑下卡片/工具栏与背景融为一体，是 AMOLED 省电且无边框观感的关键。
-    -->
-    <style name="ThemeOverlay.Aurora.Amoled" parent="">
-        <item name="auroraCard">#FF000000</item>
-        <item name="auroraBackgroundElevated">#FF000000</item>
-        <item name="auroraFill">#FF0D0D0D</item>
-        <item name="colorSurface">#FF000000</item>
-        <item name="colorSurfaceContainer">#FF000000</item>
-        <item name="colorSurfaceContainerHigh">#FF0D0D0D</item>
-        <item name="colorSurfaceContainerHighest">#FF121212</item>
-        <item name="android:colorBackground">#FF000000</item>
-    </style>
-
-    <!--
-      强调色覆盖层（ThemeOverlay.Aurora.Accent.<强调色索引>_<调色板风格>）由
-      AuroraPalette 生成，见 res/values/aurora_accent_overlays.xml 与 values-night/ 同名文件。
+      品牌强调色覆盖层 ThemeOverlay.Aurora.Palette：只有一套固定配色，
+      定义在 res/values/aurora_palette.xml 与 values-night/aurora_palette.xml，
+      App 内不再提供自定义入口。
     -->
 </resources>

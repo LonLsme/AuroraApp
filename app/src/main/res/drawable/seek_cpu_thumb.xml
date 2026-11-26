@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  滑杆滑块：实心强调色圆点 + 2dp 白边。
+
+  加白边的理由：轨道已填充的那一段也是强调色，纯色圆点压上去会与轨道糊在一起，
+  分不清"拖到哪了"。白边在深/浅色下都能把圆点从轨道上剥出来。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <size
+        android:width="18dp"
+        android:height="18dp" />
+    <solid android:color="?attr/auroraAccent" />
+    <stroke
+        android:width="2dp"
+        android:color="#FFFFFFFF" />
+</shape>

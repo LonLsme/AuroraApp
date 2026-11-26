@@ -80,7 +80,7 @@
 | `ui/device` | 「设备」页（tab 0） | `DeviceFragment`(778) · `DeviceSourceDropdown`(188) |
 | `ui/flash` | 「刷机」页（tab 1）与全部刷机子页 | `FlashPage`(516) · `FlashConsoleActivity`(417) · `QdlActivity`(610) · `FlashFilePicker`(309) |
 | `ui/update` | 检查更新：结果对话框（三种形态共用一套控件） | `UpdateDialog` |
-| `ui/settings` | 「设置」页（tab 3）与主题设置 | `SettingsFragment` · `ThemeActivity.kt` · `ThemeScreen.kt`(864) |
+| `ui/settings` | 「设置」页（tab 3：通用 / 外观 / 关于） | `SettingsFragment` |
 | `ui/theme` | 主题引擎（算法 + 偏好 + 调色板） | `AuroraPalette`(483) · `ThemeManager`(422) · `AccentOverlays` |
 | `ui/overlay` | 监视悬浮窗全套（窗口 + 采集调度） | `MonitorOverlayService` · `OverlayWindow`(506) · 6 个窗口实现 |
 | `ui/plugin` | Aurora 插件页（Root 生态集成） | `HiddenAppListConfigActivity`(1423) · `AuroraPluginActivity`(1222) |
@@ -95,7 +95,7 @@
 | `ui/fps` | 帧率记录 | `FpsRecordActivity` |
 | `ui/selinux` | SELinux 管理 | `SelinuxManagerActivity` |
 | `ui/about` | 关于页（版本信息 / 开源 / 鸣谢 / 作者，设置页 `rowAbout` 入口） | `AboutActivity` |
-| `ui/widget` | 自定义控件 | `CpuRingGaugeView` · `AuroraSwitchStyler` |
+| `ui/widget` | 自定义控件 | `CpuRingGaugeView` · `AuroraSwitchStyler` · `AuroraChoiceMenu`（全局唯一的下拉选择菜单） |
 | `ui/animation` | Compose 动效基元 | `DampedDragAnimation.kt` · `InteractiveHighlight.kt` |
 | `ui/modifier` | Compose 手势 | `DragGestureInspector.kt` |
 
@@ -249,8 +249,9 @@ CoordinatorLayout 时期写在 XML 里的 margin 随之丢失。
 - **Compose 组件必须显式传 `colorScheme`** —— 不传时在 Material 3 下会固定走浅色，
   切到深色/AMOLED 主题时底栏不跟着变。
   配色由 `ui/theme/AuroraColorScheme.kt` 折算，运行时数据来自 `AuroraPalette`。
-- 主题页 `ui/settings/ThemeScreen.kt`（864 行）是**整页 Compose**，
-  宿主是 `ThemeActivity.kt`。
+- 设置页是纯 XML（`fragment_settings.xml`），原生设置范式：整行可点、行首线条图标、
+  行尾当前值或轻量箭头、行间缩进细线。原先那套独立 Compose 主题页（`ThemeActivity` +
+  `ThemeScreen`）已随「配色不可自定义」一起删除，主题项全部收敛进设置页。
 
 ### 5.6 弹性滑动（iOS 风格回弹）
 

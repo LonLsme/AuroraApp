@@ -1,4 +1,5 @@
 package com.aurora.app.ui.plugin;
+import com.aurora.app.core.util.ProcessCompat;
 
 import android.os.Bundle;
 import android.view.View;
@@ -196,7 +197,7 @@ public class KernelDisguiseActivity extends AppCompatActivity {
             Process process = null;
             try {
                 process = new ProcessBuilder(suCmd).redirectErrorStream(true).start();
-                boolean finished = process.waitFor(1500, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1500);
                 if (!finished || process.exitValue() != 0) {
                     continue;
                 }
@@ -222,7 +223,7 @@ public class KernelDisguiseActivity extends AppCompatActivity {
             Process process = null;
             try {
                 process = new ProcessBuilder(suCmd).redirectErrorStream(true).start();
-                boolean finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, timeoutMs);
                 if (finished && process.exitValue() == 0) {
                     return new ShellExecResult(true, "");
                 }
@@ -245,7 +246,7 @@ public class KernelDisguiseActivity extends AppCompatActivity {
             Process process = null;
             try {
                 process = new ProcessBuilder(suCmd).redirectErrorStream(true).start();
-                boolean finished = process.waitFor(1600, TimeUnit.MILLISECONDS);
+                boolean finished = ProcessCompat.waitFor(process, 1600);
                 if (!finished || process.exitValue() != 0) {
                     continue;
                 }

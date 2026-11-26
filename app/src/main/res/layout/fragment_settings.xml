@@ -1,29 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  设置页：Miuix preference 范式（参考 compose-miuix-ui/miuix 的 SettingsPage）。
+  设置页（原生设置范式）。
 
-  范式三要素（参数逐条对照 miuix 源码，见 dimens.xml 的同名注释）：
-    1) 分组小标题 SmallTitle —— 14sp Bold、次级色、左右内缩 28dp、上下 8dp；
-    2) 卡片 Card —— 16dp 圆角、零阴影、无内置分隔线，承载一组同义行；
-    3) 行 BasicComponent —— 最小高 56dp、内边距 16dp、标题 17sp Medium + 摘要 14sp、
-       尾部控件右对齐。Miuix 的行默认不带前置图标，本页据此去掉了图标：
-       原来每行左侧那枚 34dp 图标块会在 17sp 标题旁显得拥挤，且 Miuix 靠
-       「标题 + 摘要」的字号层级而非图标来区分主次。
+  版式约定（改版时请保持）：
+    1) 整页只有一个层级：分组小标题 + 单个圆角表面（bg_settings_group），
+       **不再给每一行套卡片** —— 逐项卡片会带来重复的圆角、阴影和间距噪音；
+    2) 行 = 24dp 线条图标 + 16sp 主色标题 + 行尾「当前值 / 轻量箭头」，
+       三者统一 center_vertical，行最小高 56dp，左右内边距 16dp；
+    3) 行与行之间只有一条 0.5dp 细线，且**从标题处缩进**（16 + 24 + 16 = 56dp），
+       末端也留 16dp，视觉上不顶到卡片边缘；
+    4) 点击整个行触发交互（foreground 用 selectableItemBackground 提供轻柔水波纹），
+       不允许只有文字或小图标可点；
+    5) 图标一律单色描边、统一 24dp，由 ?attr/auroraTextPrimary 着色 ——
+       不用彩色图标、不用渐变、不加装饰元素。
 
-  【铁律】一张 MaterialCardView 里只能有**一个**直接子 View。
-    MaterialCardView 继承 CardView，CardView 就是 FrameLayout：直接并排塞两个
-    LinearLayout 时，两行会画在同一个坐标上（后来的「检查更新」整条压在
-    「自动检查更新」身上），表现为标题与摘要互相穿模的「字体重叠」，
-    而不是行距太小。要放多行，必须自己套一层纵向 LinearLayout 收口。
-    本页「通用」卡片曾经踩过这个坑，改动时别再拆掉那层容器。
-
-  颜色全部走语义色（@color/ios_* 与 ?attr/aurora*），主题切换与 AMOLED 覆盖层照常生效。
-  注意：顶栏（标题 Aurora 那一行）在设置页已整行收起，本页顶部的大标题「设置」即页面标题。
+  颜色全部走语义属性 / 语义色，浅色为极浅灰底 + 白卡片，深色为舒适深灰底 + 深灰卡片
+  （见 colors.xml 的 settings_page_background，刻意避开纯黑）。
 -->
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/ios_background_grouped"
+    android:background="@color/settings_page_background"
     android:clipToPadding="false"
     android:fillViewport="true"
     android:overScrollMode="always"
@@ -33,267 +30,372 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingHorizontal="@dimen/miuix_pref_card_margin"
-        android:paddingTop="12dp"
+        android:paddingTop="16dp"
         android:paddingBottom="24dp">
 
-        <!-- 大标题（页面标题；顶栏已收起，故这里是全页唯一的一级标题） -->
+        <!-- 页面大标题（顶栏已收起，这里是全页唯一的一级标题） -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:layout_marginBottom="14dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginBottom="16dp"
             android:fontFamily="sans-serif-medium"
+            android:includeFontPadding="false"
             android:text="设置"
             android:textColor="?attr/auroraTextPrimary"
             android:textSize="30sp" />
 
-        <!-- ===================== 通用 ===================== -->
+        <!-- ═══════════════ 通用 ═══════════════ -->
         <TextView
-            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            style="@style/Widget.Aurora.Settings.GroupTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingStart="@dimen/miuix_group_title_inset"
-            android:paddingTop="@dimen/miuix_group_title_gap"
-            android:paddingEnd="@dimen/miuix_group_title_inset"
-            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:layout_marginBottom="8dp"
             android:text="通用" />
 
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Aurora.Miuix.Card"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/bg_settings_group"
+            android:orientation="vertical">
 
-            <!-- 卡内容器（唯一直接子 View）：纵向串起「开关行」与「手动检查行」 -->
+            <!-- 开关行：自动检查更新 -->
             <LinearLayout
+                android:id="@+id/rowCheckUpdateAuto"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <!-- 开关行：Switch 走行尾，标题与摘要靠左 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:minHeight="@dimen/miuix_pref_row_min_height"
-                    android:orientation="horizontal"
-                    android:paddingStart="@dimen/miuix_pref_row_padding"
-                    android:paddingTop="@dimen/miuix_pref_row_padding_v"
-                    android:paddingEnd="@dimen/miuix_pref_row_padding"
-                    android:paddingBottom="@dimen/miuix_pref_row_padding_v">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/Widget.Aurora.Miuix.PrefTitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="自动检查更新" />
-
-                        <TextView
-                            style="@style/Widget.Aurora.Miuix.PrefSummary"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="启动时检查是否有新版本" />
-                    </LinearLayout>
-
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/swCheckUpdate"
-                        style="@style/Widget.Aurora.Switch"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:minHeight="28dp"
-                        android:padding="0dp" />
-                </LinearLayout>
-
-                <!--
-                  手动检查更新：开关只决定「启动时检不检」，这一行是「现在马上检一次」。
-                  两者是两件事，不能合成一行 —— 开关打开的用户依然需要一个手动触发的入口。
-                  卡片内不放 Divider，行与行靠 minHeight + padding 分隔（Miuix 范式）。
-                -->
-                <LinearLayout
-                    android:id="@+id/rowCheckUpdate"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:minHeight="@dimen/miuix_pref_row_min_height"
-                    android:orientation="horizontal"
-                    android:paddingStart="@dimen/miuix_pref_row_padding"
-                    android:paddingTop="@dimen/miuix_pref_row_padding_v"
-                    android:paddingEnd="@dimen/miuix_pref_row_padding"
-                    android:paddingBottom="@dimen/miuix_pref_row_padding_v">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/Widget.Aurora.Miuix.PrefTitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="检查更新" />
-
-                        <TextView
-                            android:id="@+id/tvUpdateSummary"
-                            style="@style/Widget.Aurora.Miuix.PrefSummary"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="当前版本 --" />
-                    </LinearLayout>
-
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:layout_marginStart="8dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- ===================== 外观 ===================== -->
-        <TextView
-            style="@style/Widget.Aurora.Miuix.GroupTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingStart="@dimen/miuix_group_title_inset"
-            android:paddingTop="@dimen/miuix_group_title_gap"
-            android:paddingEnd="@dimen/miuix_group_title_inset"
-            android:paddingBottom="@dimen/miuix_group_title_gap"
-            android:text="外观" />
-
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Aurora.Miuix.Card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
-
-            <LinearLayout
-                android:id="@+id/rowTheme"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
                 android:gravity="center_vertical"
-                android:minHeight="@dimen/miuix_pref_row_min_height"
+                android:minHeight="56dp"
                 android:orientation="horizontal"
-                android:paddingStart="@dimen/miuix_pref_row_padding"
-                android:paddingTop="@dimen/miuix_pref_row_padding_v"
-                android:paddingEnd="@dimen/miuix_pref_row_padding"
-                android:paddingBottom="@dimen/miuix_pref_row_padding_v">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        style="@style/Widget.Aurora.Miuix.PrefTitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="主题" />
-
-                    <TextView
-                        style="@style/Widget.Aurora.Miuix.PrefSummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="色彩模式 · 强调色 · 调色板 · 液态玻璃 · 字号" />
-                </LinearLayout>
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_marginStart="8dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron_right"
-                    android:tint="?attr/auroraTextSecondary" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    style="@style/Widget.Aurora.Settings.RowIcon"
+                    android:src="@drawable/ic_settings_refresh" />
 
-        <!-- ===================== 关于 ===================== -->
+                <TextView
+                    style="@style/Widget.Aurora.Settings.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:text="自动检查更新" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swCheckUpdate"
+                    style="@style/Widget.Aurora.Switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0.5dp"
+                android:layout_marginStart="56dp"
+                android:layout_marginEnd="16dp"
+                android:background="?attr/auroraSeparator" />
+
+            <!-- 动作行：立即检查更新（行尾显示当前版本 / 待安装） -->
+            <LinearLayout
+                android:id="@+id/rowCheckUpdate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <ImageView
+                    style="@style/Widget.Aurora.Settings.RowIcon"
+                    android:src="@drawable/ic_settings_download" />
+
+                <TextView
+                    style="@style/Widget.Aurora.Settings.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:text="检查更新" />
+
+                <TextView
+                    android:id="@+id/tvUpdateValue"
+                    style="@style/Widget.Aurora.Settings.RowValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:text="--" />
+
+                <ImageView
+                    style="@style/Widget.Aurora.Settings.RowTrailingIcon"
+                    android:src="@drawable/ic_chevron_right" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ═══════════════ 外观 ═══════════════ -->
         <TextView
-            style="@style/Widget.Aurora.Miuix.GroupTitle"
+            style="@style/Widget.Aurora.Settings.GroupTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingStart="@dimen/miuix_group_title_inset"
-            android:paddingTop="@dimen/miuix_group_title_gap"
-            android:paddingEnd="@dimen/miuix_group_title_inset"
-            android:paddingBottom="@dimen/miuix_group_title_gap"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:layout_marginBottom="8dp"
+            android:text="外观" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/bg_settings_group"
+            android:orientation="vertical">
+
+            <!-- 可选项：主题色（弹选择菜单） -->
+            <LinearLayout
+                android:id="@+id/rowThemeMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <ImageView
+                    style="@style/Widget.Aurora.Settings.RowIcon"
+                    android:src="@drawable/ic_settings_palette" />
+
+                <TextView
+                    style="@style/Widget.Aurora.Settings.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:text="主题色" />
+
+                <TextView
+                    android:id="@+id/tvThemeModeValue"
+                    style="@style/Widget.Aurora.Settings.RowValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:text="跟随系统" />
+
+                <ImageView
+                    style="@style/Widget.Aurora.Settings.RowTrailingIcon"
+                    android:src="@drawable/ic_chevron_updown" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0.5dp"
+                android:layout_marginStart="56dp"
+                android:layout_marginEnd="16dp"
+                android:background="?attr/auroraSeparator" />
+
+            <!-- 可选项：界面字号（弹选择菜单） -->
+            <LinearLayout
+                android:id="@+id/rowFontScale"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <ImageView
+                    style="@style/Widget.Aurora.Settings.RowIcon"
+                    android:src="@drawable/ic_settings_font" />
+
+                <TextView
+                    style="@style/Widget.Aurora.Settings.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:text="界面字号" />
+
+                <TextView
+                    android:id="@+id/tvFontScaleValue"
+                    style="@style/Widget.Aurora.Settings.RowValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:text="100%" />
+
+                <ImageView
+                    style="@style/Widget.Aurora.Settings.RowTrailingIcon"
+                    android:src="@drawable/ic_chevron_updown" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0.5dp"
+                android:layout_marginStart="56dp"
+                android:layout_marginEnd="16dp"
+                android:background="?attr/auroraSeparator" />
+
+            <!-- 可选项：底栏效果（互斥三档，弹选择菜单） -->
+            <LinearLayout
+                android:id="@+id/rowBarEffect"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <ImageView
+                    style="@style/Widget.Aurora.Settings.RowIcon"
+                    android:src="@drawable/ic_settings_glass" />
+
+                <TextView
+                    style="@style/Widget.Aurora.Settings.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:text="底栏效果" />
+
+                <TextView
+                    android:id="@+id/tvBarEffectValue"
+                    style="@style/Widget.Aurora.Settings.RowValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:text="液态玻璃" />
+
+                <ImageView
+                    style="@style/Widget.Aurora.Settings.RowTrailingIcon"
+                    android:src="@drawable/ic_chevron_updown" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0.5dp"
+                android:layout_marginStart="56dp"
+                android:layout_marginEnd="16dp"
+                android:background="?attr/auroraSeparator" />
+
+            <!-- 开关行：滑动切换导航页面 -->
+            <LinearLayout
+                android:id="@+id/rowSwipeTabs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+                <ImageView
+                    style="@style/Widget.Aurora.Settings.RowIcon"
+                    android:src="@drawable/ic_settings_swipe" />
+
+                <TextView
+                    style="@style/Widget.Aurora.Settings.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:text="滑动切换导航页面" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swSwipeTabs"
+                    style="@style/Widget.Aurora.Switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:minHeight="28dp"
+                    android:padding="0dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ═══════════════ 关于 ═══════════════ -->
+        <TextView
+            style="@style/Widget.Aurora.Settings.GroupTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:layout_marginBottom="8dp"
             android:text="关于" />
 
-        <!--
-          关于只有单行入口：版本信息 / 开源协议 / 鸣谢已全部收进 AboutActivity。
-          这里刻意不铺开细节——设置页每多一行都要占掉一张卡的高度，
-          而这三项都属于「一年看一次」的信息。
-          摘要里的版本号由 SettingsFragment 动态填，不写死，避免与 build.gradle.kts 脱节。
-        -->
-        <com.google.android.material.card.MaterialCardView
-            style="@style/Widget.Aurora.Miuix.Card"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/bg_settings_group"
+            android:orientation="vertical">
 
+            <!-- 跳转行：关于 Aurora（行尾显示版本号） -->
             <LinearLayout
                 android:id="@+id/rowAbout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
                 android:gravity="center_vertical"
-                android:minHeight="@dimen/miuix_pref_row_min_height"
+                android:minHeight="56dp"
                 android:orientation="horizontal"
-                android:paddingStart="@dimen/miuix_pref_row_padding"
-                android:paddingTop="@dimen/miuix_pref_row_padding_v"
-                android:paddingEnd="@dimen/miuix_pref_row_padding"
-                android:paddingBottom="@dimen/miuix_pref_row_padding_v">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        style="@style/Widget.Aurora.Miuix.PrefTitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="关于 Aurora" />
-
-                    <TextView
-                        android:id="@+id/tvAboutSummary"
-                        style="@style/Widget.Aurora.Miuix.PrefSummary"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="版本信息 · 开源协议 · 鸣谢" />
-                </LinearLayout>
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_marginStart="8dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_chevron_right"
-                    android:tint="?attr/auroraTextSecondary" />
+                    style="@style/Widget.Aurora.Settings.RowIcon"
+                    android:src="@drawable/ic_settings_info" />
+
+                <TextView
+                    style="@style/Widget.Aurora.Settings.RowTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:text="关于 Aurora" />
+
+                <TextView
+                    android:id="@+id/tvAboutValue"
+                    style="@style/Widget.Aurora.Settings.RowValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:text="--" />
+
+                <ImageView
+                    style="@style/Widget.Aurora.Settings.RowTrailingIcon"
+                    android:src="@drawable/ic_chevron_right" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

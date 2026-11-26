@@ -177,13 +177,18 @@ public final class AdbBridge {
 
             process = builder.start();
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            // 读线程在写、主流程在 toString：ByteArrayOutputStream 不是线程安全的，
+            // 不互斥就可能读到「数组已扩容但内容只写到一半」的状态，字段忽有忽无。
+            final Object bufferLock = new Object();
             final InputStream in = process.getInputStream();
             Thread reader = new Thread(() -> {
                 try (InputStream stream = in) {
                     byte[] chunk = new byte[4096];
                     int n;
                     while ((n = stream.read(chunk)) > 0) {
-                        buffer.write(chunk, 0, n);
+                        synchronized (bufferLock) {
+                            buffer.write(chunk, 0, n);
+                        }
                     }
                 } catch (Throwable ignored) {
                 }
@@ -210,7 +215,11 @@ public final class AdbBridge {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            return new ShellManager.Result(timedOut ? -1 : exit, buffer.toString(), timedOut, false);
+            String output;
+            synchronized (bufferLock) {
+                output = buffer.toString();
+            }
+            return new ShellManager.Result(timedOut ? -1 : exit, output, timedOut, false);
         } catch (Throwable t) {
             Log.w(TAG, "adb 调用失败: " + command, t);
             return ShellManager.Result.unavailable();

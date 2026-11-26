@@ -1,7 +1,8 @@
 package com.aurora.app.data.detector;
 
+import android.util.Base64;
+
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +12,9 @@ public class HardcodedSignals {
     private static final int KEY = 0x37;
 
     private static String decode(String blob) {
-        byte[] decoded = Base64.getDecoder().decode(blob);
+        // 注意用 android.util.Base64：java.util.Base64 是 API 26 才有的，
+        // minSdk 24 的机器上会在类初始化阶段直接 NoClassDefFoundError
+        byte[] decoded = Base64.decode(blob, Base64.DEFAULT);
         char[] result = new char[decoded.length];
         for (int i = 0; i < decoded.length; i++) {
             result[i] = (char) (decoded[i] ^ KEY);

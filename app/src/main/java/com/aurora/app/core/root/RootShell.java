@@ -75,10 +75,26 @@ public final class RootShell {
 
     private final AtomicInteger tokenSeq = new AtomicInteger(0);
 
-    // 以下字段只在 shellExecutor 线程内访问，无需额外同步
-    private Process process;
-    private BufferedWriter writer;
-    private BufferedReader reader;
+    /**
+     * 异步等待线程池：只负责 {@code future.get(timeout)} 与回调派发。
+     *
+     * <p><b>必须与 {@link #shellExecutor} 分开</b>：在 shell 线程里再 submit 一条命令并等待，
+     * 等于自己等自己（单线程池里的任务永远排在自己后面），必然超时。
+     */
+    private final ExecutorService waitExecutor = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r, "aurora-root-wait");
+        t.setDaemon(true);
+        return t;
+    });
+
+    /**
+     * 会话锁。字段以前只在 shell 线程内访问；现在超时需要从<b>调用线程</b>直接销毁
+     * su 进程（中断对阻塞中的 {@code readLine} 无效），因此改成加锁 + volatile。
+     */
+    private final Object sessionLock = new Object();
+    private volatile Process process;
+    private volatile BufferedWriter writer;
+    private volatile BufferedReader reader;
 
     private volatile Boolean rootAvailable;
 
@@ -166,7 +182,13 @@ public final class RootShell {
         synchronized (this) {
             if (rootAvailable == null) {
                 Result r = exec("id", 3000L);
-                rootAvailable = Boolean.valueOf(r.isSuccess() && r.out.contains("uid=0"));
+                // 超时（多半是授权框还挂着）不能当成「没有 root」缓存下来，
+                // 否则用户点完允许、应用却一直认为无权限，只能重启。
+                boolean value = r.isSuccess() && r.out.contains("uid=0");
+                if (!r.timedOut) {
+                    rootAvailable = Boolean.valueOf(value);
+                }
+                return value;
             }
             return rootAvailable;
         }
@@ -197,13 +219,21 @@ public final class RootShell {
             Log.w(TAG, "exec() 在主线程调用，命令可能阻塞 UI: " + command);
         }
         Callable<Result> task = () -> execOnShellThread(command);
-        Future<Result> future = shellExecutor.submit(task);
+        Future<Result> future;
+        try {
+            future = shellExecutor.submit(task);
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            // 已 shutdown
+            return Result.unavailable();
+        }
         try {
             return future.get(timeoutMs, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
             future.cancel(true);
-            // 流里可能残留未读完的输出，无法安全复用
-            shellExecutor.execute(this::closeSession);
+            // 光取消任务没有用：shell 线程多半正卡在 readLine 上，中断对它无效；
+            // 而把 closeSession() 排回同一个单线程池，只会排在卡住的任务后面永远不执行。
+            // 正确做法是从调用线程直接把 su 进程销毁，读流随之结束，shell 线程才能出来。
+            forceCloseSession();
             return Result.timeout();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -231,23 +261,60 @@ public final class RootShell {
         return r.isSuccess() ? r.lines() : Collections.emptyList();
     }
 
-    /** 异步执行，回调在 shell 线程，勿直接操作 UI。 */
+    /**
+     * 异步执行，回调在后台等待线程（不是主线程，也不是 shell 线程）。
+     *
+     * <p>实现上直接向 shell 线程池提交任务，另开等待线程去 {@code get}，
+     * 绝不从 shell 线程里再调用 {@link #exec} —— 那会形成「单线程池自己等自己」的死锁，
+     * 表现为每次调用都等满超时后报失败。
+     */
     public void execAsync(String command, Callback callback) {
         execAsync(command, DEFAULT_TIMEOUT_MS, callback);
     }
 
-    /** 异步执行，回调在 shell 线程，勿直接操作 UI。 */
+    /** 异步执行，回调在后台等待线程；操作 UI 请自行切回主线程。 */
     public void execAsync(String command, long timeoutMs, Callback callback) {
-        shellExecutor.execute(() -> {
-            Result r = exec(command, timeoutMs);
-            if (callback != null) {
+        final Future<Result> future;
+        try {
+            future = shellExecutor.submit(() -> execOnShellThread(command));
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            dispatch(callback, Result.unavailable());
+            return;
+        }
+        try {
+            waitExecutor.execute(() -> {
+                Result r;
                 try {
-                    callback.onResult(r);
+                    r = future.get(timeoutMs, TimeUnit.MILLISECONDS);
+                } catch (TimeoutException e) {
+                    future.cancel(true);
+                    forceCloseSession();
+                    r = Result.timeout();
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    r = Result.unavailable();
                 } catch (Exception e) {
-                    Log.w(TAG, "callback threw", e);
+                    Log.w(TAG, "execAsync failed: " + command, e);
+                    r = Result.unavailable();
                 }
-            }
-        });
+                dispatch(callback, r);
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            future.cancel(true);
+            dispatch(callback, Result.unavailable());
+        }
+    }
+
+    /** 回调派发：回调自身抛异常不能污染线程池。 */
+    private void dispatch(Callback callback, Result result) {
+        if (callback == null) {
+            return;
+        }
+        try {
+            callback.onResult(result);
+        } catch (Exception e) {
+            Log.w(TAG, "callback threw", e);
+        }
     }
 
     /** 以 root 权限判断文件/目录是否存在。 */
@@ -260,8 +327,9 @@ public final class RootShell {
 
     /** 主动释放会话与线程池。一般不需要调用——su 进程随应用存活即可。 */
     public void shutdown() {
-        shellExecutor.execute(this::closeSession);
+        forceCloseSession();
         shellExecutor.shutdown();
+        waitExecutor.shutdown();
         instance = null;
     }
 
@@ -292,14 +360,21 @@ public final class RootShell {
         if (!ensureSession()) {
             return Result.unavailable();
         }
+        // 取一次快照：超时可能从别的线程把会话置空，之后一直用这两个局部引用，
+        // 读流被销毁时会抛 IOException / 返回 null，循环随之结束。
+        BufferedWriter w = writer;
+        BufferedReader r = reader;
+        if (w == null || r == null) {
+            return Result.unavailable();
+        }
         String token = TOKEN_PREFIX + tokenSeq.incrementAndGet();
         try {
             // 命令后紧跟一行 echo，把退出码和结束标记一起输出，
             // 读输出时据此判断命令结束位置并取回 exit code。
-            writer.write(command);
-            writer.write("\n");
-            writer.write("echo \"$? " + token + "\"\n");
-            writer.flush();
+            w.write(command);
+            w.write("\n");
+            w.write("echo \"$? " + token + "\"\n");
+            w.flush();
         } catch (Exception e) {
             closeSession();
             return Result.unavailable();
@@ -309,7 +384,7 @@ public final class RootShell {
         int exitCode = -1;
         try {
             String line;
-            while ((line = reader.readLine()) != null) {
+            while ((line = r.readLine()) != null) {
                 int idx = line.indexOf(token);
                 if (idx >= 0) {
                     String prefix = line.substring(0, idx).trim();
@@ -323,7 +398,7 @@ public final class RootShell {
                 out.append(line).append('\n');
             }
         } catch (Exception e) {
-            // 读失败通常意味着 su 进程已死
+            // 读失败通常意味着 su 进程已死（含「超时后从外部强拆」）
             closeSession();
             return new Result(exitCode, out.toString(), false, true);
         }
@@ -332,18 +407,25 @@ public final class RootShell {
 
     /** 确保会话可用；不可用则重建。只在 shell 线程调用。 */
     private boolean ensureSession() {
-        if (process != null && writer != null && reader != null && isProcessAlive(process)) {
+        Process alive = process;
+        if (alive != null && writer != null && reader != null && isProcessAlive(alive)) {
             return true;
         }
         closeSession();
         for (String suPath : SU_PATHS) {
+            Process p = null;
+            BufferedWriter w = null;
+            BufferedReader r = null;
             try {
-                Process p = new ProcessBuilder(suPath).redirectErrorStream(true).start();
-                BufferedWriter w = new BufferedWriter(new OutputStreamWriter(p.getOutputStream()));
-                BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-                process = p;
-                writer = w;
-                reader = r;
+                p = new ProcessBuilder(suPath).redirectErrorStream(true).start();
+                w = new BufferedWriter(new OutputStreamWriter(p.getOutputStream()));
+                r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                synchronized (sessionLock) {
+                    // 探测期间不持锁：su 授权框可能一直不返回，持锁会让超时方无法强拆。
+                    process = p;
+                    writer = w;
+                    reader = r;
+                }
                 // 写一条空命令确认会话真的可用（有些 su 会立即退出）
                 w.write("echo " + TOKEN_PREFIX + "probe\n");
                 w.flush();
@@ -359,15 +441,33 @@ public final class RootShell {
         return false;
     }
 
-    /** 关闭会话并释放流。只在 shell 线程调用。 */
+    /**
+     * 关闭会话并释放流。<b>可从任意线程调用</b>（超时路径就靠它把卡在 readLine 的
+     * shell 线程踢出来）。字段的置空在锁内完成，流的关闭在锁外做，避免持锁做阻塞 IO。
+     */
     private void closeSession() {
-        Process p = process;
-        process = null;
-        writer = null;
-        reader = null;
+        Process p;
+        synchronized (sessionLock) {
+            p = process;
+            process = null;
+            writer = null;
+            reader = null;
+        }
+        // 注意：<b>不要</b>先 close BufferedReader / BufferedWriter。
+        // BufferedReader.close() 需要拿读锁，而卡在 readLine 里的线程正握着那把锁，
+        // 从别的线程 close 会一起卡死。直接关进程管道（fd）可以立刻让阻塞的读结束，
+        // 再把子进程杀掉即可。
         if (p != null) {
             try {
                 p.getOutputStream().close();
+            } catch (Exception ignored) {
+            }
+            try {
+                p.getInputStream().close();
+            } catch (Exception ignored) {
+            }
+            try {
+                p.getErrorStream().close();
             } catch (Exception ignored) {
             }
             try {
@@ -375,6 +475,11 @@ public final class RootShell {
             } catch (Exception ignored) {
             }
         }
+    }
+
+    /** 超时路径专用：强制销毁当前会话，使阻塞中的读立即结束。 */
+    private void forceCloseSession() {
+        closeSession();
     }
 
     /** {@code Process.isAlive()} 需 API 26，这里用 exitValue 兼容低版本。 */

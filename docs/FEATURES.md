@@ -169,8 +169,8 @@
 | 分组 | 行 | 说明 |
 | --- | --- | --- |
 | 通用 | 自动检查更新（`swCheckUpdate`） | 只管「启动时检不检」，24 小时内最多请求一次；没有新版本或失败都不提示 |
-| 通用 | 检查更新（`rowCheckUpdate`） | 立刻手动检查一次，摘要常驻 `当前版本 x.y.z · 上次检查 …` |
-| 外观 | 主题（`rowTheme`） | 色彩模式 · 强调色 · 调色板 · 液态玻璃 · 字号 → `ThemeActivity` |
+| 通用 | 检查更新（`rowCheckUpdate`） | 立刻手动检查一次；点下去先弹加载态对话框，结果在同一个窗口里原地切换（已是最新 / 有新版本 / 失败） |
+| 外观 | 主题色 / 界面字号 / 底栏效果 / 滑动切页 | 均在本页内联，弹菜单或开关 |
 | 关于 | 关于 Aurora（`rowAbout`） | 单行入口，摘要动态显示版本号 → `AboutActivity` |
 
 ### 检查更新（`core/update` + `ui/update`）
@@ -203,20 +203,24 @@
 
 ---
 
-## 六、主题设置（独立页，非 tab）
+## 六、设置页（tab 3）
 
-入口：设置页 → 主题。宿主 `ThemeActivity.kt`，界面是整页 Compose（`ThemeScreen.kt`，864 行）。
+`fragment_settings.xml` + `ui/settings/SettingsFragment`，纯 XML，Android 原生设置范式：
+整行可点、行首 24dp 线条图标、行尾当前值或轻量箭头，行间只有一条从标题处缩进的 0.5dp 细线，
+不给每一项套卡片。浅色为极浅灰底 + 白分组，深色为 `#131316` 底 + `#1C1C1E` 分组（刻意避开纯黑）。
 
-| 项 | 可选项 |
-| --- | --- |
-| 色彩模式 | 跟随系统 / 浅色 / 深色 / **深色 · AMOLED**（4 种） |
-| 强调色 | **16 种**种子色 |
-| 调色板风格 | **9 种**：TonalSpot / Neutral / Vibrant / Expressive / Fidelity / Content / Monochrome / Rainbow / FruitSalad |
-| 色彩规范 | 2021 规范 / 2025 规范（2 种） |
-| 字号 | 0.85× ~ 1.30× |
-| 液态玻璃 | 开 / 关（独立开关） |
-| 背景模糊 | 开 / 关（独立开关，与液态玻璃**互不影响**） |
-| 滑动切换 tab | 开 / 关 |
+| 分组 | 行 | 交互 |
+| --- | --- | --- |
+| 通用 | 自动检查更新 | 开关（整行可点） |
+| 通用 | 检查更新 | 行尾显示当前版本，点击手动检查 |
+| 外观 | 主题色 | 点整行弹菜单：跟随系统 / 浅色 / 深色 |
+| 外观 | 界面字号 | 点整行弹菜单：85% / 100% / 115% / 130% |
+| 外观 | 底栏效果 | 点整行弹菜单：不透明 / 磨砂 / 液态玻璃（三档互斥，行尾显示当前档） |
+| 外观 | 滑动切换导航页面 | 开关（整行可点，即时作用到 ViewPager2） |
+| 关于 | 关于 Aurora | 行尾显示版本号，点击进关于页 |
+
+> 配色（强调色 / 调色板风格 / 色彩规范）由开发者固定，**不向用户提供自定义入口**。
+> 原先独立的 Compose 主题页已删除，主题项全部内联到本页。
 
 细节见 [`subsystems/THEME.md`](subsystems/THEME.md)。
 
@@ -247,13 +251,12 @@
 `☆` = 在 `AndroidManifest.xml` 里声明了完整 `configChanges`（刷机子页，
 理由见 [`DEVELOPMENT.md`](DEVELOPMENT.md) 第六节）。
 
-### 主框架与设置（3 个）
+### 主框架与设置（2 个）
 
 | Activity | 入口 |
 | --- | --- |
 | `ui/main/MainActivity` | LAUNCHER |
-| `ui/settings/ThemeActivity.kt` | 设置 → 主题 |
-| `ui/about/AboutActivity` | 关于 |
+| `ui/about/AboutActivity` | 设置 → 关于 |
 
 ### 刷机（`ui/flash`，12 个）
 
