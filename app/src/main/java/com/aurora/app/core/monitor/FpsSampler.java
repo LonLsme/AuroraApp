@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 系统级帧率采样器（参考 vtools 的 FpsUtils 实现，Java 化并接入 RootShell）。
+ * 系统级帧率采样器：读 SurfaceFlinger 的帧计数差值，接入 RootShell 执行。
  *
  * <p>两种采样源，按优先级自动选择：
  * <ol>
@@ -106,7 +106,7 @@ public final class FpsSampler {
 
     /**
      * {@code service call SurfaceFlinger 1013} 返回累计帧数，
-     * 两次采样差值计算 FPS（照抄 vtools 的解析逻辑）。
+     * 两次采样差值计算 FPS：解析 SurfaceFlinger 返回的 Parcel 十六进制帧数。
      */
     private float sampleBySurfaceFlinger(RootShell shell) {
         String result = shell.execOut("service call SurfaceFlinger 1013");

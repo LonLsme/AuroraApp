@@ -37,7 +37,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 进程管理页：实时进程列表（参考 vtools ActivityProcess 的交互设计）。
+ * 进程管理页：实时进程列表。
  *
  * <ul>
  *   <li>搜索关键字实时过滤（进程名/包名/命令/PID）；</li>

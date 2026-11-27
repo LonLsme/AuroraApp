@@ -22,7 +22,7 @@ import com.aurora.app.ui.theme.ThemeManager;
  *   <li><b>版本信息</b> —— 版本名 / 版本码 / 包名 / 构建类型，全部取自
  *       {@link BuildConfig}，不写死，避免与 {@code app/build.gradle.kts} 脱节；</li>
  *   <li><b>开源</b> —— 本项目 GitHub 仓库、上游项目 violet_Box（紫罗兰Box）与 GPL-3.0 协议；</li>
- *   <li><b>鸣谢</b> —— KernelSU / 星野Scene / Miuix 三个参考来源；</li>
+ *   <li><b>鸣谢</b> —— 开源依赖与组件范式来源，逐项列在仓库 NOTICE；</li>
  *   <li><b>作者</b> —— 作者本人的三个公开账号入口（酷安 / GitHub / 抖音）。</li>
  * </ul>
  *

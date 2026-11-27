@@ -9,10 +9,9 @@ import android.view.View;
 import java.util.ArrayDeque;
 
 /**
- * 多柱占用率条形图（每根柱子 = 一个 CPU 核心）——复刻 HoshinoScene 的
- * {@code com.omarea.ui.CpuChartBarView}。
+ * 多柱占用率条形图（每根柱子 = 一个 CPU 核心）。
  *
- * <p>与原实现逐条对齐的绘制规则：
+ * <p>绘制规则：
  * <ul>
  *   <li>柱宽 = 控件宽度 ÷ 柱数，柱间留 5% 宽度间隙，圆角 5px；</li>
  *   <li>柱高 = {@code (100 - 占用率) / 100 × 控件高}，即占用越高柱子越高；

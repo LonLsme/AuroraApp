@@ -20,6 +20,12 @@ Copyright (C) 2026 LonLsme         — Aurora 二次开发部分
 | `bin/libksud` | KernelSU（tiann/KernelSU） | GPL-2.0 |
 | `bin/qdl` | linux-msm/qdl 的定制分支 | 见下 |
 
+### 关于界面形态与帧率采集
+
+部分监视悬浮窗的交互形态、以及系统级帧率采集（读 SurfaceFlinger 帧计数差值）的思路，
+改编自 **helloklf/vtools**（GPL-3.0）。按 GPL-3.0 要求在此保留署名，
+本项目整体同样以 GPL-3.0 发布，不存在许可冲突。
+
 ### 关于 `bin/qdl`
 
 包内 `qdl` 是 **linux-msm/qdl** 的一个第三方定制构建，版本标识为 `qdl 2.8`，

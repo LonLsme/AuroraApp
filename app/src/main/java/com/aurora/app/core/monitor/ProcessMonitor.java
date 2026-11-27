@@ -25,9 +25,8 @@ import java.util.Map;
  * 后果是「能列出 300 多个 pid 目录，但每一个都解析失败」，
  * 进程监视器因此只能看到自己，最终显示 "--"。
  *
- * <p>星野Scene（HoshinoScene）的做法可作对照：它把 {@code top} 命令交给自己的
- * root 守护进程执行，由 root 身份读 /proc 后返回结构化文本。本类采用同一思路，
- * 但用一条 shell 命令一次性 dump，而不是逐 pid 起进程：
+ * <p>另一种做法是把 {@code top} 交给自己的 root 守护进程执行，由 root 身份读 /proc
+ * 后返回结构化文本。本类沿这个思路，但用一条 shell 命令一次性 dump，而不是逐 pid 起进程：
  * <pre>
  *   awk '&#123;print "S|" FILENAME "|" $0&#125;' /proc/[0-9]*&#47;stat   # 全部进程的 stat
  *   ps -A -w -o PID,USER,ARGS                              # 归属用户 + 完整命令行

@@ -8,7 +8,7 @@
     · 头部卡：应用图标 + 名称 + 版本 + 一句话定位
     · 分组「版本信息」：版本名称 / 版本码 / 包名 / 构建类型（全部不可点，尾部直接显示值）
     · 分组「开源」：GitHub 仓库（本项目）/ 上游项目（violet_Box 紫罗兰Box）/ 开源协议
-    · 分组「鸣谢」：KernelSU / 星野Scene / Miuix
+    · 分组「鸣谢」：KernelSU / Miuix（逐项许可见仓库 NOTICE）
     · 分组「作者」：酷安 / GitHub / 抖音（抖音行带号码副标题 —— 抖音号拼不进主页 URL）
     · 底部居中 GPL-3.0 声明
 
@@ -454,7 +454,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="主题能力与 Miuix 组件范式的参考" />
+                            android:text="Root 方案与模块格式支持" />
                     </LinearLayout>
 
                     <ImageView
@@ -464,36 +464,6 @@
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
                         android:tint="?attr/auroraTextSecondary" />
-                </LinearLayout>
-
-                <!-- 星野Scene：监视悬浮窗的视觉与采集思路参考（无公开仓库链接，故不可点） -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:minHeight="@dimen/miuix_pref_row_min_height"
-                    android:orientation="horizontal"
-                    android:padding="@dimen/miuix_pref_row_padding">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/Widget.Aurora.Miuix.PrefTitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="星野Scene" />
-
-                        <TextView
-                            style="@style/Widget.Aurora.Miuix.PrefSummary"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="监视悬浮窗的视觉与系统数据采集思路参考" />
-                    </LinearLayout>
                 </LinearLayout>
 
                 <!-- Miuix：设置页 / 刷机页的设计范式来源 -->

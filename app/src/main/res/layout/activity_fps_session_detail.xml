@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     帧率会话详情：信息卡 + 统计 + 四条曲线（FPS / 功耗 / CPU 占用 / CPU 温度）。
-    复刻星野 Scene 的 FpsSession 页，但只保留本项目能稳定采到的指标；
+    帧率会话详情页，只保留本项目能稳定采到的指标；
     GPU、DDR、帧时间与 jank 需要额外的 sysfs / SurfaceFlinger 解析，暂不在此页展示。
 -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"

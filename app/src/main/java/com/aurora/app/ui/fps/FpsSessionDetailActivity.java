@@ -29,7 +29,7 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * 帧率会话详情页（对标星野 Scene 的 {@code ActivityFpsSession}）。
+ * 帧率会话详情页。
  *
  * <p>展示：会话归属应用 / 分辨率 / 时长 / 开始时间、五项统计，以及 FPS、整机功耗、
  * CPU 占用、CPU 温度四条每秒曲线。右上「导出」可生成 CSV（Excel 可直接打开）

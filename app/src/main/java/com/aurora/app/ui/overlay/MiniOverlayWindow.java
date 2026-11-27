@@ -20,7 +20,7 @@ import com.aurora.app.core.monitor.TemperatureMonitor;
 import java.util.Locale;
 
 /**
- * 迷你监视器悬浮窗 —— 复刻 HoshinoScene 的 {@code fw_monitor_mini.xml}。
+ * 迷你监视器悬浮窗（折叠成单行胶囊）。
  *
  * <p>折叠（单行胶囊）排列与原布局逐项对应：<br>
  * {@code [图标 CPU柱状图 频率] [图标 GPU柱 CPU] [图标 FPS] [图标 电池温度]}
@@ -82,7 +82,7 @@ public final class MiniOverlayWindow extends OverlayWindow {
         super(context, MonitorType.MINI);
     }
 
-    /** 迷你形态使用 HoshinoScene 的 monitor_game_bg（更浅一档、仅底部圆角）。 */
+    /** 迷你形态使用更浅一档、仅底部圆角的专用背景。 */
     @Override
     protected void onShown() {
         setWindowBackground(OverlayWindowStyle.createMonitorMiniBackground(context));

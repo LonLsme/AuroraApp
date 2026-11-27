@@ -56,10 +56,10 @@ public final class ProcessOverlayWindow extends OverlayWindow {
     /** 展开态最多展示的进程条数（列表可滚动，超出部分滚出视野）。 */
     private static final int MAX_ROWS = 30;
 
-    /** 展开态列表高度（dp）：固定高度是能滚动的前提，取值对齐星野 fw_process 的 170dip。 */
+    /** 展开态列表高度（dp）：固定高度是能滚动的前提。 */
     private static final int LIST_HEIGHT_DP = 170;
 
-    /** 展开态列表宽度（dp）：比星野的 155dip 略宽，给行尾的结束按钮留出位置。 */
+    /** 展开态列表宽度（dp）：比折叠态略宽，给行尾的结束按钮留出位置。 */
     private static final int LIST_WIDTH_DP = 176;
 
     /** 工具栏图标点击区（dp）。 */

@@ -8,18 +8,8 @@ import android.widget.TextView;
 /**
  * 悬浮窗统一样式工具。
  *
- * <p>全部 6 个监视窗口统一采用 <b>星野Scene（HoshinoScene）风格</b>：
- * 深色半透明胶囊底 + 白色文字 + 阈值变色圆环。样式集中在此处定义，
- * 各窗口只引用常量/工厂方法，后期统一改样式只动本类。
- *
- * <p>复刻来源（HoshinoScene 开源工程）：
- * <ul>
- *   <li>{@code res/drawable/shape_corner.xml} —— 监视器标准底：深色半透明 + 圆角；</li>
- *   <li>{@code res/drawable/monitor_game_bg.xml} —— 迷你形态底：更浅一档、仅底部圆角；</li>
- *   <li>{@code com.omarea.ui.fw.FloatMonitorChartView} —— 圆环轨道色与描边宽度；</li>
- *   <li>{@code com.omarea.ui.fw.FloatMonitorBatteryView} —— 电池环按温度/电量上色；</li>
- *   <li>{@code com.omarea.ui.CpuChartBarView} —— 柱状图阈值配色。</li>
- * </ul>
+ * <p>全部 6 个监视窗口统一采用深色半透明胶囊底 + 白色文字 + 阈值变色圆环。
+ * 样式集中在此处定义，各窗口只引用常量/工厂方法，后期统一改样式只动本类。
  */
 public final class OverlayWindowStyle {
 
@@ -27,17 +17,17 @@ public final class OverlayWindowStyle {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  星野Scene 风格监视器样式
+    //  监视器统一样式
     //
-    //  与 HoshinoScene 的唯一有意差别：底色不透明度由 #70000000 提到 #99000000。
-    //  AuroraApp 的悬浮窗会同时覆盖浅色应用，提高不透明度才能保证白字可读。
+    //  底色不透明度取 #99000000：比常见的 #70000000 更实，
+    //  悬浮窗会同时覆盖浅色应用，只有压得住背景才能保证白字可读。
     // ═══════════════════════════════════════════════════════════════
 
-    /** 监视器底色（复刻 shape_corner，不透明度按上注提高）。 */
+    /** 监视器底色。 */
     public static final int MONITOR_BG = 0x99000000;
-    /** 迷你形态底色（复刻 monitor_game_bg）。 */
+    /** 迷你形态底色：比标准态更浅一档。 */
     public static final int MONITOR_BG_MINI = 0x8C000000;
-    /** 圆环轨道色：复刻 FloatMonitorChartView 的 587202559（0x22FFFFFF）。 */
+    /** 圆环轨道色（白 13%）。 */
     public static final int MONITOR_RING_TRACK = 0x22FFFFFF;
     /** 环内数值/主要文字。 */
     public static final int MONITOR_TEXT = 0xFFFFFFFF;
@@ -46,7 +36,7 @@ public final class OverlayWindowStyle {
     /** 分隔线（白 14%）。 */
     public static final int MONITOR_DIVIDER = 0x24FFFFFF;
 
-    // ─── 阈值配色（复刻 getVeryHigh / getHigh / getFull / getColorSecondary） ───
+    // ─── 阈值配色 ───
     /** 正常：Aurora 主绿。 */
     public static final int MONITOR_LEVEL_NORMAL = 0xFF00E676;
     /** 偏高（>65）。 */
@@ -56,11 +46,11 @@ public final class OverlayWindowStyle {
     /** 满载/危险（电池高温或低电量）。 */
     public static final int MONITOR_LEVEL_FULL = 0xFFFF5252;
 
-    /** 监视器圆角（dp）：复刻 shape_corner 的 5dp。 */
+    /** 监视器圆角（dp）。 */
     public static final int MONITOR_CORNER_DP = 5;
 
     // ─── 帧率记录窗专属：毛玻璃（dark glass）配色 ───
-    // 只作用于帧率悬浮窗，其余五个监视窗仍用上面的星野深色胶囊。
+    // 只作用于帧率悬浮窗，其余五个监视窗仍用上面的深色胶囊。
     // 比原底色更通透（0x99→0x8A），加一圈白色高光描边模拟玻璃边缘反光；
     // 白字仍清晰，也不会在浅色应用上“糊成一片”。
     /** 毛玻璃底：深灰 54% 透明。 */

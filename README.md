@@ -302,9 +302,7 @@ Copyright (C) 2026 LonLsme         — Aurora 二次开发部分
 | 来源 | 作用 |
 | --- | --- |
 | [violet_Box（紫罗兰Box）](https://github.com/Smart-Paocai/violet_Box) | **上游项目**（GPL-3.0），本项目在其基础上二次开发 |
-| [KernelSU](https://github.com/tiann/KernelSU) | 主题能力与 Miuix 组件范式的参考 |
-| HoshinoScene（星野Scene） | 监视悬浮窗的视觉与系统数据采集思路参考 |
-| vtools | 进程与监视器实现的对照参考 |
+| [KernelSU](https://github.com/tiann/KernelSU) | Root 方案与模块格式（随包分发的 `libksud` 署名见 `NOTICE`） |
 | Miuix | 设置页与刷机子页的尺寸、字号、卡片范式来源 |
 | 社区既有刷机工具 | 刷机子系统的命令形态与步骤划分参考了同类工具的实际行为；界面与代码为本项目独立实现 |
 

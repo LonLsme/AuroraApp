@@ -102,7 +102,7 @@ public abstract class OverlayWindow {
                         | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
                         | WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 PixelFormat.TRANSLUCENT);
-        // 参照 vtools FloatMonitor：
+        // 拖动与折叠的交互约定：
         // ① 5 参构造的 gravity 默认是 0，显式设为 TOP|LEFT 后 x/y 才是「窗口左上角相对屏幕」的坐标，
         //    否则触摸 hit-test 与布局坐标系不一致，拖动会错位/中断；
         // ② FLAG_FULLSCREEN 让窗口布局覆盖整个屏幕（含状态栏区域），坐标系与触摸区域完全对齐。
@@ -271,7 +271,7 @@ public abstract class OverlayWindow {
 
     /**
      * 统一构建窗口根视图（子类无需覆写）：
-     * 默认深色胶囊背景（复刻 HoshinoScene 的 shape_corner）+ 按记忆状态加载折叠/展开内容。
+     * 默认深色胶囊背景 + 按记忆状态加载折叠/展开内容。
      *
      * <p>内边距与背景都留了覆写口子：帧率记录窗要更小的外框 + 毛玻璃配色，
      * 只覆写 {@link #contentPaddingDp()} / {@link #createWindowBackground()} 即可，
@@ -296,7 +296,7 @@ public abstract class OverlayWindow {
     }
 
     /**
-     * 窗口背景 drawable，默认星野深色半透明胶囊。子类可覆写为专属配色（如毛玻璃）。
+     * 窗口背景 drawable，默认深色半透明胶囊。子类可覆写为专属配色（如毛玻璃）。
      */
     protected android.graphics.drawable.Drawable createWindowBackground() {
         return OverlayWindowStyle.createMonitorBackground(context);

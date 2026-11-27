@@ -8,12 +8,11 @@ import android.util.AttributeSet;
 import android.view.View;
 
 /**
- * 阈值变色圆环（Gauge Ring）——复刻 HoshinoScene 的
- * {@code com.omarea.ui.fw.FloatMonitorChartView}。
+ * 阈值变色圆环（Gauge Ring）。
  *
- * <p>与原实现逐条对齐的绘制规则：
+ * <p>绘制规则：
  * <ul>
- *   <li>轨道：整圈，颜色 {@code 0x22FFFFFF}（原实现的 587202559）；</li>
+ *   <li>轨道：整圈，颜色 {@code 0x22FFFFFF}（白 13%）；</li>
  *   <li>进度弧：起点 12 点方向（{@code -90°}）顺时针，扫过 {@code value × 3.6°}；
  *       数值 ≥98 时直接画满一圈，避免留下 1px 缺口；</li>
  *   <li>描边宽度 4dp，圆环直径取短边的 <b>0.9 倍</b>；</li>

@@ -4,7 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * 一次帧率记录会话的完整数据（对标星野 Scene 的 {@code FpsWatchSession} + {@code FpsData}）。
+ * 一次帧率记录会话的完整数据（会话头 + 每秒序列）。
  *
  * <p>与旧实现的差别：旧代码只在 SharedPreferences 里存了「平均/最高/最低」三个数，
  * 曲线画完就丢，历史记录点不进去。这里把每秒钟的 FPS、功耗、CPU 占用、CPU 温度
