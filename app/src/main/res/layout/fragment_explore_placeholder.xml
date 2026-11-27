@@ -9,6 +9,17 @@
     android:overScrollMode="always"
     android:paddingBottom="96dp">
 
+    <!--
+      玩机页结构（自上而下）：
+        1) ROOT 状态条 —— 一行 68dp，图标块保留语义色（绿=已授权 / 红=未授权 / 灰=检测中）；
+        2) 基础功能 —— 白卡 + 三列宫格，每格「浅灰圆角方块 + 强调色图标 + 文字」；
+        3) 扩展功能 —— 同上，只有 5 个入口，第 6 格留空；
+        4) 实用功能 —— 一张列表卡，四个入口共用「图标 + 标题 + 说明 + 箭头」的行形态。
+
+      卡片圆角统一 18dp（explore_card_radius_lg），不用 explore_card_radius ——
+      后者被 14 个插件子页共用，改它会连带改掉那些页面。
+      所有入口 id 都是 MainActivity 直接 findViewById 绑定的，改名要同步改代码。
+    -->
     <!-- 背景只铺内容区，勿放在 NestedScrollView 上，否则会盖住 CoordinatorLayout 里的标题栏 -->
     <LinearLayout
         android:layout_width="match_parent"
