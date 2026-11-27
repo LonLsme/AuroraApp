@@ -10,6 +10,11 @@
     <dimen name="explore_card_radius">16dp</dimen>
     <dimen name="explore_card_elevation">2dp</dimen>
     <dimen name="explore_tool_icon_radius">12dp</dimen>
+    <!--
+      玩机页大卡片圆角。不复用 explore_card_radius（16dp）—— 那个被 14 个插件子页共用，
+      改它等于把所有子页的卡片一起改掉。
+    -->
+    <dimen name="explore_card_radius_lg">18dp</dimen>
     <dimen name="floating_nav_bottom_margin">12dp</dimen>
     <dimen name="floating_nav_horizontal_margin">14dp</dimen>
     <dimen name="floating_nav_card_corner">32dp</dimen>
