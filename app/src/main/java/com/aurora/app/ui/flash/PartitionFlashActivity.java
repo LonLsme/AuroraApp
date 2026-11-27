@@ -105,6 +105,14 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
     /** 当前这次命令是不是「刷写」—— 只有刷写才推进度，读槽位不该动它。 */
     private boolean flashInProgress;
 
+    /**
+     * 本次刷写是否见到了 fastboot 的收尾行。
+     *
+     * <p>退出码 0 只说明命令跑完了，不能证明「确实写进去了」——
+     * 分区不存在那条分支以前也是 0。收尾行 + 退出码 0 才算成功，否则归为「未确认」。
+     */
+    private boolean flashSawFinished;
+
     /** 本次刷写开始的时间戳，用于「剩余时间」外推。 */
     private long flashStartedAt;
 
@@ -234,7 +242,8 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
 
         // fastboot 的失败信息有 FAILED / 也有 error: 开头的，两种都算
         if (text.contains("FAILED") || text.toLowerCase(Locale.US).startsWith("error")) {
-            flashInProgress = false;
+            // 只做即时反馈，不在这里落终态：flashInProgress 与最终进度 / 文案统一由 settleFlash 写。
+            // fastboot 失败时不会再输出 Finished 收尾行，所以这里不置标志也不会被后续行翻成成功。
             applyProgress(0, "刷写失败", R.color.ios_semantic_negative);
             setSpeed("—");
             setEta("—");
@@ -257,6 +266,7 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
             return;
         }
         if (text.contains("Finished")) {
+            flashSawFinished = true;
             flashInProgress = false;
             applyProgress(100, "刷写完成", R.color.ios_semantic_positive);
             setEta("已完成");
@@ -374,7 +384,7 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
                         + "分区：" + partition + "\n\n"
                         + "刷入前会先确认该分区在设备上存在，不存在则拒绝刷入。\n\n"
                         + "命令：\n" + command,
-                command);
+                command, this::settleFlash);
     }
 
     /** 「按分区名写入」那行：分区名来自输入框。 */
@@ -399,7 +409,7 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
                         + "分区：" + partition + "\n\n"
                         + "分区名写错会刷到别的分区上，且不可逆。\n\n"
                         + "命令：\n" + command,
-                command);
+                command, this::settleFlash);
     }
 
     /**
@@ -408,16 +418,61 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
      * <p>不复用基类的 {@code confirmThenRun}：这里要在「用户点了确认」的那一刻
      * 才把进度区点亮，而不是在弹框之前 —— 否则用户点取消，进度条会白白亮起再复位。
      */
-    private void confirmFlash(String title, String message, String command) {
+    private void confirmFlash(String title, String message, String command,
+                              FlashConsoleActivity.CommandCallback callback) {
         new AlertDialog.Builder(this)
                 .setTitle(title)
                 .setMessage(message)
                 .setNegativeButton("取消", null)
                 .setPositiveButton("刷入", (d, w) -> {
                     beginFlashProgress();
-                    runConsoleCommand(command);
+                    runConsoleCommand(command, callback);
                 })
                 .show();
+    }
+
+    /**
+     * 刷写结束：按「退出码 + 是否取消 + 是否见到收尾行」收敛界面状态。
+     *
+     * <p>这是本页唯一的终点。以前没有任何终点逻辑，进度条只靠输出文本推进：
+     * 分区不存在时命令以退出码 0 结束（分支里只有 {@code echo}），界面就停在
+     * 「正在检查分区… 8%」，下次刷写的输出还会被当成这一次的阶段继续解析。
+     *
+     * <p>判定顺序与依据见 {@link FlashCommands#classifyFlashResult}：退出码是硬契约，
+     * 文本只用来判断有没有走到收尾行。不认识的结果一律归「未确认」，不冒充成功。
+     */
+    private void settleFlash(String output, int exitCode, boolean cancelled) {
+        boolean finished = flashSawFinished;
+        flashInProgress = false;
+        switch (FlashCommands.classifyFlashResult(exitCode, cancelled, finished)) {
+            case FlashCommands.FLASH_RESULT_OK:
+                applyProgress(100, "刷写完成", R.color.ios_semantic_positive);
+                setEta("已完成");
+                break;
+            case FlashCommands.FLASH_RESULT_NO_PARTITION:
+                applyProgress(0, "未执行刷写：分区检查未通过，请确认设备已进入 Fastboot 模式且目标分区存在",
+                        R.color.ios_semantic_negative);
+                setSpeed("—");
+                setEta("—");
+                break;
+            case FlashCommands.FLASH_RESULT_CANCELLED:
+                applyProgress(0, "已取消刷写", R.color.ios_semantic_negative);
+                setSpeed("—");
+                setEta("—");
+                break;
+            case FlashCommands.FLASH_RESULT_FAILED:
+                applyProgress(0, "刷写失败（退出码 " + exitCode + "）",
+                        R.color.ios_semantic_negative);
+                setSpeed("—");
+                setEta("—");
+                break;
+            default:
+                // 退出码 0 但没见到收尾行：命令确实跑完了，但无法证明写入结果，不显示为成功。
+                applyProgress(pbProgress == null ? 0 : pbProgress.getProgress(),
+                        "命令已结束，未能确认写入结果", 0);
+                setEta("未确认");
+                break;
+        }
     }
 
     /** 没选镜像时给一句提示并返回 {@code false}，让调用方直接收手。 */
@@ -475,6 +530,7 @@ public final class PartitionFlashActivity extends FlashConsoleActivity {
     /** 刷写开始：点亮进度区，把上一次的结果清掉。 */
     private void beginFlashProgress() {
         flashInProgress = true;
+        flashSawFinished = false;
         flashStartedAt = System.currentTimeMillis();
         measuredSendSeconds = -1d;
         applyProgress(8, "正在检查分区…", 0);

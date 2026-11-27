@@ -111,27 +111,74 @@ public final class FlashCommands {
      *
      * <p>刷任何一个分区之前都会先跑一次
      * {@code fastboot getvar partition-size} 确认这个分区在目标机上真的存在；不存在就打印
-     * 「检测到设备不存在 xxx分区，拒绝刷入此镜像」并中止，而不是把镜像盲刷进去。
+     * 「分区检查未通过」并中止，而不是把镜像盲刷进去。
      * 分区名写错（例如把 {@code init_boot} 写成 {@code initboot}）时，这一步能把它挡下来。
      *
      * <p>检查与刷入合成一条 shell：{@code grep -qF} 命中才执行 {@code fastboot flash}。
      * 用 {@code -F}（固定串）而不是正则 —— 分区名可能来自用户输入，带 {@code .} / {@code *}
      * 时正则匹配会得到意料之外的结果。
+     *
+     * <p><b>「分区不存在」分支必须带 {@code exit}</b>：{@code if/then/else} 的退出码取自分支里
+     * 最后一条命令，光 {@code echo} 一句就是 0 —— 调用方看到「退出码 0」会当成刷写成功，
+     * 而实际上一个字节都没写。这里用 {@link #PARTITION_MISSING_EXIT_CODE} 明确失败。
      */
     public static String fastbootFlashChecked(String partition, String imagePath) {
         return "if fastboot getvar partition-size:" + esc(partition) + " 2>&1 | grep -qF "
                 + esc("partition-size:" + partition) + "; then "
                 + "fastboot flash " + esc(partition) + " " + esc(imagePath) + "; "
-                + "else echo " + esc(partitionMissing(partition)) + "; fi";
+                + "else echo " + esc(partitionMissing(partition))
+                + "; exit " + PARTITION_MISSING_EXIT_CODE + "; fi";
     }
 
     /**
-     * 「检测到设备不存在 xxx分区，拒绝刷入此镜像」。
+     * 「分区检查未通过」的提示文案。
      *
-     * <p>{@code %1$s} = 分区名。
+     * <p>措辞刻意保守：这个分支只在 {@code getvar partition-size} 没查出分区时走到，
+     * 而失败原因不止「没有这个分区」——设备没进 fastboot、fastboot 起不来、输出格式不认，
+     * 都会落到这里。断言成「设备不存在该分区」会把用户引到错误的排查方向。
+     *
+     * @param partition 分区名
      */
     public static String partitionMissing(String partition) {
-        return "检测到设备不存在 " + partition + "分区，拒绝刷入此镜像";
+        return "分区检查未通过：" + partition + " 分区不存在或设备未进入 Fastboot，拒绝刷入此镜像";
+    }
+
+    // ───────────────── 刷写结果判定 ─────────────────
+
+    /** 「分区不存在」分支的退出码。与 fastboot 自身的退出码区分开，界面可以给出准确原因。 */
+    public static final int PARTITION_MISSING_EXIT_CODE = 3;
+
+    /** 刷写成功：退出码 0 且 fastboot 打出了收尾行。 */
+    public static final int FLASH_RESULT_OK = 0;
+    /** 明确失败：非 0 退出码（含命令没能启动时的 -1）。 */
+    public static final int FLASH_RESULT_FAILED = 1;
+    /** 用户中止。 */
+    public static final int FLASH_RESULT_CANCELLED = 2;
+    /** 命令正常结束但没有收尾行：既不能算成功，也不该说失败。 */
+    public static final int FLASH_RESULT_UNCONFIRMED = 3;
+    /** 目标机上没有这个分区，命令按约定退出，未执行刷写。 */
+    public static final int FLASH_RESULT_NO_PARTITION = 4;
+
+    /**
+     * 把「退出码 + 是否取消 + 是否见到收尾行」翻译成一个结果枚举值。
+     *
+     * <p>为什么不再只看文本：{@code Finished} 是 fastboot 的输出措辞，版本差异、厂商魔改都可能
+     * 让它消失；反过来，分区不存在那条分支以前也是退出码 0。退出码是唯一由 shell 保证的契约，
+     * 文本只用来增强（判断是否真的走到了收尾）。
+     *
+     * <p>抽成纯函数是为了能单测 —— 它不依赖 Android，放在 core 层而不是 Activity 里。
+     */
+    public static int classifyFlashResult(int exitCode, boolean cancelled, boolean finishedSeen) {
+        if (cancelled) {
+            return FLASH_RESULT_CANCELLED;
+        }
+        if (exitCode == PARTITION_MISSING_EXIT_CODE) {
+            return FLASH_RESULT_NO_PARTITION;
+        }
+        if (exitCode == 0) {
+            return finishedSeen ? FLASH_RESULT_OK : FLASH_RESULT_UNCONFIRMED;
+        }
+        return FLASH_RESULT_FAILED;
     }
 
     /** {@code fastboot boot <img>}：不写入、仅临时启动（用于验证镜像是否可用）。 */

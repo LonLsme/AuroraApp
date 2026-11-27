@@ -90,6 +90,76 @@ public class FlashCommandsTest {
         assertTrue(cmd.contains("'/tmp/a'\\''"));
     }
 
+    // ───────────────── 分区存在性检查的退出语义 ─────────────────
+
+    @Test
+    public void fastbootFlashChecked_missingPartitionExitsNonZero() {
+        // 分区不存在时不能只 echo 一句话：if/then/else 的退出码取分支最后一条命令，
+        // 光 echo 就是 0，调用方会当成刷写成功。
+        String cmd = FlashCommands.fastbootFlashChecked("boot", "/tmp/boot.img");
+        assertEquals("if fastboot getvar partition-size:'boot' 2>&1 | grep -qF "
+                + "'partition-size:boot'; then fastboot flash 'boot' '/tmp/boot.img'; "
+                + "else echo '分区检查未通过：boot 分区不存在或设备未进入 Fastboot，拒绝刷入此镜像'; "
+                + "exit 3; fi", cmd);
+    }
+
+    @Test
+    public void fastbootFlashChecked_missingBranchDoesNotFlash() {
+        String cmd = FlashCommands.fastbootFlashChecked("dtbo", "/tmp/dtbo.img");
+        int flashIdx = cmd.indexOf("fastboot flash");
+        int elseIdx = cmd.lastIndexOf("else");
+        assertTrue("刷写命令必须落在 then 分支里", flashIdx > 0 && elseIdx > flashIdx);
+        // else 分支只有提示 + exit，没有第二条 fastboot flash
+        String elseBranch = cmd.substring(elseIdx);
+        assertFalse(elseBranch.contains("fastboot flash"));
+        assertTrue(elseBranch.contains("exit " + FlashCommands.PARTITION_MISSING_EXIT_CODE));
+    }
+
+    @Test
+    public void fastbootFlashChecked_rejectsOddPartitionNameWithoutBreakingQuoting() {
+        // 分区名来自输入框时先过 isValidPartitionName；这里只验证即使拼进来也仍被单引号包住
+        String cmd = FlashCommands.fastbootFlashChecked("a b", "/tmp/x.img");
+        assertTrue(cmd.contains("partition-size:'a b'"));
+        assertTrue(cmd.contains("fastboot flash 'a b'"));
+    }
+
+    // ───────────────── 刷写结果判定 ─────────────────
+
+    @Test
+    public void classifyFlashResult_successNeedsExitZeroAndFinished() {
+        assertEquals(FlashCommands.FLASH_RESULT_OK,
+                FlashCommands.classifyFlashResult(0, false, true));
+    }
+
+    @Test
+    public void classifyFlashResult_exitZeroWithoutFinishedIsUnconfirmed() {
+        // 命令跑完了但没见到收尾行 —— 不能算成功，也不能说失败
+        assertEquals(FlashCommands.FLASH_RESULT_UNCONFIRMED,
+                FlashCommands.classifyFlashResult(0, false, false));
+    }
+
+    @Test
+    public void classifyFlashResult_missingPartitionHasItsOwnResult() {
+        assertEquals(FlashCommands.FLASH_RESULT_NO_PARTITION,
+                FlashCommands.classifyFlashResult(FlashCommands.PARTITION_MISSING_EXIT_CODE, false, false));
+    }
+
+    @Test
+    public void classifyFlashResult_nonZeroIsFailure() {
+        assertEquals(FlashCommands.FLASH_RESULT_FAILED, FlashCommands.classifyFlashResult(1, false, false));
+        assertEquals(FlashCommands.FLASH_RESULT_FAILED, FlashCommands.classifyFlashResult(-1, false, false));
+        // 即使误见到收尾行，非 0 退出码也不承认成功
+        assertEquals(FlashCommands.FLASH_RESULT_FAILED, FlashCommands.classifyFlashResult(2, false, true));
+    }
+
+    @Test
+    public void classifyFlashResult_cancelledWinsOverEverything() {
+        assertEquals(FlashCommands.FLASH_RESULT_CANCELLED,
+                FlashCommands.classifyFlashResult(0, true, true));
+        assertEquals(FlashCommands.FLASH_RESULT_CANCELLED,
+                FlashCommands.classifyFlashResult(-1, true, false));
+    }
+
     @Test
     public void fastbootFlashBothSlots_writesBothSlotSuffixes() {
         assertEquals(
