@@ -20,16 +20,8 @@
     <!-- 玩机页文字在深色卡片上的对比度 -->
     <color name="explore_slate_500">#94a3b8</color>
     <color name="explore_slate_600">#cbd5e1</color>
-    <color name="explore_slate_700">#e2e8f0</color>
-    <color name="explore_slate_800">#e2e8f0</color>
-    <color name="explore_slate_900">#f8fafc</color>
-    <color name="explore_slate_200">#475569</color>
     <color name="explore_slate_100">#334155</color>
-    <color name="explore_page_background">#0F0F12</color>
-    <color name="explore_muted_blue_grey">#9CA8B8</color>
-    <color name="nav_tab_active_pill">#3D2A45</color>
     <color name="stitch_gauge_track">#475569</color>
-    <color name="cpu_core_bar_track">#3f4756</color>
     <color name="stitch_gauge_fill_low">#7ec8f0</color>
     <color name="stitch_gauge_fill_med">#9f8cff</color>
     <color name="stitch_gauge_fill_high">#f28b9a</color>
@@ -37,10 +29,6 @@
     <color name="stitch_pct_med">#9f8cff</color>
     <color name="stitch_pct_high">#f28b9a</color>
 
-    <color name="aurora_primary">#00E676</color>
-    <color name="aurora_secondary">#22D3EE</color>
-    <color name="aurora_accent">#7C4DFF</color>
-    <color name="aurora_danger">#FF5252</color>
     <color name="aurora_warning">#FFB300</color>
 
     <!--
@@ -50,7 +38,6 @@
       白底白字，控件「隐身」。补齐后深色下背景同步变暗。
     -->
     <color name="ios_background">#000000</color>
-    <color name="ios_glass_surface">#B31C1C1E</color>
     <color name="ios_glass_stroke">#26FFFFFF</color>
 
     <!-- Fluent 色板（设备页 / CPU 核心环 / 模块管理等） -->
@@ -60,46 +47,22 @@
     <color name="fluent_cell_stroke">#2A2C33</color>
     <color name="fluent_surface_container_low">#232428</color>
     <color name="fluent_surface_container">#2C2E34</color>
-    <color name="fluent_on_surface">#E6E7EB</color>
-    <color name="fluent_on_surface_variant">#9EA1A8</color>
     <color name="fluent_primary">#91CDFC</color>
-    <color name="fluent_secondary">#7FD3FF</color>
-    <color name="fluent_primary_container">#094B6D</color>
     <color name="fluent_android_green">#3DDC84</color>
-    <color name="fluent_root_badge_bg">#80145A32</color>
-    <color name="fluent_root_badge_text">#6EE7A0</color>
     <color name="fluent_orange">#FB923C</color>
     <color name="fluent_green_600">#4ADE80</color>
 
     <!-- 底部悬浮导航 -->
-    <color name="nav_floating_surface">#CC1C1C1E</color>
-    <color name="nav_floating_stroke">#26FFFFFF</color>
     <color name="nav_item_text">#E5E7EB</color>
-    <color name="nav_item_accent">#91CDFC</color>
 
     <!-- 玩机页（explore）色块：浅底 → 深底、深字 → 亮字 -->
-    <color name="explore_slate_50">#12141A</color>
     <color name="explore_emerald_100">#10331F</color>
     <color name="explore_emerald_600">#6EE7B7</color>
-    <color name="explore_blue_100">#10243D</color>
-    <color name="explore_blue_600">#93C5FD</color>
-    <color name="explore_purple_100">#241238</color>
-    <color name="explore_purple_600">#C4B5FD</color>
-    <color name="explore_amber_100">#3A2A08</color>
     <color name="explore_amber_600">#FCD34D</color>
     <color name="explore_rose_100">#3A1220</color>
-    <color name="explore_rose_600">#FDA4AF</color>
-    <color name="explore_cyan_100">#0B2E33</color>
     <color name="explore_cyan_600">#67E8F9</color>
 
     <!-- 自绘 drawable 用色（原为 drawable 内硬编码，无法随主题切换） -->
-    <color name="nav_sheet_bg">#F01C1C1E</color>
-    <color name="nav_glass_a">#661C1C1E</color>
-    <color name="nav_glass_b">#4D1C1C1E</color>
-    <color name="nav_glass_c">#331C1C1E</color>
-    <color name="nav_glass_stroke">#3394A3B8</color>
-    <color name="nav_glass_highlight">#26FFFFFF</color>
-    <color name="nav_item_active_bg">#E81B3A2A</color>
     <color name="switch_track_on">#FF4A9BC7</color>
     <color name="switch_track_off">#FF3A3A3C</color>
     <color name="dialog_stroke">#1FFFFFFF</color>
