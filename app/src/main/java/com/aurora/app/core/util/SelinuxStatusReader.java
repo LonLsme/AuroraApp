@@ -108,27 +108,6 @@ public final class SelinuxStatusReader {
         return null;
     }
 
-    /** 反射 {@link android.os.SELinux}，返回 enforcing / permissive / disabled，失败为 null */
-    public static String readApiModeOrNull() {
-        try {
-            Class<?> selinuxClass = Class.forName("android.os.SELinux");
-            Method isSELinuxEnabled = selinuxClass.getMethod("isSELinuxEnabled");
-            Method isSELinuxEnforced = selinuxClass.getMethod("isSELinuxEnforced");
-
-            boolean apiEnabled = (boolean) isSELinuxEnabled.invoke(null);
-            Log.d(TAG, "API - Enabled: " + apiEnabled);
-            if (!apiEnabled) {
-                return "disabled";
-            }
-            boolean enforced = (boolean) isSELinuxEnforced.invoke(null);
-            Log.d(TAG, "API - Enforced: " + enforced);
-            return enforced ? "enforcing" : "permissive";
-        } catch (Exception e) {
-            Log.e(TAG, "API检测失败", e);
-        }
-        return null;
-    }
-
     /**
      * 中文结论（含英文括号），与「SELinux 管理」页内核判定优先一致：{@code su -c getenforce}。
      */
