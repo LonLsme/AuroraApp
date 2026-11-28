@@ -257,7 +257,6 @@ private static final ExecutorService DATA_EXECUTOR = Executors.newSingleThreadEx
 | `NodeReader` | **sysfs 节点读取器（普通读优先，root 兜底）** |
 | `CpuStatReader` | `/proc/stat` 解析 |
 | `CpuSysFiles` / `BatterySysFiles` | 路径常量表 |
-| `GpuInfoQuery` | GPU 信息 |
 | `SelinuxStatusReader` / `SelinuxShellUtil` | SELinux 状态 |
 
 ### `NodeReader` 的三个防拖垮机制
