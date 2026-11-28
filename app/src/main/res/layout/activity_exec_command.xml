@@ -53,7 +53,7 @@
                 android:contentDescription="返回"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_arrow_back"
-                android:tint="?attr/auroraTextPrimary" />
+                app:tint="?attr/auroraTextPrimary" />
 
             <View
                 android:layout_width="0dp"

@@ -8,7 +8,7 @@
     失败    — 进度条清空 + 具体原因，按钮 [关闭] [手动下载]
   副文本行给 minLines=2：进度文案从「1.2 MB/s」变成「校验通过」时高度不跳。
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/bg_dialog_rounded"
@@ -27,7 +27,7 @@
             android:layout_height="40dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_update"
-            android:tint="?attr/auroraAccent" />
+            app:tint="?attr/auroraAccent" />
 
         <LinearLayout
             android:layout_width="0dp"

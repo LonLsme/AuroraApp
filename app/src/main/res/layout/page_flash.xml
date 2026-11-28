@@ -76,7 +76,7 @@
                 android:layout_marginStart="4dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_down"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </LinearLayout>
 
@@ -140,7 +140,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -204,7 +204,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -236,7 +236,7 @@
                 android:contentDescription="@null"
                 android:padding="8dp"
                 android:src="@drawable/ic_ms_verified_user"
-                android:tint="?attr/auroraAccent" />
+                app:tint="?attr/auroraAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -269,7 +269,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -301,7 +301,7 @@
                 android:contentDescription="@null"
                 android:padding="8dp"
                 android:src="@drawable/ic_ms_build"
-                android:tint="?attr/auroraAccent" />
+                app:tint="?attr/auroraAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -334,7 +334,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -366,7 +366,7 @@
                 android:contentDescription="@null"
                 android:padding="8dp"
                 android:src="@drawable/ic_ms_partition_manager"
-                android:tint="?attr/auroraAccent" />
+                app:tint="?attr/auroraAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -399,7 +399,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -431,7 +431,7 @@
                 android:contentDescription="@null"
                 android:padding="8dp"
                 android:src="@drawable/ic_ms_restart_alt"
-                android:tint="?attr/auroraAccent" />
+                app:tint="?attr/auroraAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -464,7 +464,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -496,7 +496,7 @@
                 android:contentDescription="@null"
                 android:padding="8dp"
                 android:src="@drawable/ic_payload"
-                android:tint="?attr/auroraAccent" />
+                app:tint="?attr/auroraAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -529,7 +529,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -561,7 +561,7 @@
                 android:contentDescription="@null"
                 android:padding="8dp"
                 android:src="@drawable/ic_terminal"
-                android:tint="?attr/auroraAccent" />
+                app:tint="?attr/auroraAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -594,7 +594,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -626,7 +626,7 @@
                 android:contentDescription="@null"
                 android:padding="8dp"
                 android:src="@drawable/ic_payload_box"
-                android:tint="?attr/auroraAccent" />
+                app:tint="?attr/auroraAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -659,7 +659,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -706,7 +706,7 @@
                 android:contentDescription="@null"
                 android:padding="8dp"
                 android:src="@drawable/ic_ms_apps"
-                android:tint="?attr/auroraAccent" />
+                app:tint="?attr/auroraAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -739,7 +739,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -771,7 +771,7 @@
                 android:contentDescription="@null"
                 android:padding="8dp"
                 android:src="@drawable/ic_ms_security"
-                android:tint="?attr/auroraAccent" />
+                app:tint="?attr/auroraAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -804,7 +804,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -836,7 +836,7 @@
                 android:contentDescription="@null"
                 android:padding="8dp"
                 android:src="@drawable/ic_ms_extension"
-                android:tint="?attr/auroraAccent" />
+                app:tint="?attr/auroraAccent" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -869,7 +869,7 @@
                 android:layout_height="20dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_right"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

@@ -15,7 +15,7 @@
 
   列表部分是 NestedScrollView：集群数因机型而异，卡片会撑高，必须能滚。
 -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/cpu_page_bg"
@@ -75,7 +75,7 @@
                         android:contentDescription="返回"
                         android:padding="8dp"
                         android:src="@drawable/ic_arrow_back"
-                        android:tint="?attr/auroraTextPrimary" />
+                        app:tint="?attr/auroraTextPrimary" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -129,7 +129,7 @@
                         android:layout_height="16dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_settings_info"
-                        android:tint="?attr/auroraAccent" />
+                        app:tint="?attr/auroraAccent" />
 
                     <TextView
                         android:layout_width="0dp"
@@ -168,7 +168,7 @@
             android:contentDescription="返回"
             android:padding="8dp"
             android:src="@drawable/ic_arrow_back"
-            android:tint="?attr/auroraTextPrimary" />
+            app:tint="?attr/auroraTextPrimary" />
 
         <TextView
             android:layout_width="wrap_content"

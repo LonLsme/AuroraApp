@@ -44,7 +44,7 @@
                     android:layout_height="match_parent"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_cpu_chip"
-                    android:tint="?attr/auroraAccent" />
+                    app:tint="?attr/auroraAccent" />
             </FrameLayout>
 
             <LinearLayout
@@ -109,7 +109,7 @@
                     android:layout_height="18dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_cpu_min_freq"
-                    android:tint="?attr/auroraTextSecondary" />
+                    app:tint="?attr/auroraTextSecondary" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -156,7 +156,7 @@
                     android:layout_height="18dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_cpu_max_freq"
-                    android:tint="?attr/auroraTextSecondary" />
+                    app:tint="?attr/auroraTextSecondary" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -217,7 +217,7 @@
                 android:layout_height="18dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_cpu_governor"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
 
             <TextView
                 android:layout_width="0dp"
@@ -248,7 +248,7 @@
                 android:layout_marginStart="4dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_chevron_down"
-                android:tint="?attr/auroraTextSecondary" />
+                app:tint="?attr/auroraTextSecondary" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

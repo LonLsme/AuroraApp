@@ -49,7 +49,7 @@
                 android:contentDescription="返回"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_arrow_back"
-                android:tint="?attr/auroraTextPrimary" />
+                app:tint="?attr/auroraTextPrimary" />
 
             <View
                 android:layout_width="0dp"
@@ -91,7 +91,7 @@
                     android:contentDescription="展开设备状态"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_chevron_down"
-                    android:tint="?attr/auroraTextSecondary" />
+                    app:tint="?attr/auroraTextSecondary" />
             </LinearLayout>
         </LinearLayout>
 

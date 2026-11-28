@@ -46,7 +46,7 @@
             android:layout_gravity="center"
             android:contentDescription="@null"
             android:src="@drawable/ic_update"
-            android:tint="?attr/auroraAccent" />
+            app:tint="?attr/auroraAccent" />
 
         <ProgressBar
             android:id="@+id/pbUpdateLoading"

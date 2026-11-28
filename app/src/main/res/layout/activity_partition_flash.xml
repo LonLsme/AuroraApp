@@ -55,7 +55,7 @@
                 android:contentDescription="返回"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_arrow_back"
-                android:tint="?attr/auroraTextPrimary" />
+                app:tint="?attr/auroraTextPrimary" />
 
             <TextView
                 android:layout_width="0dp"
@@ -111,7 +111,7 @@
                     android:contentDescription="展开设备列表"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_chevron_down"
-                    android:tint="?attr/auroraTextSecondary" />
+                    app:tint="?attr/auroraTextSecondary" />
             </LinearLayout>
         </LinearLayout>
 
@@ -135,7 +135,7 @@
                     android:layout_height="18dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_ms_build"
-                    android:tint="?attr/auroraAccent" />
+                    app:tint="?attr/auroraAccent" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -200,7 +200,7 @@
                     android:contentDescription="选择镜像文件"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_folder_open"
-                    android:tint="?attr/auroraAccent" />
+                    app:tint="?attr/auroraAccent" />
             </LinearLayout>
         </LinearLayout>
 
@@ -249,7 +249,7 @@
                         android:layout_gravity="center"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_ms_save"
-                        android:tint="?attr/auroraAccent" />
+                        app:tint="?attr/auroraAccent" />
                 </FrameLayout>
 
                 <TextView
@@ -289,7 +289,7 @@
                         android:layout_gravity="center"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_ms_stop_circle"
-                        android:tint="@color/ios_semantic_negative" />
+                        app:tint="@color/ios_semantic_negative" />
                 </FrameLayout>
 
                 <TextView
@@ -329,7 +329,7 @@
                         android:layout_gravity="center"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_ms_memory"
-                        android:tint="?attr/auroraAccent" />
+                        app:tint="?attr/auroraAccent" />
                 </FrameLayout>
 
                 <TextView
@@ -369,7 +369,7 @@
                         android:layout_gravity="center"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_ms_swap_vert"
-                        android:tint="?attr/auroraAccent" />
+                        app:tint="?attr/auroraAccent" />
                 </FrameLayout>
 
                 <TextView
@@ -409,7 +409,7 @@
                         android:layout_gravity="center"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_ms_developer_board"
-                        android:tint="?attr/auroraAccent" />
+                        app:tint="?attr/auroraAccent" />
                 </FrameLayout>
 
                 <TextView
@@ -449,7 +449,7 @@
                         android:layout_gravity="center"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_ms_tune"
-                        android:tint="?attr/auroraAccent" />
+                        app:tint="?attr/auroraAccent" />
                 </FrameLayout>
 
                 <TextView
@@ -488,7 +488,7 @@
                         android:layout_gravity="center"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_ms_settings_backup_restore"
-                        android:tint="?attr/auroraAccent" />
+                        app:tint="?attr/auroraAccent" />
                 </FrameLayout>
 
                 <TextView
@@ -591,7 +591,7 @@
                     android:layout_height="18dp"
                     android:contentDescription="@null"
                     android:src="@drawable/ic_ms_terminal"
-                    android:tint="?attr/auroraAccent" />
+                    app:tint="?attr/auroraAccent" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -611,7 +611,7 @@
                     android:contentDescription="复制日志"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_ms_content_copy"
-                    android:tint="?attr/auroraTextSecondary" />
+                    app:tint="?attr/auroraTextSecondary" />
 
                 <ImageButton
                     android:id="@+id/btnLogClear"
@@ -622,7 +622,7 @@
                     android:contentDescription="清空日志"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_ms_delete_sweep"
-                    android:tint="?attr/auroraTextSecondary" />
+                    app:tint="?attr/auroraTextSecondary" />
             </LinearLayout>
 
             <!--

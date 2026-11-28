@@ -41,7 +41,7 @@
             android:contentDescription="返回"
             android:scaleType="centerInside"
             android:src="@drawable/ic_arrow_back"
-            android:tint="?attr/auroraTextPrimary" />
+            app:tint="?attr/auroraTextPrimary" />
 
         <TextView
             android:layout_width="0dp"
@@ -124,7 +124,7 @@
             android:contentDescription="选择镜像目录"
             android:scaleType="centerInside"
             android:src="@drawable/ic_folder_open"
-            android:tint="?attr/auroraAccent" />
+            app:tint="?attr/auroraAccent" />
     </LinearLayout>
 
     <!-- ───────── 第三行：修复 Super 分区（整行） ───────── -->

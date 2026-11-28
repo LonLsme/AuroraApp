@@ -54,7 +54,7 @@
                 android:contentDescription="返回"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_arrow_back"
-                android:tint="?attr/auroraTextPrimary" />
+                app:tint="?attr/auroraTextPrimary" />
 
             <View
                 android:layout_width="0dp"
@@ -92,7 +92,7 @@
                     android:contentDescription="展开设备状态"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_chevron_down"
-                    android:tint="?attr/auroraTextSecondary" />
+                    app:tint="?attr/auroraTextSecondary" />
             </LinearLayout>
         </LinearLayout>
 
@@ -203,7 +203,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
+                        app:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：存储类型（点击弹单选，选项就是 storage 参数的合法取值） -->
@@ -246,7 +246,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
+                        app:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：欧加授权方式（未开启 / Token 鉴权 / VIP 授权） -->
@@ -289,7 +289,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
+                        app:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：VIP 档专用 —— 签名文件（选中「VIP 授权」后才出现） -->
@@ -336,7 +336,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
+                        app:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：VIP 档专用 —— 摘要文件 -->
@@ -383,7 +383,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
+                        app:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：模拟刷写（追加 dry-run 开关，不连设备） -->
@@ -493,7 +493,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
+                        app:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：识别设备启动槽位（get_slot） -->
@@ -536,7 +536,7 @@
                         android:layout_marginStart="12dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
+                        app:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：切换至A -->
@@ -564,7 +564,7 @@
                         android:layout_height="20dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
+                        app:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：切换至B -->
@@ -592,7 +592,7 @@
                         android:layout_height="20dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
+                        app:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
 
                 <!-- 行：复位设备（让设备退出 9008 重新启动） -->
@@ -620,7 +620,7 @@
                         android:layout_height="20dp"
                         android:contentDescription="@null"
                         android:src="@drawable/ic_chevron_right"
-                        android:tint="?attr/auroraTextSecondary" />
+                        app:tint="?attr/auroraTextSecondary" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

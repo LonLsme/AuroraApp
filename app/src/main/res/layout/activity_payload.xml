@@ -17,7 +17,7 @@
   <p>表格区用 weight 吃掉剩余高度而不是写死 dp：小屏剩得少、大屏剩得多，
   表格自己内部滚动，进度条永远钉在底部不会被挤走。
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#FFFFFF"
@@ -41,7 +41,7 @@
             android:contentDescription="返回"
             android:scaleType="centerInside"
             android:src="@drawable/ic_arrow_back"
-            android:tint="#2B2F36" />
+            app:tint="#2B2F36" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -165,7 +165,7 @@
                 android:focusable="true"
                 android:padding="10dp"
                 android:src="@drawable/ic_folder_open"
-                android:tint="#2F6BFF" />
+                app:tint="#2F6BFF" />
         </LinearLayout>
 
         <!-- 三个并列操作：读取信息（主）/ 提取镜像 / 停止操作 -->
