@@ -1,4 +1,4 @@
-package com.aurora.app.ui.payload;
+package com.aurora.app.core.payload;
 
 import java.io.Closeable;
 import java.io.File;

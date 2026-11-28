@@ -24,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.aurora.app.core.payload.PayloadCore;
 import com.aurora.app.R;
 import com.aurora.app.core.util.NotificationPermission;
 

@@ -1,4 +1,4 @@
-package com.aurora.app.ui.payload;
+package com.aurora.app.core.payload;
 
 import android.os.Build;
 
@@ -51,13 +51,13 @@ import okhttp3.ResponseBody;
  * 而且半截文件会留在输出目录里。取消时抛 {@link CancelledException}，
  * 由调用方删掉未完成的文件。
  */
-final class PayloadCore {
+public final class PayloadCore {
 
     /** 输入类型。 */
-    static final int KIND_PAYLOAD = 0;
-    static final int KIND_ZIP_IMAGES = 1;
-    static final int KIND_SINGLE_IMAGE = 2;
-    static final int KIND_DIRECTORY = 3;
+    public static final int KIND_PAYLOAD = 0;
+    public static final int KIND_ZIP_IMAGES = 1;
+    public static final int KIND_SINGLE_IMAGE = 2;
+    public static final int KIND_DIRECTORY = 3;
 
     /** payload 里的操作类型（DeltaArchiveManifest.InstallOperation.Type）。 */
     private static final int OP_REPLACE = 0;
@@ -85,10 +85,10 @@ final class PayloadCore {
     // ───────────────────────────── 取消 ─────────────────────────────
 
     /** 取消令牌。提取线程每复制一块检查一次，因此取消最多 64 KB 的延迟。 */
-    static final class CancelToken {
+    public static final class CancelToken {
         private volatile boolean cancelled;
 
-        void cancel() {
+        public void cancel() {
             cancelled = true;
         }
 
@@ -104,7 +104,7 @@ final class PayloadCore {
     }
 
     /** 取消时抛这个，调用方据此区分「用户停止」与「真失败」。 */
-    static final class CancelledException extends IOException {
+    public static final class CancelledException extends IOException {
         CancelledException() {
             super("已停止");
         }
@@ -113,9 +113,9 @@ final class PayloadCore {
     // ───────────────────────────── 数据模型 ─────────────────────────────
 
     /** 分区表的一行。zip 散包模式下 {@code entryName} 是条目全名，其余模式为 null。 */
-    static final class PartitionInfoRow {
-        final String name;
-        final long size;
+    public static final class PartitionInfoRow {
+        public final String name;
+        public final long size;
         final long rawSize;
         final String sha256;
         final String entryName;
@@ -134,12 +134,12 @@ final class PayloadCore {
     }
 
     /** 一次「读取信息」的结果：类型 + 分区行 + 后续提取需要的句柄。 */
-    static final class Inspection implements Closeable {
-        final int kind;
+    public static final class Inspection implements Closeable {
+        public final int kind;
         final String source;
         final String displayName;
-        final long totalBytes;
-        final List<PartitionInfoRow> rows;
+        public final long totalBytes;
+        public final List<PartitionInfoRow> rows;
         /** 仅 {@link #KIND_PAYLOAD} 非空。 */
         final PayloadSession session;
         /** 仅 {@link #KIND_ZIP_IMAGES} 非空。 */
@@ -210,7 +210,7 @@ final class PayloadCore {
      *
      * <p>调用方负责在执行结束后 {@link Inspection#close()}；本方法失败时已自行释放资源。
      */
-    static Inspection inspect(String input) throws IOException {
+    public static Inspection inspect(String input) throws IOException {
         return inspect(input, null);
     }
 
@@ -220,7 +220,7 @@ final class PayloadCore {
      * <p>「停止」原来只对提取有效：读取阶段（探针 / 尾部 EOCD / 中央目录 / manifest）
      * 一次都不看令牌，网络慢的时候点停止毫无反应，还被提示「当前没有进行中的任务」。
      */
-    static Inspection inspect(String input, CancelToken token) throws IOException {
+    public static Inspection inspect(String input, CancelToken token) throws IOException {
         String value = normalizeInput(input);
         if (isPlainEmpty(value)) {
             throw new IOException("请输入本地路径或 http(s) 链接");
@@ -299,7 +299,7 @@ final class PayloadCore {
     }
 
     /** 报错里带原串时要截断，不然一整条签名链接会把提示撑爆。 */
-    static String abbreviate(String value, int max) {
+    public static String abbreviate(String value, int max) {
         if (value == null) {
             return "";
         }
@@ -481,7 +481,7 @@ final class PayloadCore {
     // ───────────────────────────── 提取 ─────────────────────────────
 
     /** 提取进度回调；所有回调都在调用线程（后台线程）上执行，切 UI 由调用方负责。 */
-    interface ExtractListener {
+    public interface ExtractListener {
         void onEntryStarted(String name, int index, int total);
 
         /**
@@ -499,7 +499,7 @@ final class PayloadCore {
      * <p>失败与取消都会删掉未完成的文件，不会在输出目录留下半截镜像 ——
      * 半截 img 被当成完整镜像刷进设备是最坏的结果。
      */
-    static void extract(Inspection inspection, List<PartitionInfoRow> targets, File outDir,
+    public static void extract(Inspection inspection, List<PartitionInfoRow> targets, File outDir,
                         CancelToken token, ExtractListener listener) throws IOException {
         if (targets.isEmpty()) {
             throw new IOException("没有勾选任何分区");

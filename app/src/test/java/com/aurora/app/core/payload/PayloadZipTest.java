@@ -1,4 +1,4 @@
-package com.aurora.app.ui.payload;
+package com.aurora.app.core.payload;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
