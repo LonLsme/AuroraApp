@@ -112,8 +112,8 @@ public final class CpuController {
                     readAvailableFreqs(rep),
                     readAvailableGovernors(rep),
                     readLine(CPU_BASE + "cpu" + rep + "/cpufreq/scaling_governor"),
-                    CpuSysFiles.readCpuMinFreqKhz(rep),
-                    CpuSysFiles.readCpuMaxFreqKhz(rep),
+                    CpuSysFiles.readCpuScalingMinFreqKhz(rep),
+                    CpuSysFiles.readCpuScalingMaxFreqKhz(rep),
                     CpuSysFiles.readCpuCurFreqKhz(rep)));
         }
         return clusters;

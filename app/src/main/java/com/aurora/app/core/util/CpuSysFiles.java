@@ -175,6 +175,34 @@ public final class CpuSysFiles {
     }
 
     /**
+     * 策略最小频率 kHz：<b>优先 {@code scaling_min_freq}</b>。
+     *
+     * <p>与 {@link #readCpuMinFreqKhz(int)} 的区别是语义：那个优先硬件极限
+     * （{@code cpuinfo_min_freq}，只读、永远不变），适合「这台机器大概能在什么范围调频」；
+     * 这个优先策略值（{@code scaling_min_freq}，可写），适合「用户当前把它设成了多少」。
+     * CPU 控制页改完立刻回读，必须用后者 —— 否则写完 scaling_* 再读 cpuinfo_*，
+     * 滑杆会跳回硬件极限，看起来像「设置成功但没生效」。
+     */
+    public static long readCpuScalingMinFreqKhz(int cpuIndex) {
+        String base = "/sys/devices/system/cpu/cpu" + cpuIndex + "/cpufreq/";
+        Long khz = readLongFile(base + "scaling_min_freq");
+        if (khz != null && khz > 0) {
+            return khz;
+        }
+        return readCpuMinFreqKhz(cpuIndex);
+    }
+
+    /** 策略最大频率 kHz：优先 {@code scaling_max_freq}，语义同 {@link #readCpuScalingMinFreqKhz(int)}。 */
+    public static long readCpuScalingMaxFreqKhz(int cpuIndex) {
+        String base = "/sys/devices/system/cpu/cpu" + cpuIndex + "/cpufreq/";
+        Long khz = readLongFile(base + "scaling_max_freq");
+        if (khz != null && khz > 0) {
+            return khz;
+        }
+        return readCpuMaxFreqKhz(cpuIndex);
+    }
+
+    /**
      * 展示用：{@code 364~2265MHz}；不可用返回 {@code —}。
      */
     public static String formatCpuFreqRangeMhzShort(int cpuIndex) {
