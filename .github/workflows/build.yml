@@ -65,6 +65,56 @@ jobs:
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace
 
+      # lint 目前有 ~90 个存量 error（多数是 activity_about.xml 的 android:tint），
+      # 直接阻断会把这条流水线变成常红。这一步先只跑、只报数，不参与成败判定，
+      # 等存量清到可控再改 continue-on-error: false。
+      - name: Lint (advisory)
+        id: lint
+        continue-on-error: true
+        run: ./gradlew :app:lintDebug --stacktrace
+
+      - name: Lint summary
+        if: always()
+        run: |
+          set -euo pipefail
+          REPORT=app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
+          if [ ! -f "$REPORT" ]; then
+            echo "::warning::lint 报告未生成，跳过统计"
+            exit 0
+          fi
+          ERRORS=$(grep -c ': Error:' "$REPORT" || true)
+          WARNINGS=$(grep -c ': Warning:' "$REPORT" || true)
+          UNUSED=$(grep -c 'appears to be unused' "$REPORT" || true)
+
+          {
+            echo "### Lint 摘要（仅统计，不阻断）"
+            echo ""
+            echo "| 指标 | 数量 |"
+            echo "| --- | --- |"
+            echo "| Error | $ERRORS |"
+            echo "| Warning | $WARNINGS |"
+            echo "| 未使用资源 | $UNUSED |"
+            echo ""
+            echo "<details><summary>按类型分布</summary>"
+            echo ""
+            echo '```'
+            grep -E ': (Error|Warning):' "$REPORT" | sed 's/.*\[//' | sed 's/[^A-Za-z].*//' | sort | uniq -c | sort -rn | head -15 || true
+            echo '```'
+            echo ""
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "lint: errors=$ERRORS warnings=$WARNINGS unused=$UNUSED"
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.*
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v7.0.2
