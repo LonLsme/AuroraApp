@@ -19,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.button.MaterialButton;
+import com.aurora.app.core.root.RootShell;
 import com.aurora.app.R;
 import com.aurora.app.ui.theme.ThemeColors;
 
@@ -137,7 +138,7 @@ public class PartitionManagerActivity extends AppCompatActivity {
                         continue;
                     }
                     names.add(name);
-                    ShellResult pathResult = runSuCommand("readlink -f /dev/block/by-name/" + shellEscape(name));
+                    ShellResult pathResult = runSuCommand("readlink -f /dev/block/by-name/" + RootShell.escape(name));
                     String path = pathResult.success ? pathResult.stdout.trim() : "";
                     if (path.isEmpty()) {
                         path = "/dev/block/by-name/" + name;
@@ -299,7 +300,7 @@ public class PartitionManagerActivity extends AppCompatActivity {
         final String partitionPath = path;
         tvPartitionInfo.setText("分区信息: " + name + "\n路径: " + partitionPath + "\n大小: 读取中...");
         new Thread(() -> {
-            ShellResult sizeResult = runSuCommand("blockdev --getsize64 " + shellEscape(partitionPath));
+            ShellResult sizeResult = runSuCommand("blockdev --getsize64 " + RootShell.escape(partitionPath));
             String sizeText = "未知";
             if (sizeResult.success) {
                 try {
@@ -339,7 +340,7 @@ public class PartitionManagerActivity extends AppCompatActivity {
                 tmp.delete();
             }
 
-            ShellResult dumpResult = runSuCommand("dd if=" + shellEscape(path) + " of=" + shellEscape(tmp.getAbsolutePath()) + " bs=4M");
+            ShellResult dumpResult = runSuCommand("dd if=" + RootShell.escape(path) + " of=" + RootShell.escape(tmp.getAbsolutePath()) + " bs=4M");
             if (!dumpResult.success) {
                 runOnUiThread(() -> {
                     setBusy(false, null);
@@ -381,7 +382,7 @@ public class PartitionManagerActivity extends AppCompatActivity {
     private void wipePartition(String partitionPath) {
         setBusy(true, "状态：正在清空分区...");
         new Thread(() -> {
-            ShellResult result = runSuCommand("dd if=/dev/zero of=" + shellEscape(partitionPath) + " bs=4M count=16 conv=fsync");
+            ShellResult result = runSuCommand("dd if=/dev/zero of=" + RootShell.escape(partitionPath) + " bs=4M count=16 conv=fsync");
             runOnUiThread(() -> {
                 setBusy(false, null);
                 if (result.success) {
@@ -436,7 +437,7 @@ public class PartitionManagerActivity extends AppCompatActivity {
                 return;
             }
 
-            ShellResult result = runSuCommand("dd if=" + shellEscape(input.getAbsolutePath()) + " of=" + shellEscape(partitionPath) + " bs=4M conv=fsync");
+            ShellResult result = runSuCommand("dd if=" + RootShell.escape(input.getAbsolutePath()) + " of=" + RootShell.escape(partitionPath) + " bs=4M conv=fsync");
             //noinspection ResultOfMethodCallIgnored
             input.delete();
             runOnUiThread(() -> {
@@ -630,10 +631,6 @@ public class PartitionManagerActivity extends AppCompatActivity {
         } catch (IOException ignored) {
         }
         return sb.toString();
-    }
-
-    private static String shellEscape(String value) {
-        return "'" + value.replace("'", "'\\''") + "'";
     }
 
     private static class ShellResult {

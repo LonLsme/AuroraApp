@@ -23,6 +23,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.button.MaterialButton;
+import com.aurora.app.core.root.RootShell;
 import com.aurora.app.R;
 
 import java.io.BufferedReader;
@@ -253,7 +254,7 @@ public class ModuleManagerActivity extends AppCompatActivity {
     }
 
     private ShellResult installByEngine(TargetEngine engine, File moduleZip) {
-        String zipPath = shellEscape(moduleZip.getAbsolutePath());
+        String zipPath = RootShell.escape(moduleZip.getAbsolutePath());
         List<String> candidates = new ArrayList<>();
         switch (engine) {
             case KERNEL_SU:
@@ -452,10 +453,6 @@ public class ModuleManagerActivity extends AppCompatActivity {
             return oneLine.substring(0, 120) + "...";
         }
         return oneLine;
-    }
-
-    private static String shellEscape(String value) {
-        return "'" + value.replace("'", "'\\''") + "'";
     }
 
     private ShellResult runRootCommandStreaming(String command, RootExecMode mode, String logPrefix) {

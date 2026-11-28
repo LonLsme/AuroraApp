@@ -28,6 +28,7 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.button.MaterialButton;
+import com.aurora.app.core.root.RootShell;
 import com.aurora.app.R;
 import com.aurora.app.ui.widget.AuroraSwitchStyler;
 
@@ -202,7 +203,7 @@ public class FontLibraryBackupActivity extends AppCompatActivity {
 
                     File outImg = new File(staging, safeImageFileName(p.name));
                     ShellResult dd = runSuCommand(
-                            "dd if=" + shellEscape(p.path) + " of=" + shellEscape(outImg.getAbsolutePath()) + " bs=4M");
+                            "dd if=" + RootShell.escape(p.path) + " of=" + RootShell.escape(outImg.getAbsolutePath()) + " bs=4M");
                     if (!dd.success) {
                         runOnUiThread(() -> {
                             setBusy(false, "状态：导出失败（" + p.name + "）");
@@ -223,9 +224,9 @@ public class FontLibraryBackupActivity extends AppCompatActivity {
                     runOnUiThread(() -> tvFontBackupStatus.setText("状态：正在压缩打包…"));
                     updateProgress(95);
                     ShellResult tar = runSuCommand(
-                            "tar -czf " + shellEscape(bundle.getAbsolutePath()) + " -C "
-                                    + shellEscape(staging.getAbsolutePath()) + " ."
-                                    + " && chmod 644 " + shellEscape(bundle.getAbsolutePath()));
+                            "tar -czf " + RootShell.escape(bundle.getAbsolutePath()) + " -C "
+                                    + RootShell.escape(staging.getAbsolutePath()) + " ."
+                                    + " && chmod 644 " + RootShell.escape(bundle.getAbsolutePath()));
                     wipeStaging(staging);
 
                     if (!tar.success || !bundle.isFile() || bundle.length() == 0L) {
@@ -352,7 +353,7 @@ public class FontLibraryBackupActivity extends AppCompatActivity {
             if (name.isEmpty()) {
                 continue;
             }
-            ShellResult pathResult = runSuCommand("readlink -f /dev/block/by-name/" + shellEscape(name));
+            ShellResult pathResult = runSuCommand("readlink -f /dev/block/by-name/" + RootShell.escape(name));
             String path = pathResult.success ? pathResult.stdout.trim() : "";
             if (path.isEmpty()) {
                 path = "/dev/block/by-name/" + name;
@@ -385,7 +386,7 @@ public class FontLibraryBackupActivity extends AppCompatActivity {
     }
 
     private void wipeStaging(File staging) {
-        runSuCommand("rm -rf " + shellEscape(staging.getAbsolutePath()));
+        runSuCommand("rm -rf " + RootShell.escape(staging.getAbsolutePath()));
     }
 
     private void setBusy(boolean value, @Nullable String statusText) {
@@ -543,10 +544,6 @@ public class FontLibraryBackupActivity extends AppCompatActivity {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private static String shellEscape(String value) {
-        return "'" + value.replace("'", "'\\''") + "'";
     }
 
     private static ShellResult runSuCommand(String command) {
