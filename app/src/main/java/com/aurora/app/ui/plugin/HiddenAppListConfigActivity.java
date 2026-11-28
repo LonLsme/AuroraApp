@@ -259,7 +259,7 @@ public class HiddenAppListConfigActivity extends AppCompatActivity {
     }
 
     private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density);
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private void showTemplateRenameDialog(TemplateRow tpl) {
@@ -599,7 +599,7 @@ public class HiddenAppListConfigActivity extends AppCompatActivity {
         EditText etSearch = new EditText(this);
         etSearch.setHint("搜索应用名称或包名");
         etSearch.setSingleLine(true);
-        int densityPad = (int) (12 * getResources().getDisplayMetrics().density);
+        int densityPad = Math.round(12 * getResources().getDisplayMetrics().density);
         etSearch.setPadding(densityPad, densityPad / 2, densityPad, densityPad / 2);
         CheckBox cbSelectAll = new CheckBox(this);
         cbSelectAll.setText("全选（当前筛选）");
@@ -705,7 +705,7 @@ public class HiddenAppListConfigActivity extends AppCompatActivity {
         });
         LinearLayout dialogContent = new LinearLayout(this);
         dialogContent.setOrientation(LinearLayout.VERTICAL);
-        int outerPad = (int) (8 * getResources().getDisplayMetrics().density);
+        int outerPad = Math.round(8 * getResources().getDisplayMetrics().density);
         dialogContent.setPadding(outerPad, outerPad, outerPad, outerPad);
         dialogContent.addView(etSearch, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -988,7 +988,7 @@ public class HiddenAppListConfigActivity extends AppCompatActivity {
         EditText etSearch = new EditText(this);
         etSearch.setHint("搜索应用名称或包名");
         etSearch.setSingleLine(true);
-        int densityPad = (int) (12 * getResources().getDisplayMetrics().density);
+        int densityPad = Math.round(12 * getResources().getDisplayMetrics().density);
         etSearch.setPadding(densityPad, densityPad / 2, densityPad, densityPad / 2);
         CheckBox cbSelectAll = new CheckBox(this);
         cbSelectAll.setText("全选（当前筛选）");
@@ -1099,7 +1099,7 @@ public class HiddenAppListConfigActivity extends AppCompatActivity {
 
         LinearLayout dialogContent = new LinearLayout(this);
         dialogContent.setOrientation(LinearLayout.VERTICAL);
-        int outerPad = (int) (8 * getResources().getDisplayMetrics().density);
+        int outerPad = Math.round(8 * getResources().getDisplayMetrics().density);
         dialogContent.setPadding(outerPad, outerPad, outerPad, outerPad);
         dialogContent.addView(etSearch, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
