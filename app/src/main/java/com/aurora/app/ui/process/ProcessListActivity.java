@@ -277,8 +277,7 @@ public class ProcessListActivity extends AppCompatActivity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        rlp.topMargin = getResources().getDisplayMetrics().density > 0
-                ? (int) (6 * getResources().getDisplayMetrics().density) : 6;
+        rlp.topMargin = Math.round(6 * getResources().getDisplayMetrics().density);
         row.setLayoutParams(rlp);
 
         TextView tvLabel = new TextView(this);
