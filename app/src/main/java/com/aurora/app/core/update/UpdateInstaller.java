@@ -1,17 +1,22 @@
 package com.aurora.app.core.update;
 
+import android.app.PendingIntent;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInstaller;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.Log;
 
 import androidx.core.content.FileProvider;
 
 import com.aurora.app.BuildConfig;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.OutputStream;
 
 /**
  * 调用系统安装界面。
@@ -102,23 +107,100 @@ public final class UpdateInstaller {
                 Uri.parse("package:" + context.getPackageName()));
     }
 
+    private static final String TAG = "UpdateInstaller";
+
+    /** 安装会话结果广播的 action，接收方见清单里的 {@code InstallResultReceiver}。 */
+    public static final String ACTION_INSTALL_RESULT = "com.aurora.app.action.INSTALL_RESULT";
+    /** 附加在结果广播里的安装状态码（{@link PackageInstaller#STATUS_SUCCESS} 等）。 */
+    public static final String EXTRA_INSTALL_STATUS = "status";
+    /** 附加在结果广播里的原始消息。 */
+    public static final String EXTRA_INSTALL_MESSAGE = "message";
+
     /**
      * 把下载好的 APK 交给系统安装器。
      *
-     * <p>本方法<b>只负责发起</b>：真正的覆盖安装、签名校验、用户确认都在系统安装器里。
-     * 已经 {@link ApkDownloader} 校验过的包再被系统拒，通常是签名或降级安装问题。
+     * <p>优先走 {@link PackageInstaller} 会话，而不是 {@code ACTION_VIEW}：
+     * 后者是「谁都能接」的隐式 Intent，在装了第三方应用市场 / 浏览器的机器上会被抢走
+     * （实测某台 HyperOS 上默认处理器是 UC 浏览器的 UCApkInstaller，轮到它时既装不上也不报错），
+     * 而系统安装器反而不是默认项。会话安装由系统自己弹确认框，不存在被劫持的问题。
      *
-     * @return false 表示连安装器都没能拉起（Uri 生成失败 / 设备没有安装器 / 未授权）
+     * @return false 表示两条路都没能发起（Uri 生成失败 / 设备拒绝创建会话 / 没有安装器）
      */
     public static boolean install(Context context, File apk) {
         if (context == null || apk == null || !apk.isFile() || apk.length() <= 0) {
             return false;
         }
+        if (installViaSession(context, apk)) {
+            return true;
+        }
+        return installViaIntent(context, apk);
+    }
+
+    /**
+     * 会话安装：把 APK 写进 PackageInstaller 的会话再提交。
+     *
+     * <p>结果通过 {@link #ACTION_INSTALL_RESULT} 广播回 {@code InstallResultReceiver}，
+     * 失败信息能落到日志和提示上；提交成功不代表安装成功，用户还要在系统弹框里确认。
+     */
+    private static boolean installViaSession(Context context, File apk) {
+        PackageInstaller installer = context.getPackageManager().getPackageInstaller();
+        PackageInstaller.SessionParams params =
+                new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+        params.setAppPackageName(context.getPackageName());
+        int sessionId;
+        try {
+            sessionId = installer.createSession(params);
+        } catch (Throwable t) {
+            Log.w(TAG, "创建安装会话失败，回落到 ACTION_VIEW", t);
+            return false;
+        }
+        try (PackageInstaller.Session session = installer.openSession(sessionId)) {
+            try (OutputStream out = session.openWrite("aurora-update.apk", 0, apk.length());
+                 FileInputStream in = new FileInputStream(apk)) {
+                byte[] buffer = new byte[64 * 1024];
+                int read;
+                while ((read = in.read(buffer)) > 0) {
+                    out.write(buffer, 0, read);
+                }
+                session.fsync(out);
+            }
+            session.commit(buildResultIntentSender(context));
+            return true;
+        } catch (Throwable t) {
+            Log.w(TAG, "写入安装会话失败", t);
+            try {
+                installer.abandonSession(sessionId);
+            } catch (Throwable ignored) {
+                // 会话可能已被系统回收，忽略
+            }
+            return false;
+        }
+    }
+
+    /** 安装结果回执的 PendingIntent；接收方是清单里注册的 {@code InstallResultReceiver}。 */
+    private static android.content.IntentSender buildResultIntentSender(Context context) {
+        Intent result = new Intent(context, InstallResultReceiver.class)
+                .setAction(ACTION_INSTALL_RESULT)
+                .setPackage(context.getPackageName());
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            flags |= PendingIntent.FLAG_MUTABLE;
+        }
+        return PendingIntent.getBroadcast(context, 0, result, flags).getIntentSender();
+    }
+
+    /**
+     * 旧路径：隐式 {@code ACTION_VIEW} 拉起安装器。
+     *
+     * <p>只在会话安装不可用时兜底 —— 它可能被第三方安装器接管，且拿不到任何结果。
+     */
+    private static boolean installViaIntent(Context context, File apk) {
         Uri uri;
         try {
             uri = FileProvider.getUriForFile(context, authority(context), apk);
         } catch (Throwable t) {
             // authority 与清单不一致、或文件落在 file_paths 未覆盖的目录时会抛
+            Log.w(TAG, "生成 FileProvider Uri 失败", t);
             return false;
         }
         Intent intent = new Intent(Intent.ACTION_VIEW);
@@ -130,6 +212,7 @@ public final class UpdateInstaller {
             context.startActivity(intent);
             return true;
         } catch (Throwable t) {
+            Log.w(TAG, "拉起系统安装器失败", t);
             return false;
         }
     }

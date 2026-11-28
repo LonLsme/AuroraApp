@@ -223,6 +223,15 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- 安装会话的结果回执：只在失败时提示原因，见 InstallResultReceiver 注释 -->
+        <receiver
+            android:name=".core.update.InstallResultReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.aurora.app.action.INSTALL_RESULT" />
+            </intent-filter>
+        </receiver>
+
         <receiver
             android:name=".receiver.BootCompletedReceiver"
             android:enabled="true"
