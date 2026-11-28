@@ -19,7 +19,8 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@color/ios_background_grouped</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <!-- API 27 才引入；低版本框架不认识该属性会忽略，不会崩，故对 lint 抑制 -->
+        <item name="android:windowLightNavigationBar" tools:ignore="NewApi">false</item>
     </style>
 
     <style name="Theme.Aurora" parent="Base.Theme.Aurora" />

@@ -13,6 +13,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.Context;
@@ -1450,6 +1451,13 @@ public class MainActivity extends AppCompatActivity {
      * 查不到再遍历 ActionMenuView 的子 View 比对 {@code getItemData().getItemId()} ——
      * 后者不依赖 appcompat 的内部约定，是保底手段。
      */
+    /**
+     * 抑制 RestrictedApi 的原因：这里只在 {@code findViewById} 落空时兜底遍历 ActionMenuView，
+     * 需要 {@code ActionMenuItemView.getItemData()} 才能把子 View 对回菜单项 id。
+     * appcompat 没有公开的「按 itemId 取工具栏按钮 View」接口，反射又更脆；
+     * 该分支只读不写，取不到就返回 null，调用方已有空值兜底。
+     */
+    @SuppressLint("RestrictedApi")
     private View findToolbarActionView(int itemId) {
         Toolbar toolbar = findViewById(R.id.toolbar);
         if (toolbar == null) {
