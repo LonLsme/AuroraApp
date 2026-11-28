@@ -19,7 +19,6 @@
     <color name="ios_semantic_negative">#FF5252</color>
     <!-- 玩机页文字在深色卡片上的对比度 -->
     <color name="explore_slate_500">#94a3b8</color>
-    <color name="explore_slate_600">#cbd5e1</color>
     <color name="explore_slate_100">#334155</color>
     <color name="stitch_gauge_track">#475569</color>
     <color name="stitch_gauge_fill_low">#7ec8f0</color>

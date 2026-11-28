@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="ios_row_spacing">12dp</dimen>
     <dimen name="ios_card_padding">16dp</dimen>
-    <dimen name="ios_corner_radius">12dp</dimen>
     <dimen name="ios_screen_edge">16dp</dimen>
     <dimen name="ios_section_gap">16dp</dimen>
     <dimen name="ios_card_corner">12dp</dimen>
@@ -14,17 +12,12 @@
       改它等于把所有子页的卡片一起改掉。
     -->
     <dimen name="explore_card_radius_lg">18dp</dimen>
-    <dimen name="floating_nav_bottom_margin">12dp</dimen>
-    <dimen name="floating_nav_horizontal_margin">14dp</dimen>
-    <dimen name="floating_nav_card_corner">32dp</dimen>
     <!--
       弹窗圆角。三处共用同一个值：自定义布局的 @drawable/bg_dialog_rounded、
       主题里给 AppCompat AlertDialog 的窗口底、MaterialAlertDialog 的 shapeAppearance。
       写死在 drawable 里会导致改一处漏两处，这里收成单一来源。
     -->
     <dimen name="dialog_corner_radius">20dp</dimen>
-    <dimen name="floating_nav_item_width">76dp</dimen>
-    <dimen name="floating_nav_item_height">56dp</dimen>
     <!-- 刷机页：7 张功能卡片统一高度与等间距（「统一宽高」由这两条保证） -->
     <dimen name="flash_card_height">76dp</dimen>
     <dimen name="flash_card_gap">12dp</dimen>
@@ -61,7 +54,6 @@
       正好落在 Material 双行列表条目的 72dp 上，两行间距 24dp，紧凑但能呼吸。
       设置页的四行统一按 16dp / 12dp 拆分（哪怕它是单行卡），全页行高才是同一个 72dp。
     -->
-    <dimen name="miuix_pref_row_padding_v">12dp</dimen>
 
     <!--
       「应用工具」三页（应用卸载冻结 / 免root激活 / 应用安装）：设备侧应用列表高度。
