@@ -4,6 +4,8 @@ import android.content.Context;
 import android.os.SystemClock;
 import android.util.Log;
 
+import com.aurora.app.core.root.RootShell;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -222,11 +224,17 @@ public final class FlashRuntime {
                 + "LD_LIBRARY_PATH=" + quotedBin + ":$LD_LIBRARY_PATH; ";
     }
 
-    /** 单引号转义：把 {@code '} 替换为 {@code '\''}，与 {@code RootShell.escape} 同规则。 */
+    /**
+     * 单引号转义：委托 {@link RootShell#escape(String)}，全仓只保留一份转义实现。
+     *
+     * <p>这里只共用转义<b>函数</b>，不共用执行通道 —— 本类仍按任务各自 fork 进程，
+     * 与类注释里「为什么不用 RootShell 的持久会话」无关。
+     *
+     * <p>保留本方法而不是让调用方改调 {@code RootShell}：刷机侧有 9 处直接调用，
+     * 另有 {@code FlashCommands} / {@code QdlCommands} / {@code KernelSuPatcher} 三个
+     * 别名方法转发过来，换入口没有收益，改错却可能让某个参数漏出引号。
+     */
     public static String shellEscape(String raw) {
-        if (raw == null) {
-            return "''";
-        }
-        return "'" + raw.replace("'", "'\\''") + "'";
+        return RootShell.escape(raw);
     }
 }
